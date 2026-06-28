@@ -128,7 +128,7 @@ lazy val adapterHttp = project
 
 lazy val bootstrap = project
   .in(file("bootstrap"))
-  .dependsOn(domain, application, persistencePostgres, messagingKafka, migration, adapterHttp)
+  .dependsOn(domain, application, adapterHttp)
   .settings(commonSettings)
   .settings(
     name := "bootstrap",

@@ -168,14 +168,14 @@ Bloop configs in `.bloop/` can also be used if you prefer the Bloop BSP path.
 
 When working on this project, always consult official library documentation before writing or modifying code that uses a library API. Prefer these sources in order:
 
-1. **context7** — use the `mcp__context7` tools if available in the session to pull up-to-date, version-specific docs for any library.
-2. **Official docs sites** (use WebFetch if context7 is unavailable):
+1. **Official docs sites** (use WebFetch):
    - ZIO: https://zio.dev/reference/
    - ZIO HTTP: https://zio.dev/zio-http/
    - ZIO Kafka: https://zio.dev/zio-kafka/
    - Tapir: https://tapir.softwaremill.com/en/latest/
    - Doobie: https://tpolecat.github.io/doobie/
    - Flyway: https://documentation.red-gate.com/fd/
+2. **context7** — use the `mcp__context7` tools if available in the session as a secondary source.
 
 This is especially important for the pending `???` stubs — ZIO Kafka 3.x and Doobie 1.x both have breaking API changes from prior versions. Do not rely on training-data knowledge of these APIs; fetch current docs first.
 
