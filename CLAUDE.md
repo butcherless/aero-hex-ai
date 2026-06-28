@@ -38,14 +38,14 @@ The app is always run as a fat JAR using `java -cp`. Never use `sbt "bootstrap/r
 
 **Stop any running instance (by process name):**
 ```bash
-pkill -f "bootstrap.Main" 2>/dev/null || true
+pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/null || true
 ```
 
 **Build and start:**
 ```bash
 sbt ";clean;bootstrap/assembly"
 JAR=$(find target/out -name "bootstrap-assembly-*.jar" | sort | tail -1)
-java -cp "$JAR" bootstrap.Main
+java -cp "$JAR" dev.cmartin.aerohex.bootstrap.Main
 ```
 
 **Verify the app is up:**
