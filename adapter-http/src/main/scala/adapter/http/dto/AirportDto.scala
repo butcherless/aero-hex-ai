@@ -4,12 +4,13 @@ import domain.model.Airport
 import sttp.tapir.Schema
 import sttp.tapir.Validator
 
-case class AirportDto(iata: String, name: String, city: String, countryCode: String)
+case class AirportDto(iata: String, icaoCode: String, name: String, city: String, countryCode: String)
 
 object AirportDto {
   def fromDomain(airport: Airport): AirportDto =
     AirportDto(
       iata = airport.iata.value,
+      icaoCode = airport.icaoCode,
       name = airport.name,
       city = airport.city,
       countryCode = airport.countryCode.value
@@ -20,6 +21,11 @@ object AirportDto {
       _.description("3-letter IATA airport code.")
         .validate(Validator.minLength(3))
         .validate(Validator.maxLength(3))
+    )
+    .modify(_.icaoCode)(
+      _.description("4-letter ICAO airport code.")
+        .validate(Validator.minLength(4))
+        .validate(Validator.maxLength(4))
     )
     .modify(_.name)(_.description("Full airport name."))
     .modify(_.city)(_.description("City served by the airport."))

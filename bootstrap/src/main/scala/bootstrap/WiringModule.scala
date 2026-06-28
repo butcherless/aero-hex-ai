@@ -44,9 +44,39 @@ object WiringModule {
       def delete(id: RouteId): IO[DomainError, Unit]            = ZIO.unit
   )
 
-  val appLayer: ULayer[FindCountryUseCase & FindAirportUseCase & FindAirlineUseCase & CreateRouteUseCase] =
+  private val aircraftRepoLayer: ULayer[AircraftRepository] = ZLayer.succeed(
+    new AircraftRepository:
+      def findByRegistration(reg: Registration): IO[DomainError, Option[Aircraft]] = ZIO.none
+      def findAll(p: Pagination): IO[DomainError, List[Aircraft]]                  = ZIO.succeed(Nil)
+      def save(a: Aircraft): IO[DomainError, Aircraft]                             = ZIO.succeed(a)
+      def delete(reg: Registration): IO[DomainError, Unit]                         = ZIO.unit
+  )
+
+  private val flightRepoLayer: ULayer[FlightRepository] = ZLayer.succeed(
+    new FlightRepository:
+      def findByCode(code: FlightCode): IO[DomainError, Option[Flight]] = ZIO.none
+      def findAll(p: Pagination): IO[DomainError, List[Flight]]         = ZIO.succeed(Nil)
+      def save(f: Flight): IO[DomainError, Flight]                      = ZIO.succeed(f)
+      def delete(code: FlightCode): IO[DomainError, Unit]               = ZIO.unit
+  )
+
+  private val journeyRepoLayer: ULayer[JourneyRepository] = ZLayer.succeed(
+    new JourneyRepository:
+      def findById(id: JourneyId): IO[DomainError, Option[Journey]] = ZIO.none
+      def findAll(p: Pagination): IO[DomainError, List[Journey]]    = ZIO.succeed(Nil)
+      def save(j: Journey): IO[DomainError, Journey]                = ZIO.succeed(j)
+      def delete(id: JourneyId): IO[DomainError, Unit]              = ZIO.unit
+  )
+
+  val appLayer: ULayer[
+    FindCountryUseCase & FindAirportUseCase & FindAirlineUseCase & CreateRouteUseCase &
+      FindAircraftUseCase & FindFlightUseCase & FindJourneyUseCase
+  ] =
     (countryRepoLayer >>> FindCountryService.layer) ++
       (airportRepoLayer >>> FindAirportService.layer) ++
       (airlineRepoLayer >>> FindAirlineService.layer) ++
-      ((airportRepoLayer ++ routeRepoLayer) >>> CreateRouteService.layer)
+      ((airportRepoLayer ++ routeRepoLayer) >>> CreateRouteService.layer) ++
+      (aircraftRepoLayer >>> FindAircraftService.layer) ++
+      (flightRepoLayer >>> FindFlightService.layer) ++
+      (journeyRepoLayer >>> FindJourneyService.layer)
 }

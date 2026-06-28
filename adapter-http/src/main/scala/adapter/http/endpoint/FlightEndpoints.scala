@@ -1,0 +1,66 @@
+package adapter.http.endpoint
+
+import adapter.http.dto.FlightDto
+import adapter.http.error.{ErrorMapper, HttpErrorResponse}
+import domain.port.in.FindFlightUseCase
+import shared.Pagination
+import sttp.model.StatusCode
+import sttp.tapir.*
+import sttp.tapir.generic.auto.*
+import sttp.tapir.json.circe.*
+import sttp.tapir.server.ziohttp.ZioHttpInterpreter
+import sttp.tapir.ztapir.RichZEndpoint
+import io.circe.generic.auto.*
+import zio.*
+import zio.http.{Response, Routes}
+
+object FlightEndpoints {
+
+  private val base = endpoint.in("api" / "v1" / "flights")
+
+  val findAll: PublicEndpoint[(Int, Int), (StatusCode, HttpErrorResponse), List[FlightDto], Any] =
+    base.get
+      .summary("List flights")
+      .description("Returns a paginated list of all scheduled flights.")
+      .tag("Flights")
+      .in(query[Int]("page").description("Page number (1-based).").default(1))
+      .in(query[Int]("pageSize").description("Number of results per page.").default(20))
+      .out(jsonBody[List[FlightDto]].description("List of flights."))
+      .errorOut(statusCode.and(jsonBody[HttpErrorResponse].description("An error occurred.")))
+
+  val findByCode: PublicEndpoint[String, (StatusCode, HttpErrorResponse), FlightDto, Any] =
+    base.get
+      .summary("Find flight by code")
+      .description("Returns a single scheduled flight identified by its airline flight code.")
+      .tag("Flights")
+      .in(path[String]("code").description("Airline flight code (e.g. UX9117)."))
+      .out(jsonBody[FlightDto].description("The requested flight."))
+      .errorOut(
+        oneOf[(StatusCode, HttpErrorResponse)](
+          oneOfVariantValueMatcher(
+            StatusCode.NotFound,
+            statusCode.and(jsonBody[HttpErrorResponse].description("Flight not found."))
+          ) { case (s, _) => s == StatusCode.NotFound },
+          oneOfDefaultVariant(statusCode.and(jsonBody[HttpErrorResponse].description("Unexpected error.")))
+        )
+      )
+
+  def routes(useCase: FindFlightUseCase): Routes[Any, Response] =
+    ZioHttpInterpreter().toHttp(
+      findAll.zServerLogic { input =>
+        val (page, pageSize) = input
+        useCase
+          .findAll(Pagination(page, pageSize))
+          .map(_.map(FlightDto.fromDomain))
+          .mapError(ErrorMapper.toHttpError)
+      }
+    ) ++
+      ZioHttpInterpreter().toHttp(
+        findByCode.zServerLogic { code =>
+          useCase
+            .findByCode(code)
+            .map(FlightDto.fromDomain)
+            .mapError(ErrorMapper.toHttpError)
+        }
+      )
+}

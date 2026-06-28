@@ -10,5 +10,6 @@ object IcaoCode {
 case class Airline(
     icao: IcaoCode,
     name: String,
+    foundationDate: java.time.LocalDate,
     countryCode: CountryCode
 )
