@@ -103,14 +103,14 @@ object CountryEndpoints {
         create.zServerLogic { req =>
           ZIO.logDebug(s"create - request: $req") *>
             createSvc
-              .create(CreateCountryCommand(req.code, req.name))
+              .create(CreateCountryRequest.toCommand(req))
               .map(CountryDto.fromDomain)
               .mapError(ErrorMapper.toHttpError)
         },
         update.zServerLogic { (code, req) =>
           ZIO.logDebug(s"update - code: $code, request: $req") *>
             updateSvc
-              .update(UpdateCountryCommand(code, req.name))
+              .update(UpdateCountryRequest.toCommand(code, req))
               .map(CountryDto.fromDomain)
               .mapError(ErrorMapper.toHttpError)
         },

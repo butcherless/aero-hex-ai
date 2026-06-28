@@ -1,6 +1,7 @@
 package adapter.http.dto
 
 import domain.model.Country
+import domain.port.in.{CreateCountryCommand, UpdateCountryCommand}
 import sttp.tapir.Schema
 import sttp.tapir.Validator
 
@@ -22,6 +23,9 @@ object CountryDto {
 case class CreateCountryRequest(code: String, name: String)
 
 object CreateCountryRequest {
+  def toCommand(req: CreateCountryRequest): CreateCountryCommand =
+    CreateCountryCommand(req.code, req.name)
+
   given Schema[CreateCountryRequest] = Schema.derived[CreateCountryRequest]
     .modify(_.code)(
       _.description("ISO 3166-1 alpha-2 country code.")
@@ -34,6 +38,9 @@ object CreateCountryRequest {
 case class UpdateCountryRequest(name: String)
 
 object UpdateCountryRequest {
+  def toCommand(code: String, req: UpdateCountryRequest): UpdateCountryCommand =
+    UpdateCountryCommand(code, req.name)
+
   given Schema[UpdateCountryRequest] = Schema.derived[UpdateCountryRequest]
     .modify(_.name)(_.description("Full country name.").validate(Validator.minLength(1)))
 }
