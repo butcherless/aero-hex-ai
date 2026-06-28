@@ -1,18 +1,25 @@
+# OS
 .DS_Store
+.ash_history
+
+# IDE
+.idea/
+*.iml
+.metals/
+metals.sbt
+.vscode/
+
+# Build tools
 .bloop/
 .bsp/
-.claude/
-.idea/
-.metals/
-.sbtopts
-.vscode/
-bin/
-build/
-/out/
-target/
-*.iml
-.ash_history
 .cache/
 .config/
 .ivy2/
-metals.sbt
+.sbtopts
+/bin/
+/build/
+/out/
+target/
+
+# Claude Code
+.claude/
