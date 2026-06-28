@@ -19,7 +19,7 @@ final class FindJourneyService(repo: JourneyRepository) extends FindJourneyUseCa
           case Some(j) => ZIO.succeed(j)
           case None    => ZIO.fail(JourneyNotFound(id))
         }
-      case None => ZIO.fail(JourneyNotFound(id))
+      case None       => ZIO.fail(JourneyNotFound(id))
     }
 
   override def findAll(pagination: Pagination): IO[DomainError, List[Journey]] =
