@@ -1,9 +1,8 @@
 package bootstrap
 
 import adapter.http.endpoint.{AirportEndpoints, CountryEndpoints, RouteEndpoints}
-import adapter.http.server.HttpServer
 import sttp.apispec.Tag as ApiTag
-import sttp.apispec.openapi.{Contact, Info, License}
+import sttp.apispec.openapi.{Contact, Info, License, Server}
 import sttp.tapir.docs.openapi.OpenAPIDocsInterpreter
 import sttp.apispec.openapi.circe.yaml.*
 
@@ -33,5 +32,6 @@ object OpenApiGenerator:
         info
       )
       .tags(tags)
+      .servers(List(Server("http://localhost:8080", description = Some("Local development server"))))
       .toYaml
     println(yaml)
