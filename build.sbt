@@ -129,7 +129,6 @@ lazy val adapterHttp = project
 lazy val bootstrap = project
   .in(file("bootstrap"))
   .dependsOn(domain, application, persistencePostgres, messagingKafka, migration, adapterHttp)
-  .enablePlugins(JavaAppPackaging)
   .settings(commonSettings)
   .settings(
     name := "bootstrap",
@@ -139,15 +138,16 @@ lazy val bootstrap = project
       zioLoggingSlf4j,
       logback
     ),
+    Compile / mainClass   := Some("bootstrap.Main"),
+    assembly / mainClass  := Some("bootstrap.OpenApiGenerator"),
     assembly / assemblyMergeStrategy := {
-      case PathList("module-info.class")                          => MergeStrategy.discard
+      case PathList("module-info.class")                             => MergeStrategy.discard
       case PathList("META-INF", "versions", _, "module-info.class") => MergeStrategy.discard
-      case PathList("META-INF", xs @ _*)                         => MergeStrategy.discard
-      case "deriving.conf"                                        => MergeStrategy.concat
-      case "reference.conf"                                       => MergeStrategy.concat
+      case PathList("META-INF", xs @ _*)                            => MergeStrategy.discard
+      case "deriving.conf"                                           => MergeStrategy.concat
+      case "reference.conf"                                          => MergeStrategy.concat
       case x =>
         val old = (assembly / assemblyMergeStrategy).value
         old(x)
-    },
-    assembly / mainClass := Some("bootstrap.OpenApiGenerator")
+    }
   )
