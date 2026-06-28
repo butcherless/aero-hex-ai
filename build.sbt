@@ -103,7 +103,7 @@ lazy val adapterHttp = project
   .dependsOn(domain, application)
   .settings(
     name := "adapter-http",
- //   coverageEnabled := true,
+    coverageEnabled := true,
     libraryDependencies ++= Seq(
       tapirCore,
       tapirZioHttp,
