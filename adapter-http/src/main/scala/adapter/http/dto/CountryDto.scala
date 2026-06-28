@@ -16,8 +16,9 @@ object CountryDto {
       _.description("ISO 3166-1 alpha-2 country code.")
         .validate(Validator.minLength(2))
         .validate(Validator.maxLength(2))
+        .encodedExample("ES")
     )
-    .modify(_.name)(_.description("Full country name."))
+    .modify(_.name)(_.description("Full country name.").encodedExample("Spain"))
 }
 
 case class CreateCountryRequest(code: String, name: String)
@@ -31,8 +32,9 @@ object CreateCountryRequest {
       _.description("ISO 3166-1 alpha-2 country code.")
         .validate(Validator.minLength(2))
         .validate(Validator.maxLength(2))
+        .encodedExample("ES")
     )
-    .modify(_.name)(_.description("Full country name.").validate(Validator.minLength(1)))
+    .modify(_.name)(_.description("Full country name.").validate(Validator.minLength(1)).encodedExample("Spain"))
 }
 
 case class UpdateCountryRequest(name: String)
@@ -42,5 +44,7 @@ object UpdateCountryRequest {
     UpdateCountryCommand(code, req.name)
 
   given Schema[UpdateCountryRequest] = Schema.derived[UpdateCountryRequest]
-    .modify(_.name)(_.description("Full country name.").validate(Validator.minLength(1)))
+    .modify(_.name)(
+      _.description("Full country name.").validate(Validator.minLength(1)).encodedExample("Kingdom of Spain")
+    )
 }

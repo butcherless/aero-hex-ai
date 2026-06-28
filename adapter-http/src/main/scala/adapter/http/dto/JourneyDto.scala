@@ -22,9 +22,15 @@ object JourneyDto {
     )
 
   given Schema[JourneyDto] = Schema.derived[JourneyDto]
-    .modify(_.id)(_.description("Unique journey identifier.").format("uuid"))
-    .modify(_.departureDate)(_.description("Actual departure date and time (ISO 8601, e.g. 2024-06-28T15:23:00)."))
-    .modify(_.arrivalDate)(_.description("Actual arrival date and time (ISO 8601, e.g. 2024-06-28T19:41:00)."))
-    .modify(_.flightCode)(_.description("Flight code this journey is an instance of (e.g. UX9117)."))
-    .modify(_.registration)(_.description("Aircraft registration that operated this journey (e.g. EC-MIG)."))
+    .modify(_.id)(
+      _.description("Unique journey identifier.").format("uuid").encodedExample("b1c2d3e4-f5a6-7890-bcde-f01234567890")
+    )
+    .modify(_.departureDate)(_.description(
+      "Actual departure date and time (ISO 8601)."
+    ).encodedExample("2024-06-28T15:23:00"))
+    .modify(_.arrivalDate)(_.description(
+      "Actual arrival date and time (ISO 8601)."
+    ).encodedExample("2024-06-28T19:41:00"))
+    .modify(_.flightCode)(_.description("Flight code this journey is an instance of.").encodedExample("UX9117"))
+    .modify(_.registration)(_.description("Aircraft registration that operated this journey.").encodedExample("EC-MIG"))
 }

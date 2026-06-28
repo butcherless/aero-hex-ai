@@ -21,17 +21,20 @@ object AirportDto {
       _.description("3-letter IATA airport code.")
         .validate(Validator.minLength(3))
         .validate(Validator.maxLength(3))
+        .encodedExample("MAD")
     )
     .modify(_.icaoCode)(
       _.description("4-letter ICAO airport code.")
         .validate(Validator.minLength(4))
         .validate(Validator.maxLength(4))
+        .encodedExample("LEMD")
     )
-    .modify(_.name)(_.description("Full airport name."))
-    .modify(_.city)(_.description("City served by the airport."))
+    .modify(_.name)(_.description("Full airport name.").encodedExample("Adolfo Suárez Madrid-Barajas"))
+    .modify(_.city)(_.description("City served by the airport.").encodedExample("Madrid"))
     .modify(_.countryCode)(
       _.description("ISO 3166-1 alpha-2 country code.")
         .validate(Validator.minLength(2))
         .validate(Validator.maxLength(2))
+        .encodedExample("ES")
     )
 }
