@@ -36,11 +36,13 @@ sbt coverageAggregate
 
 Report locations:
 ```
-target/out/jvm/scala-3.3.8/adapter-http/scoverage-report/index.html    ← HTML (module)
-target/out/jvm/scala-3.3.8/adapter-http/scoverage-report/scoverage.xml ← XML
-target/out/jvm/scala-3.3.8/adapter-http/coverage-report/cobertura.xml  ← Cobertura
+adapter-http/.coverage-data/scoverage-report/index.html    ← HTML (module)
+adapter-http/.coverage-data/scoverage-report/scoverage.xml ← XML
+adapter-http/.coverage-data/coverage-report/cobertura.xml  ← Cobertura
 target/out/jvm/scala-3.3.8/aviation-hexagonal/scoverage-report/index.html ← aggregate
 ```
+
+`coverageDataDir` is set to `baseDirectory.value / ".coverage-data"` in `adapterHttp`'s settings. This places coverage data outside `target/` so `sbt clean` never deletes it and tests always work from a clean compile.
 
 `coverageAggregate` collects every `scoverage-data/` directory across sub-projects. Modules without tests appear with 0 invocations and pull the aggregate statement rate down — this is expected.
 

@@ -21,5 +21,8 @@ metals.sbt
 /out/
 target/
 
+# Coverage data (outside target/ so sbt clean doesn't delete it)
+.coverage-data/
+
 # Claude Code
 .claude/
