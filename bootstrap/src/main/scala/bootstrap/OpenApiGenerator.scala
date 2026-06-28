@@ -46,5 +46,6 @@ object OpenApiGenerator:
       )
       .tags(tags)
       .servers(List(Server("http://localhost:8080", description = Some("Local development server"))))
+      .copy(openapi = "3.1.2")
       .toYaml
     println(yaml)
