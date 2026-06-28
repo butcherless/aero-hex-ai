@@ -11,17 +11,18 @@ case class HttpErrorResponse(message: String)
 object ErrorMapper {
 
   def toApiError(error: DomainError): ApiError = error match {
-    case CountryNotFound(code)    => ApiError(StatusCode.NotFound, s"Country not found: $code")
-    case AirportNotFound(iata)    => ApiError(StatusCode.NotFound, s"Airport not found: $iata")
-    case AirlineNotFound(icao)    => ApiError(StatusCode.NotFound, s"Airline not found: $icao")
-    case RouteNotFound(id)        => ApiError(StatusCode.NotFound, s"Route not found: $id")
-    case AircraftNotFound(reg)    => ApiError(StatusCode.NotFound, s"Aircraft not found: $reg")
-    case FlightNotFound(code)     => ApiError(StatusCode.NotFound, s"Flight not found: $code")
-    case JourneyNotFound(id)      => ApiError(StatusCode.NotFound, s"Journey not found: $id")
-    case RouteAlreadyExists(o, d) => ApiError(StatusCode.Conflict, s"Route already exists: $o -> $d")
-    case InvalidRoute(reason)     => ApiError(StatusCode.BadRequest, reason)
-    case DatabaseError(cause)     => ApiError(StatusCode.InternalServerError, s"Database error: $cause")
-    case MessagingError(cause)    => ApiError(StatusCode.InternalServerError, s"Messaging error: $cause")
+    case CountryNotFound(code)      => ApiError(StatusCode.NotFound, s"Country not found: $code")
+    case CountryAlreadyExists(code) => ApiError(StatusCode.Conflict, s"Country already exists: $code")
+    case AirportNotFound(iata)      => ApiError(StatusCode.NotFound, s"Airport not found: $iata")
+    case AirlineNotFound(icao)      => ApiError(StatusCode.NotFound, s"Airline not found: $icao")
+    case RouteNotFound(id)          => ApiError(StatusCode.NotFound, s"Route not found: $id")
+    case AircraftNotFound(reg)      => ApiError(StatusCode.NotFound, s"Aircraft not found: $reg")
+    case FlightNotFound(code)       => ApiError(StatusCode.NotFound, s"Flight not found: $code")
+    case JourneyNotFound(id)        => ApiError(StatusCode.NotFound, s"Journey not found: $id")
+    case RouteAlreadyExists(o, d)   => ApiError(StatusCode.Conflict, s"Route already exists: $o -> $d")
+    case InvalidRoute(reason)       => ApiError(StatusCode.BadRequest, reason)
+    case DatabaseError(cause)       => ApiError(StatusCode.InternalServerError, s"Database error: $cause")
+    case MessagingError(cause)      => ApiError(StatusCode.InternalServerError, s"Messaging error: $cause")
   }
 
   def toMessage(error: DomainError): String = toApiError(error).message

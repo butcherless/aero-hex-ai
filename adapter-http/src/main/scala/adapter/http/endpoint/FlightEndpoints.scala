@@ -1,7 +1,7 @@
 package adapter.http.endpoint
 
 import adapter.http.dto.FlightDto
-import adapter.http.error.{ErrorMapper, HttpErrorResponse}
+import adapter.http.error.{EndpointErrors, ErrorMapper, HttpErrorResponse}
 import domain.port.in.FindFlightUseCase
 import shared.Pagination
 import sttp.model.StatusCode
@@ -37,11 +37,8 @@ object FlightEndpoints {
       .out(jsonBody[FlightDto].description("The requested flight."))
       .errorOut(
         oneOf[(StatusCode, HttpErrorResponse)](
-          oneOfVariantValueMatcher(
-            StatusCode.NotFound,
-            statusCode.and(jsonBody[HttpErrorResponse].description("Flight not found."))
-          ) { case (s, _) => s == StatusCode.NotFound },
-          oneOfDefaultVariant(statusCode.and(jsonBody[HttpErrorResponse].description("Unexpected error.")))
+          EndpointErrors.notFoundVariant("Flight not found."),
+          EndpointErrors.unexpectedError
         )
       )
 

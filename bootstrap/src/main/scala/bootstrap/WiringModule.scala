@@ -1,5 +1,6 @@
 package bootstrap
 
+import adapter.http.server.HttpServer
 import application.service.*
 import domain.error.DomainError
 import domain.model.*
@@ -68,11 +69,11 @@ object WiringModule {
       def delete(id: JourneyId): IO[DomainError, Unit]              = ZIO.unit
   )
 
-  val appLayer: ULayer[
-    FindCountryUseCase & FindAirportUseCase & FindAirlineUseCase & CreateRouteUseCase &
-      FindAircraftUseCase & FindFlightUseCase & FindJourneyUseCase
-  ] =
+  val appLayer: ULayer[HttpServer.AppUseCases] =
     (countryRepoLayer >>> FindCountryService.layer) ++
+      (countryRepoLayer >>> CreateCountryService.layer) ++
+      (countryRepoLayer >>> UpdateCountryService.layer) ++
+      (countryRepoLayer >>> DeleteCountryService.layer) ++
       (airportRepoLayer >>> FindAirportService.layer) ++
       (airlineRepoLayer >>> FindAirlineService.layer) ++
       ((airportRepoLayer ++ routeRepoLayer) >>> CreateRouteService.layer) ++

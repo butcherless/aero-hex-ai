@@ -1,7 +1,7 @@
 package adapter.http.endpoint
 
 import adapter.http.dto.JourneyDto
-import adapter.http.error.{ErrorMapper, HttpErrorResponse}
+import adapter.http.error.{EndpointErrors, ErrorMapper, HttpErrorResponse}
 import domain.port.in.FindJourneyUseCase
 import shared.Pagination
 import sttp.model.StatusCode
@@ -37,11 +37,8 @@ object JourneyEndpoints {
       .out(jsonBody[JourneyDto].description("The requested journey."))
       .errorOut(
         oneOf[(StatusCode, HttpErrorResponse)](
-          oneOfVariantValueMatcher(
-            StatusCode.NotFound,
-            statusCode.and(jsonBody[HttpErrorResponse].description("Journey not found."))
-          ) { case (s, _) => s == StatusCode.NotFound },
-          oneOfDefaultVariant(statusCode.and(jsonBody[HttpErrorResponse].description("Unexpected error.")))
+          EndpointErrors.notFoundVariant("Journey not found."),
+          EndpointErrors.unexpectedError
         )
       )
 
