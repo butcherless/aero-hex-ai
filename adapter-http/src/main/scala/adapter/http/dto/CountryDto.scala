@@ -32,6 +32,7 @@ object CreateCountryRequest {
       _.description("ISO 3166-1 alpha-2 country code.")
         .validate(Validator.minLength(2))
         .validate(Validator.maxLength(2))
+        .validate(Validator.pattern("[a-zA-Z]{2}"))
         .encodedExample("ES")
     )
     .modify(_.name)(_.description("Full country name.").validate(Validator.minLength(1)).encodedExample("Spain"))

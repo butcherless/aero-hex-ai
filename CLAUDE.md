@@ -14,6 +14,17 @@ sbt bloopInstall     # regenerate .bloop/ configs (after dependency changes)
 sbt dependencyUpdates # show outdated dependencies (sbt-updates plugin)
 ```
 
+## After every new implementation
+
+After completing any new implementation or refactor, always run these two steps in order:
+
+```bash
+sbt scalafmtAll   # format all modified sources
+sbt compile       # verify clean compilation with zero errors and zero warnings
+```
+
+Do not report the work as done until both commands succeed.
+
 Start local infrastructure (Postgres + Kafka) before running the app:
 
 ```bash

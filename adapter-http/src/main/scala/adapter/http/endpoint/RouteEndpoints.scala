@@ -6,11 +6,9 @@ import domain.port.in.{CreateRouteCommand, CreateRouteUseCase}
 import sttp.model.StatusCode
 import sttp.tapir.*
 import sttp.tapir.json.circe.*
-import sttp.tapir.server.ziohttp.ZioHttpInterpreter
-import sttp.tapir.ztapir.RichZEndpoint
+import sttp.tapir.ztapir.{RichZEndpoint, ZServerEndpoint}
 import io.circe.generic.auto.*
 import zio.*
-import zio.http.{Response, Routes}
 
 object RouteEndpoints {
 
@@ -32,8 +30,8 @@ object RouteEndpoints {
         )
       )
 
-  def routes(useCase: CreateRouteUseCase): Routes[Any, Response] =
-    ZioHttpInterpreter().toHttp(
+  def serverEndpoints(useCase: CreateRouteUseCase): List[ZServerEndpoint[Any, Any]] =
+    List(
       create.zServerLogic { req =>
         useCase
           .create(CreateRouteCommand(req.originIata, req.destinationIata, req.airlineIcao, req.distanceKm))

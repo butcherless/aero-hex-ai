@@ -6,13 +6,10 @@ import domain.port.in.FindFlightUseCase
 import shared.Pagination
 import sttp.model.StatusCode
 import sttp.tapir.*
-import sttp.tapir.generic.auto.*
 import sttp.tapir.json.circe.*
-import sttp.tapir.server.ziohttp.ZioHttpInterpreter
-import sttp.tapir.ztapir.RichZEndpoint
+import sttp.tapir.ztapir.{RichZEndpoint, ZServerEndpoint}
 import io.circe.generic.auto.*
 import zio.*
-import zio.http.{Response, Routes}
 
 object FlightEndpoints {
 
@@ -26,7 +23,7 @@ object FlightEndpoints {
       .in(query[Int]("page").description("Page number (1-based).").default(1))
       .in(query[Int]("pageSize").description("Number of results per page.").default(20))
       .out(jsonBody[List[FlightDto]].description("List of flights."))
-      .errorOut(statusCode.and(jsonBody[HttpErrorResponse].description("An error occurred.")))
+      .errorOut(oneOf[(StatusCode, HttpErrorResponse)](EndpointErrors.unexpectedError))
 
   val findByCode: PublicEndpoint[String, (StatusCode, HttpErrorResponse), FlightDto, Any] =
     base.get
@@ -42,22 +39,19 @@ object FlightEndpoints {
         )
       )
 
-  def routes(useCase: FindFlightUseCase): Routes[Any, Response] =
-    ZioHttpInterpreter().toHttp(
-      findAll.zServerLogic { input =>
-        val (page, pageSize) = input
+  def serverEndpoints(useCase: FindFlightUseCase): List[ZServerEndpoint[Any, Any]] =
+    List(
+      findAll.zServerLogic { (page, pageSize) =>
         useCase
           .findAll(Pagination(page, pageSize))
           .map(_.map(FlightDto.fromDomain))
           .mapError(ErrorMapper.toHttpError)
+      },
+      findByCode.zServerLogic { code =>
+        useCase
+          .findByCode(code)
+          .map(FlightDto.fromDomain)
+          .mapError(ErrorMapper.toHttpError)
       }
-    ) ++
-      ZioHttpInterpreter().toHttp(
-        findByCode.zServerLogic { code =>
-          useCase
-            .findByCode(code)
-            .map(FlightDto.fromDomain)
-            .mapError(ErrorMapper.toHttpError)
-        }
-      )
+    )
 }

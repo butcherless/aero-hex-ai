@@ -6,13 +6,10 @@ import domain.port.in.FindAircraftUseCase
 import shared.Pagination
 import sttp.model.StatusCode
 import sttp.tapir.*
-import sttp.tapir.generic.auto.*
 import sttp.tapir.json.circe.*
-import sttp.tapir.server.ziohttp.ZioHttpInterpreter
-import sttp.tapir.ztapir.RichZEndpoint
+import sttp.tapir.ztapir.{RichZEndpoint, ZServerEndpoint}
 import io.circe.generic.auto.*
 import zio.*
-import zio.http.{Response, Routes}
 
 object AircraftEndpoints {
 
@@ -26,7 +23,7 @@ object AircraftEndpoints {
       .in(query[Int]("page").description("Page number (1-based).").default(1))
       .in(query[Int]("pageSize").description("Number of results per page.").default(20))
       .out(jsonBody[List[AircraftDto]].description("List of aircraft."))
-      .errorOut(statusCode.and(jsonBody[HttpErrorResponse].description("An error occurred.")))
+      .errorOut(oneOf[(StatusCode, HttpErrorResponse)](EndpointErrors.unexpectedError))
 
   val findByRegistration: PublicEndpoint[String, (StatusCode, HttpErrorResponse), AircraftDto, Any] =
     base.get
@@ -42,22 +39,19 @@ object AircraftEndpoints {
         )
       )
 
-  def routes(useCase: FindAircraftUseCase): Routes[Any, Response] =
-    ZioHttpInterpreter().toHttp(
-      findAll.zServerLogic { input =>
-        val (page, pageSize) = input
+  def serverEndpoints(useCase: FindAircraftUseCase): List[ZServerEndpoint[Any, Any]] =
+    List(
+      findAll.zServerLogic { (page, pageSize) =>
         useCase
           .findAll(Pagination(page, pageSize))
           .map(_.map(AircraftDto.fromDomain))
           .mapError(ErrorMapper.toHttpError)
+      },
+      findByRegistration.zServerLogic { registration =>
+        useCase
+          .findByRegistration(registration)
+          .map(AircraftDto.fromDomain)
+          .mapError(ErrorMapper.toHttpError)
       }
-    ) ++
-      ZioHttpInterpreter().toHttp(
-        findByRegistration.zServerLogic { registration =>
-          useCase
-            .findByRegistration(registration)
-            .map(AircraftDto.fromDomain)
-            .mapError(ErrorMapper.toHttpError)
-        }
-      )
+    )
 }
