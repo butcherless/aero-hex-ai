@@ -1,0 +1,5 @@
+# Redocly config: strict OAS 3.1 schema conformance only.
+# Best-practice rules are handled by Spectral (.spectral.yaml).
+extends: []
+rules:
+  struct: error
