@@ -14,6 +14,52 @@ sbt bloopInstall     # regenerate .bloop/ configs (after dependency changes)
 sbt dependencyUpdates # show outdated dependencies (sbt-updates plugin)
 ```
 
+## Coverage
+
+The `coverage` command and `set` are incompatible with SBT 2.0's thin client (both trigger a build reload that fails). The only working approach is to set `coverageEnabled := true` directly in `build.sbt`, run the tasks as separate SBT calls, then restore.
+
+**Two additional SBT 2.0 quirks to know before starting:**
+- `test` is now incremental (`testQuick`) — after any `clean`, use `testOnly *` to run all tests.
+- The CAS content-addressed cache does **not** recompile when `coverageEnabled` changes. You must modify a source file's content to bust the cache and trigger a real instrumented compile. Confirm recompilation by looking for `"compiling N Scala sources"` in the output. A `"Total time: 0s"` result means the cache was hit and no instrumentation was added.
+
+**Workflow for `adapter-http` (adapt module name as needed):**
+
+1. In `build.sbt`, uncomment `coverageEnabled := true` inside the target module's `.settings(...)` block.
+2. Bust the CAS cache so the compiler runs with the scoverage plugin:
+```bash
+# Add and then remove a blank line from any .scala file in the module, e.g.:
+echo "" >> adapter-http/src/main/scala/dev/cmartin/aerohex/adapter/http/endpoint/CountryEndpoints.scala
+```
+3. Compile to regenerate `scoverage.coverage` (the statement catalog):
+```bash
+sbt adapterHttp/compile
+# Must print "compiling N Scala sources" — if it says "Total time: 0s" the cache hit and step 2 is needed
+```
+4. Run tests and generate the report:
+```bash
+sbt "adapterHttp/testOnly *"
+sbt adapterHttp/coverageReport
+```
+5. Revert the blank line added in step 2, remove `coverageEnabled := true` from `build.sbt`, and verify:
+```bash
+# Remove the blank line from the source file
+sbt compile
+```
+
+HTML report: `target/out/jvm/scala-3.3.8/adapter-http/scoverage-report/index.html`
+XML report:  `target/out/jvm/scala-3.3.8/adapter-http/scoverage-report/scoverage.xml`
+Cobertura:   `target/out/jvm/scala-3.3.8/adapter-http/coverage-report/cobertura.xml`
+
+**Aggregate report across all modules:**
+
+Enable coverage in each module that has tests (repeat steps 1–4 above per module), then:
+```bash
+sbt coverageAggregate
+```
+Aggregate HTML: `target/out/jvm/scala-3.3.8/aviation-hexagonal/scoverage-report/index.html`
+
+`coverageAggregate` collects every `scoverage-data/` directory it finds across sub-projects. Modules compiled with `coverageEnabled := true` but without tests will appear with 0 invocations and pull the aggregate statement rate down — this is expected.
+
 ## After every new implementation
 
 After completing any new implementation or refactor, always run these two steps in order:

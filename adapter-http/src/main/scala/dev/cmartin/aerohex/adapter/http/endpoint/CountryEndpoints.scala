@@ -2,10 +2,10 @@ package dev.cmartin.aerohex.adapter.http.endpoint
 
 import dev.cmartin.aerohex.adapter.http.dto.{CountryDto, CreateCountryRequest, UpdateCountryRequest}
 import dev.cmartin.aerohex.adapter.http.error.{EndpointErrors, HttpErrorResponse}
+import io.circe.generic.auto.*
 import sttp.model.StatusCode
 import sttp.tapir.*
 import sttp.tapir.json.circe.*
-import io.circe.generic.auto.*
 
 object CountryEndpoints {
 
