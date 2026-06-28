@@ -40,6 +40,33 @@ object CountryEndpoints {
       .out(jsonBody[List[CountryDto]].description("List of countries."))
       .errorOut(statusCode.and(jsonBody[HttpErrorResponse].description("An error occurred.")))
 
+  val searchByName: PublicEndpoint[String, (StatusCode, HttpErrorResponse), List[CountryDto], Any] =
+    base.get
+      .summary("Search countries by name")
+      .description(
+        "Returns all countries whose name contains the given query string (case-insensitive). Query must be at least 3 characters."
+      )
+      .tag("Countries")
+      .in("search")
+      .in(
+        query[String]("q")
+          .description("Name fragment to search for (minimum 3 characters).")
+          .validate(Validator.minLength(3))
+          .example("rep")
+      )
+      .out(
+        jsonBody[List[CountryDto]]
+          .description("Matching countries.")
+          .example(
+            List(
+              CountryDto("CZ", "Czech Republic"),
+              CountryDto("DO", "Dominican Republic"),
+              CountryDto("KR", "Republic of Korea")
+            )
+          )
+      )
+      .errorOut(statusCode.and(jsonBody[HttpErrorResponse].description("An error occurred.")))
+
   val findByCode: PublicEndpoint[String, (StatusCode, HttpErrorResponse), CountryDto, Any] =
     base.get
       .summary("Find country by code")
@@ -90,6 +117,13 @@ object CountryEndpoints {
           ZIO.logDebug(s"findAll - page: $page, pageSize: $pageSize") *>
             findSvc
               .findAll(Pagination(page, pageSize))
+              .map(_.map(CountryDto.fromDomain))
+              .mapError(ErrorMapper.toHttpError)
+        },
+        searchByName.zServerLogic { q =>
+          ZIO.logDebug(s"searchByName - q: $q") *>
+            findSvc
+              .searchByName(q)
               .map(_.map(CountryDto.fromDomain))
               .mapError(ErrorMapper.toHttpError)
         },

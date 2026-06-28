@@ -18,6 +18,9 @@ final class FindCountryService(repo: CountryRepository) extends FindCountryUseCa
 
   override def findAll(pagination: Pagination): IO[DomainError, List[Country]] =
     repo.findAll(pagination)
+
+  override def searchByName(query: String): IO[DomainError, List[Country]] =
+    repo.searchByName(query)
 }
 
 object FindCountryService {

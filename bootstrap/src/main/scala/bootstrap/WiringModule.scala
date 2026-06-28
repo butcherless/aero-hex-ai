@@ -17,6 +17,7 @@ object WiringModule {
     new CountryRepository:
       def findByCode(code: CountryCode): IO[DomainError, Option[Country]] = ZIO.none
       def findAll(p: Pagination): IO[DomainError, List[Country]]          = ZIO.succeed(Nil)
+      def searchByName(q: String): IO[DomainError, List[Country]]         = ZIO.succeed(Nil)
       def save(c: Country): IO[DomainError, Country]                      = ZIO.succeed(c)
       def delete(code: CountryCode): IO[DomainError, Unit]                = ZIO.unit
   )
