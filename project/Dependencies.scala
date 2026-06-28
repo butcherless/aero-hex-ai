@@ -16,6 +16,7 @@ object Dependencies:
     val circe          = "0.14.16"
     val zioLogging     = "2.5.3"
     val logback        = "1.5.37"
+    val sttpClient4    = "4.0.25"
 
   // ZIO
   val zio            = "dev.zio" %% "zio"              % Versions.zio
@@ -56,5 +57,9 @@ object Dependencies:
   val zioLogging      = "dev.zio"        %% "zio-logging"        % Versions.zioLogging
   val zioLoggingSlf4j = "dev.zio"        %% "zio-logging-slf4j2" % Versions.zioLogging
   val logback         = "ch.qos.logback"  % "logback-classic"    % Versions.logback
+
+  // Test — HTTP adapter
+  val tapirStubServer = "com.softwaremill.sttp.tapir"  %% "tapir-sttp-stub4-server" % Versions.tapir        % Test
+  val sttpClientZio   = "com.softwaremill.sttp.client4" %% "zio"                    % Versions.sttpClient4  % Test
 
   val commonTest: Seq[ModuleID] = Seq(zioTest, zioTestSbt)

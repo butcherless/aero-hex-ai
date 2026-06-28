@@ -61,5 +61,8 @@ class CountryRoutes(
   )
 
 object CountryRoutes:
-  val layer: URLayer[FindCountryUseCase & CreateCountryUseCase & UpdateCountryUseCase & DeleteCountryUseCase, CountryRoutes] =
+  val layer: URLayer[
+    FindCountryUseCase & CreateCountryUseCase & UpdateCountryUseCase & DeleteCountryUseCase,
+    CountryRoutes
+  ] =
     ZLayer.fromFunction(new CountryRoutes(_, _, _, _))

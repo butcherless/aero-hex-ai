@@ -111,7 +111,9 @@ lazy val adapterHttp = project
       zioHttp,
       circeCore,
       circeGeneric,
-      circeParser
+      circeParser,
+      tapirStubServer,
+      sttpClientZio
     )
   )
 
