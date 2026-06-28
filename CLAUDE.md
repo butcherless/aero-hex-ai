@@ -32,6 +32,7 @@ sbt adapterHttp/coverageReport
 **Workflow — aggregate across all modules:**
 
 ```bash
+sbt compile                    # restore/instrument all modules (fast CAS hit after clean)
 sbt "adapterHttp/testOnly *"   # repeat per module that has tests
 sbt coverageAggregate
 ```
