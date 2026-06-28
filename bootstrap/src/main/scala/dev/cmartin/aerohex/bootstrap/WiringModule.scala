@@ -1,10 +1,10 @@
 package dev.cmartin.aerohex.bootstrap
 
+import dev.cmartin.aerohex.adapter.http.endpoint.*
 import dev.cmartin.aerohex.adapter.http.server.HttpServer
 import dev.cmartin.aerohex.application.service.*
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.model.*
-import dev.cmartin.aerohex.domain.port.in.*
 import dev.cmartin.aerohex.domain.port.out.*
 import dev.cmartin.aerohex.shared.Pagination
 import zio.*
@@ -70,15 +70,17 @@ object WiringModule {
       def delete(id: JourneyId): IO[DomainError, Unit]              = ZIO.unit
   )
 
-  val appLayer: ULayer[HttpServer.AppUseCases] =
-    (countryRepoLayer >>> FindCountryService.layer) ++
-      (countryRepoLayer >>> CreateCountryService.layer) ++
-      (countryRepoLayer >>> UpdateCountryService.layer) ++
-      (countryRepoLayer >>> DeleteCountryService.layer) ++
-      (airportRepoLayer >>> FindAirportService.layer) ++
-      (airlineRepoLayer >>> FindAirlineService.layer) ++
-      ((airportRepoLayer ++ routeRepoLayer) >>> CreateRouteService.layer) ++
-      (aircraftRepoLayer >>> FindAircraftService.layer) ++
-      (flightRepoLayer >>> FindFlightService.layer) ++
-      (journeyRepoLayer >>> FindJourneyService.layer)
+  private val countryUseCaseLayers = (countryRepoLayer >>> FindCountryService.layer) ++
+    (countryRepoLayer >>> CreateCountryService.layer) ++
+    (countryRepoLayer >>> UpdateCountryService.layer) ++
+    (countryRepoLayer >>> DeleteCountryService.layer)
+
+  val appLayer: ULayer[HttpServer.AppRoutes] =
+    (countryUseCaseLayers >>> CountryRoutes.layer) ++
+      (airportRepoLayer >>> FindAirportService.layer >>> AirportRoutes.layer) ++
+      (airlineRepoLayer >>> FindAirlineService.layer >>> AirlineRoutes.layer) ++
+      ((airportRepoLayer ++ routeRepoLayer) >>> CreateRouteService.layer >>> RouteRoutes.layer) ++
+      (aircraftRepoLayer >>> FindAircraftService.layer >>> AircraftRoutes.layer) ++
+      (flightRepoLayer >>> FindFlightService.layer >>> FlightRoutes.layer) ++
+      (journeyRepoLayer >>> FindJourneyService.layer >>> JourneyRoutes.layer)
 }

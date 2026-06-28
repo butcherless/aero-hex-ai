@@ -1,15 +1,11 @@
 package dev.cmartin.aerohex.adapter.http.endpoint
 
 import dev.cmartin.aerohex.adapter.http.dto.{CountryDto, CreateCountryRequest, UpdateCountryRequest}
-import dev.cmartin.aerohex.adapter.http.error.{EndpointErrors, ErrorMapper, HttpErrorResponse}
-import dev.cmartin.aerohex.domain.port.in.*
-import dev.cmartin.aerohex.shared.Pagination
+import dev.cmartin.aerohex.adapter.http.error.{EndpointErrors, HttpErrorResponse}
 import sttp.model.StatusCode
 import sttp.tapir.*
 import sttp.tapir.json.circe.*
-import sttp.tapir.ztapir.{RichZEndpoint, ZServerEndpoint}
 import io.circe.generic.auto.*
-import zio.*
 
 object CountryEndpoints {
 
@@ -120,58 +116,4 @@ object CountryEndpoints {
       .in(codeParam)
       .out(statusCode(StatusCode.NoContent))
       .errorOut(notFoundErrorOut)
-
-  // #1 Returns server endpoints so HttpServer can aggregate all resources before calling toHttp once
-  def serverEndpoints(
-      findSvc: FindCountryUseCase,
-      createSvc: CreateCountryUseCase,
-      updateSvc: UpdateCountryUseCase,
-      deleteSvc: DeleteCountryUseCase
-  ): List[ZServerEndpoint[Any, Any]] =
-    List(
-      findAll.zServerLogic { (page, pageSize) =>
-        ZIO.logDebug(s"findAll - page: $page, pageSize: $pageSize") *>
-          findSvc
-            .findAll(Pagination(page, pageSize))
-            .map(_.map(CountryDto.fromDomain))
-            .mapError(ErrorMapper.toHttpError)
-      },
-      searchByName.zServerLogic { q =>
-        ZIO.logDebug(s"searchByName - q: $q") *>
-          findSvc
-            .searchByName(q)
-            .map(_.map(CountryDto.fromDomain))
-            .mapError(ErrorMapper.toHttpError)
-      },
-      findByCode.zServerLogic { code =>
-        ZIO.logDebug(s"findByCode - code: $code") *>
-          findSvc
-            .findByCode(code)
-            .map(CountryDto.fromDomain)
-            .mapError(ErrorMapper.toHttpError)
-      },
-      create.zServerLogic { req =>
-        ZIO.logDebug(s"create - request: $req") *>
-          createSvc
-            .create(CreateCountryRequest.toCommand(req))
-            .map { country =>
-              val dto = CountryDto.fromDomain(country)
-              (dto, s"/api/v1/countries/${dto.code}")
-            }
-            .mapError(ErrorMapper.toHttpError)
-      },
-      update.zServerLogic { (code, req) =>
-        ZIO.logDebug(s"update - code: $code, request: $req") *>
-          updateSvc
-            .update(UpdateCountryRequest.toCommand(code, req))
-            .map(CountryDto.fromDomain)
-            .mapError(ErrorMapper.toHttpError)
-      },
-      delete.zServerLogic { code =>
-        ZIO.logDebug(s"delete - code: $code") *>
-          deleteSvc
-            .delete(code)
-            .mapError(ErrorMapper.toHttpError)
-      }
-    )
 }

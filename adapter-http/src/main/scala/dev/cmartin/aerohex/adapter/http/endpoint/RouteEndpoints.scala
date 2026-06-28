@@ -1,14 +1,11 @@
 package dev.cmartin.aerohex.adapter.http.endpoint
 
 import dev.cmartin.aerohex.adapter.http.dto.{CreateRouteRequest, RouteDto}
-import dev.cmartin.aerohex.adapter.http.error.{EndpointErrors, ErrorMapper, HttpErrorResponse}
-import dev.cmartin.aerohex.domain.port.in.{CreateRouteCommand, CreateRouteUseCase}
+import dev.cmartin.aerohex.adapter.http.error.{EndpointErrors, HttpErrorResponse}
 import sttp.model.StatusCode
 import sttp.tapir.*
 import sttp.tapir.json.circe.*
-import sttp.tapir.ztapir.{RichZEndpoint, ZServerEndpoint}
 import io.circe.generic.auto.*
-import zio.*
 
 object RouteEndpoints {
 
@@ -29,14 +26,4 @@ object RouteEndpoints {
           EndpointErrors.unexpectedError
         )
       )
-
-  def serverEndpoints(useCase: CreateRouteUseCase): List[ZServerEndpoint[Any, Any]] =
-    List(
-      create.zServerLogic { req =>
-        useCase
-          .create(CreateRouteCommand(req.originIata, req.destinationIata, req.airlineIcao, req.distanceKm))
-          .map(RouteDto.fromDomain)
-          .mapError(ErrorMapper.toHttpError)
-      }
-    )
 }

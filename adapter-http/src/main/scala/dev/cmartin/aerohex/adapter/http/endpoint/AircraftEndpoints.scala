@@ -1,15 +1,11 @@
 package dev.cmartin.aerohex.adapter.http.endpoint
 
 import dev.cmartin.aerohex.adapter.http.dto.AircraftDto
-import dev.cmartin.aerohex.adapter.http.error.{EndpointErrors, ErrorMapper, HttpErrorResponse}
-import dev.cmartin.aerohex.domain.port.in.FindAircraftUseCase
-import dev.cmartin.aerohex.shared.Pagination
+import dev.cmartin.aerohex.adapter.http.error.{EndpointErrors, HttpErrorResponse}
 import sttp.model.StatusCode
 import sttp.tapir.*
 import sttp.tapir.json.circe.*
-import sttp.tapir.ztapir.{RichZEndpoint, ZServerEndpoint}
 import io.circe.generic.auto.*
-import zio.*
 
 object AircraftEndpoints {
 
@@ -38,20 +34,4 @@ object AircraftEndpoints {
           EndpointErrors.unexpectedError
         )
       )
-
-  def serverEndpoints(useCase: FindAircraftUseCase): List[ZServerEndpoint[Any, Any]] =
-    List(
-      findAll.zServerLogic { (page, pageSize) =>
-        useCase
-          .findAll(Pagination(page, pageSize))
-          .map(_.map(AircraftDto.fromDomain))
-          .mapError(ErrorMapper.toHttpError)
-      },
-      findByRegistration.zServerLogic { registration =>
-        useCase
-          .findByRegistration(registration)
-          .map(AircraftDto.fromDomain)
-          .mapError(ErrorMapper.toHttpError)
-      }
-    )
 }
