@@ -21,6 +21,28 @@ docker compose up -d
 sbt "bootstrap/run"
 ```
 
+## Running the application
+
+The app is always run as a fat JAR using `java -cp`. Never use `sbt "bootstrap/run"` for this — `java -jar` runs `OpenApiGenerator` (not the server).
+
+**Stop any running instance (by process name):**
+```bash
+pkill -f "bootstrap.Main" 2>/dev/null || true
+```
+
+**Build and start:**
+```bash
+sbt ";clean;bootstrap/assembly"
+JAR=$(find target/out -name "bootstrap-assembly-*.jar" | sort | tail -1)
+java -cp "$JAR" bootstrap.Main
+```
+
+**Verify the app is up:**
+```bash
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/docs/docs.yaml
+# expect: 200
+```
+
 ## Versioning policy
 
 - **Scala** — always the current **LTS** release (3.3.x). Never upgrade to a non-LTS minor (e.g. 3.4, 3.5, 3.8). The `scala3-library` update shown by `sbt dependencyUpdates` pointing at 3.8.x is the SBT meta-build Scala; ignore it.
