@@ -17,6 +17,12 @@ scalacOptions := Seq(
 testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
 libraryDependencies ++= commonTest
 
+// coverageDataDir outside target/ so sbt clean never deletes the statement catalog
+val coverageSettings: Seq[Setting[?]] = Seq(
+  coverageEnabled := true,
+  coverageDataDir := baseDirectory.value / ".coverage-data"
+)
+
 // ─── Modules ────────────────────────────────────────────────────────────────
 
 lazy val root = rootProject
@@ -41,6 +47,7 @@ lazy val sharedKernel = project
     name := "shared-kernel",
     libraryDependencies ++= Seq(zio)
   )
+  .settings(coverageSettings*)
 
 lazy val domain = project
   .in(file("domain"))
@@ -49,6 +56,7 @@ lazy val domain = project
     name := "domain",
     libraryDependencies ++= Seq(zio)
   )
+  .settings(coverageSettings*)
 
 lazy val application = project
   .in(file("application"))
@@ -57,6 +65,7 @@ lazy val application = project
     name := "application",
     libraryDependencies ++= Seq(zio)
   )
+  .settings(coverageSettings*)
 
 lazy val persistencePostgres = project
   .in(file("infrastructure/persistence-postgres"))
@@ -72,6 +81,7 @@ lazy val persistencePostgres = project
       hikaricp
     )
   )
+  .settings(coverageSettings*)
 
 lazy val messagingKafka = project
   .in(file("infrastructure/messaging-kafka"))
@@ -85,6 +95,7 @@ lazy val messagingKafka = project
       circeParser
     )
   )
+  .settings(coverageSettings*)
 
 lazy val migration = project
   .in(file("infrastructure/migration"))
@@ -97,14 +108,13 @@ lazy val migration = project
       zio
     )
   )
+  .settings(coverageSettings*)
 
 lazy val adapterHttp = project
   .in(file("adapter-http"))
   .dependsOn(domain, application)
   .settings(
-    name            := "adapter-http",
-    coverageEnabled := true,
-    coverageDataDir := baseDirectory.value / ".coverage-data",
+    name := "adapter-http",
     libraryDependencies ++= Seq(
       tapirCore,
       tapirZioHttp,
@@ -118,6 +128,7 @@ lazy val adapterHttp = project
       sttpClientZio
     )
   )
+  .settings(coverageSettings*)
 
 lazy val bootstrap = project
   .in(file("bootstrap"))
@@ -146,3 +157,4 @@ lazy val bootstrap = project
         old(x)
     }
   )
+  .settings(coverageSettings*)

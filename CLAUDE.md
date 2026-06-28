@@ -16,18 +16,20 @@ sbt dependencyUpdates # show outdated dependencies (sbt-updates plugin)
 
 ## Coverage
 
-`coverageEnabled := true` is set permanently in `adapter-http`'s `.settings(...)` block. Scala 3's coverage calls into `scala.runtime.coverage.Invoker` (part of the standard library), so there is no extra runtime dependency and the fat JAR is unaffected.
+`coverageEnabled := true` and `coverageDataDir := baseDirectory.value / ".coverage-data"` are applied to every module via a shared `coverageSettings` val in `build.sbt`. Scala 3's coverage uses `scala.runtime.coverage.Invoker` from the standard library — no extra runtime dependency and the fat JAR is unaffected.
 
 **SBT 2.0 note:** `test` is now incremental (`testQuick`). Always use `testOnly *` to guarantee all tests run.
 
-**Workflow for `adapter-http`:**
+**SBT 2.0 CAS caveat:** The content-addressed cache does NOT invalidate when `coverageEnabled` changes — only when source content changes. If coverage data is missing after a `build.sbt` change, the SBT server may be stale. Restart it (`sbt shutdown`) and clear the CAS (`rm -rf ~/Library/Caches/sbt/v2/cas/`), then recompile.
+
+**Workflow — per-module report:**
 
 ```bash
 sbt "adapterHttp/testOnly *"
 sbt adapterHttp/coverageReport
 ```
 
-**Aggregate across all modules:**
+**Workflow — aggregate across all modules:**
 
 ```bash
 sbt "adapterHttp/testOnly *"   # repeat per module that has tests
@@ -42,9 +44,7 @@ adapter-http/.coverage-data/coverage-report/cobertura.xml  ← Cobertura
 target/out/jvm/scala-3.3.8/aviation-hexagonal/scoverage-report/index.html ← aggregate
 ```
 
-`coverageDataDir` is set to `baseDirectory.value / ".coverage-data"` in `adapterHttp`'s settings. This places coverage data outside `target/` so `sbt clean` never deletes it and tests always work from a clean compile.
-
-`coverageAggregate` collects every `scoverage-data/` directory across sub-projects. Modules without tests appear with 0 invocations and pull the aggregate statement rate down — this is expected.
+`coverageDataDir` points outside `target/` (e.g., `adapter-http/.coverage-data/`) so `sbt clean` never deletes the statement catalog. Modules without tests appear with 0 invocations in the aggregate — this is expected and accurate.
 
 ## After every new implementation
 
