@@ -31,6 +31,7 @@ lazy val root = rootProject
     domain,
     application,
     persistencePostgres,
+    persistenceQuill,
     messagingKafka,
     migration,
     adapterHttp,
@@ -40,6 +41,7 @@ lazy val root = rootProject
     name           := "aviation-hexagonal",
     publish / skip := true
   )
+  .disablePlugins(AssemblyPlugin)
 
 lazy val sharedKernel = project
   .in(file("shared-kernel"))
@@ -48,6 +50,7 @@ lazy val sharedKernel = project
     libraryDependencies ++= Seq(zio)
   )
   .settings(coverageSettings*)
+  .disablePlugins(AssemblyPlugin)
 
 lazy val domain = project
   .in(file("domain"))
@@ -57,6 +60,7 @@ lazy val domain = project
     libraryDependencies ++= Seq(zio)
   )
   .settings(coverageSettings*)
+  .disablePlugins(AssemblyPlugin)
 
 lazy val application = project
   .in(file("application"))
@@ -66,6 +70,7 @@ lazy val application = project
     libraryDependencies ++= Seq(zio)
   )
   .settings(coverageSettings*)
+  .disablePlugins(AssemblyPlugin)
 
 lazy val persistencePostgres = project
   .in(file("infrastructure/persistence-postgres"))
@@ -82,6 +87,21 @@ lazy val persistencePostgres = project
     )
   )
   .settings(coverageSettings*)
+  .disablePlugins(AssemblyPlugin)
+
+lazy val persistenceQuill = project
+  .in(file("infrastructure/persistence-quill"))
+  .dependsOn(domain)
+  .settings(
+    name := "persistence-quill",
+    libraryDependencies ++= Seq(
+      quillJdbcZio,
+      postgresql,
+      hikaricp
+    )
+  )
+  .settings(coverageSettings*)
+  .disablePlugins(AssemblyPlugin)
 
 lazy val messagingKafka = project
   .in(file("infrastructure/messaging-kafka"))
@@ -96,6 +116,7 @@ lazy val messagingKafka = project
     )
   )
   .settings(coverageSettings*)
+  .disablePlugins(AssemblyPlugin)
 
 lazy val migration = project
   .in(file("infrastructure/migration"))
@@ -109,6 +130,7 @@ lazy val migration = project
     )
   )
   .settings(coverageSettings*)
+  .disablePlugins(AssemblyPlugin)
 
 lazy val adapterHttp = project
   .in(file("adapter-http"))
@@ -129,6 +151,7 @@ lazy val adapterHttp = project
     )
   )
   .settings(coverageSettings*)
+  .disablePlugins(AssemblyPlugin)
 
 lazy val bootstrap = project
   .in(file("bootstrap"))

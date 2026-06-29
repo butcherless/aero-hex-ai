@@ -46,4 +46,7 @@ object Dependencies:
   val tapirStubServer = "com.softwaremill.sttp.tapir"  %% "tapir-sttp-stub4-server" % Versions.tapir        % Test
   val sttpClientZio   = "com.softwaremill.sttp.client4" %% "zio"                    % Versions.sttpClient4  % Test
 
+  // ProtoQuill (ZIO JDBC)
+  val quillJdbcZio = "io.getquill" %% "quill-jdbc-zio" % Versions.protoQuill
+
   val commonTest: Seq[ModuleID] = Seq(zioTest, zioTestSbt)

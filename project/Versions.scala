@@ -13,3 +13,4 @@ object Versions:
   val zioLogging     = "2.5.3"
   val logback        = "1.5.37"
   val sttpClient4    = "4.0.25"
+  val protoQuill     = "4.8.6"
