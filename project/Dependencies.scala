@@ -2,22 +2,6 @@ import sbt.*
 
 object Dependencies:
 
-  object Versions:
-    val scala3         = "3.3.8"
-    val zio            = "2.1.26"
-    val zioInteropCats = "23.1.0.13"
-    val doobie         = "1.0.0-RC9"  // RC12 exists but still not stable
-    val zioHttp        = "3.11.3"
-    val tapir          = "1.13.25"
-    val zioKafka       = "3.6.0"
-    val flyway         = "12.9.0"
-    val postgresql     = "42.7.11"
-    val hikaricp       = "7.1.0"
-    val circe          = "0.14.16"
-    val zioLogging     = "2.5.3"
-    val logback        = "1.5.37"
-    val sttpClient4    = "4.0.25"
-
   // ZIO
   val zio            = "dev.zio" %% "zio"              % Versions.zio
   val zioStreams     = "dev.zio" %% "zio-streams"      % Versions.zio
