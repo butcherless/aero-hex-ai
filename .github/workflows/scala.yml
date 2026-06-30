@@ -64,7 +64,17 @@ jobs:
       - name: check formatting
         run: sbt scalafmtCheckAll
       - name: compile and unit tests
-        run: sbt "compile; testOnly *"
+        run: |
+          sbt compile
+          # Scala 3 coverage Invoker writes measurement files at runtime.
+          # Modules without tests never have their coverageSetup run, so the
+          # scoverage-data/ subdirectory is absent and the Invoker throws
+          # ExceptionInInitializerError when a class from those modules is first
+          # loaded during another module's test run.  Create the dirs after
+          # compile (which creates the parent .coverage-data/ catalog dirs).
+          find . -maxdepth 5 -name ".coverage-data" -type d \
+            -exec mkdir -p "{}/scoverage-data" \;
+          sbt "testOnly *"
       - name: integration tests
         run: echo "TODO"
       - name: assembly
