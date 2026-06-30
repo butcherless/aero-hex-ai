@@ -37,10 +37,21 @@ object CountryEndpoints {
       .summary("List countries")
       .description("Returns a paginated list of all countries.")
       .tag("Countries")
-      .in(query[Int]("page").description("Page number (1-based).").default(1))
-      .in(query[Int]("pageSize").description("Number of results per page.").default(20))
+      .in(query[Int]("page").description("Page number (1-based).").default(1).validate(Validator.min(1)))
+      .in(
+        query[Int]("pageSize")
+          .description("Number of results per page (1–100).")
+          .default(20)
+          .validate(Validator.min(1))
+          .validate(Validator.max(100))
+      )
       .out(jsonBody[List[CountryDto]].description("List of countries."))
-      .errorOut(oneOf[(StatusCode, HttpErrorResponse)](EndpointErrors.unexpectedError))
+      .errorOut(
+        oneOf[(StatusCode, HttpErrorResponse)](
+          EndpointErrors.badRequestVariant("Invalid pagination parameters."),
+          EndpointErrors.unexpectedError
+        )
+      )
 
   // #5 badRequestVariant declared because Tapir schema validation on `q` can emit 400
   val searchByName: PublicEndpoint[String, (StatusCode, HttpErrorResponse), List[CountryDto], Any] =

@@ -2,8 +2,7 @@ package dev.cmartin.aerohex.adapter.http.dto
 
 import dev.cmartin.aerohex.domain.model.{Country, CountryCode}
 import dev.cmartin.aerohex.domain.port.in.{CreateCountryCommand, UpdateCountryCommand}
-import sttp.tapir.Schema
-import sttp.tapir.Validator
+import sttp.tapir.{Schema, Validator}
 
 case class CountryDto(code: String, name: String)
 
@@ -12,12 +11,7 @@ object CountryDto {
     CountryDto(code = country.code.value, name = country.name)
 
   given Schema[CountryDto] = Schema.derived[CountryDto]
-    .modify(_.code)(
-      _.description("ISO 3166-1 alpha-2 country code.")
-        .validate(Validator.minLength(2))
-        .validate(Validator.maxLength(2))
-        .encodedExample("ES")
-    )
+    .modify(_.code)(_.description("ISO 3166-1 alpha-2 country code.").encodedExample("ES"))
     .modify(_.name)(_.description("Full country name.").encodedExample("Spain"))
 }
 
