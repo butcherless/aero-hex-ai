@@ -35,12 +35,12 @@ fixed 60-character output. No Scala wrapper is needed; `ZIO.attempt` covers the 
 ```scala
 // Versions.scala
 val jwtScala = "10.0.1"
-val jbcrypt  = "0.4"
+val jbcrypt = "0.4"
 
 // infrastructure/auth (new module or added to persistence-postgres)
 libraryDependencies ++= Seq(
   "io.github.jwt-scala" %% "jwt-circe" % Versions.jwtScala,
-  "org.mindrot"          % "jbcrypt"   % Versions.jbcrypt
+  "org.mindrot" % "jbcrypt" % Versions.jbcrypt
 )
 ```
 
@@ -142,9 +142,9 @@ given Clock = Clock.systemUTC
 def generate(payload: JwtPayload): Task[String] =
   ZIO.attempt {
     val claim = JwtClaim()
-      .about(payload.userId)   // sub
-      .issuedNow               // iat
-      .expiresIn(config.ttl)   // exp
+      .about(payload.userId) // sub
+      .issuedNow // iat
+      .expiresIn(config.ttl) // exp
     JwtCirce.encode(claim + payload.asJson.noSpaces, config.secretKey, JwtAlgorithm.HS256)
   }
 
@@ -182,7 +182,7 @@ defined once and composed into every protected endpoint.
 // Phase 1 — shared base: validates the bearer token, resolves AuthenticatedUser
 val securedEndpoint =
   endpoint
-    .securityIn(auth.bearer[String]())        // reads Authorization: Bearer <token>
+    .securityIn(auth.bearer[String]()) // reads Authorization: Bearer <token>
     .errorOut(/* 401 error output */)
     .zServerSecurityLogic[Any] { token =>
       jwtService.validate(token).mapError(ErrorMapper.toHttpError)
@@ -193,8 +193,9 @@ val getMe =
   securedEndpoint.get
     .in("api" / "v1" / "auth" / "me")
     .out(jsonBody[ProfileDto])
-    .zServerLogic[Any] { authenticatedUser => _ =>
-      ZIO.succeed(ProfileDto.fromPrincipal(authenticatedUser))
+    .zServerLogic[Any] { authenticatedUser =>
+      _ =>
+        ZIO.succeed(ProfileDto.fromPrincipal(authenticatedUser))
     }
 
 // Login is public — no securityIn, standalone PublicEndpoint
@@ -211,10 +212,11 @@ val login: PublicEndpoint[LoginRequest, (StatusCode, HttpErrorResponse), TokenRe
 ## 5. Database migration (V6)
 
 ```sql
-CREATE TABLE users (
-    id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+CREATE TABLE users
+(
+    id            UUID PRIMARY KEY      DEFAULT gen_random_uuid(),
     username      VARCHAR(100) NOT NULL UNIQUE,
-    password_hash CHAR(60)     NOT NULL,   -- BCrypt always produces 60 characters
+    password_hash CHAR(60)     NOT NULL, -- BCrypt always produces 60 characters
     roles         TEXT[]       NOT NULL DEFAULT '{}',
     created_at    TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
@@ -227,9 +229,9 @@ CREATE TABLE users (
 | Topic | Recommendation | Notes |
 |---|---|---|
 | Secret key storage | Environment variable only; `JwtConfig` via `ZLayer` | Never hardcode; rotate without redeploy |
-| Signing algorithm | HS256 (symmetric) | Upgrade to RS256 if multiple independent services need to verify tokens |
-| Access token TTL | 1 hour | Short-lived reduces exposure window |
-| Token refresh | Out of scope — first iteration only | Requires `refresh_token` column in `users` and a dedicated endpoint |
+| Signing algorithm | HS256 (symmetric shared secret) | Switch to RS256 if multiple independent services need to verify tokens |
+| Access token TTL | 1 hour | Short-lived tokens reduce the exposure window on compromise |
+| Token refresh | Out of scope — first iteration only | Requires a `refresh_token` column in `users` and a dedicated endpoint |
 | Roles in token | Embed in JWT payload | Avoids a DB round-trip on every authenticated request |
 | Error messages | Generic "invalid credentials" for both wrong username and wrong password | Prevents user enumeration attacks |
 | Test strategy | Inject a fixed `Clock` into `JwtService` for deterministic expiry tests; mock `UserRepository` and `TokenService` ports in `AuthService` unit tests | |
