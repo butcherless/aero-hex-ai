@@ -168,6 +168,12 @@ HTTP_PORT  (default 8080)
 
 ## REST API
 
+**Code-first OpenAPI.** Tapir endpoint definitions are the single source of truth — types,
+validators, descriptions, and examples are declared in Scala. `OpenApiGenerator` (in
+`bootstrap/`) calls Tapir's `OpenAPIDocsInterpreter` and writes the spec to stdout as YAML.
+Running the fat JAR with `java -jar` executes the generator; `java -cp` runs the server.
+Never maintain a hand-written spec file — always regenerate from code.
+
 Swagger UI: `http://localhost:8080/docs`
 
 | Resource | Method | Path | Status |
