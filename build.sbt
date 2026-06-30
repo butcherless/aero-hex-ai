@@ -1,5 +1,7 @@
 import Dependencies.*
 
+addCommandAlias("xdup", "dependencyUpdates")
+
 organization  := "dev.cmartin.aerohex"
 scalaVersion  := Versions.scala3  // 3.3.8 LTS
 version       := "0.1.0-SNAPSHOT"
