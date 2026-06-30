@@ -63,10 +63,8 @@ jobs:
       - uses: sbt/setup-sbt@v1
       - name: check formatting
         run: sbt scalafmtCheckAll
-      - name: compile
-        run: sbt compile
-      - name: unit tests
-        run: sbt "testOnly *"
+      - name: compile and unit tests
+        run: sbt "compile; testOnly *"
       - name: integration tests
         run: echo "TODO"
       - name: assembly
