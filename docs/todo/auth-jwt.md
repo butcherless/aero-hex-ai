@@ -1,7 +1,7 @@
 # Authentication — JWT with Tapir + ZIO
 
 > **Status:** Analysis — not yet implemented.
-> Covers library selection, architectural fit, API design, implementation patterns, and open decisions.
+> Covers library selection, architectural fit, API design, implementation patterns, role-based authorisation, and open decisions.
 
 ---
 
@@ -224,7 +224,113 @@ CREATE TABLE users
 
 ---
 
-## 6. Open decisions
+## 6. Role-based authorisation (RBAC)
+
+Authentication answers *who are you*. Authorisation answers *what are you allowed to do*.
+In Spring Security the equivalent is `@PreAuthorize("hasRole('ADMIN')")` — a method-level
+AOP interceptor applied declaratively. ZIO has no annotation processor; the same guarantee
+is achieved compositionally through three patterns at different granularities.
+
+### 6.1 Option A — Tapir security phase (coarse-grained)
+
+Extend the `securedEndpoint` base (defined in section 4.3) into role-specific variants.
+Phase 1 both authenticates *and* authorises; the business logic in phase 2 never executes
+for a caller who lacks the required role.
+
+```scala
+// Role-specific base — composed from securedEndpoint
+def requireRole(role: String) =
+  securedEndpoint.serverSecurityLogicWithOutput { user =>
+    if user.roles.contains(role) then ZIO.succeed(user)
+    else ZIO.fail((StatusCode.Forbidden, HttpErrorResponse("Insufficient permissions")))
+  }
+
+val adminEndpoint  = requireRole("ADMIN")
+val editorEndpoint = requireRole("EDITOR")
+
+// Usage — identical to securedEndpoint, just swap the base
+val deleteCountry =
+  adminEndpoint.delete
+    .in("api" / "v1" / "countries" / codeParam)
+    .out(statusCode(StatusCode.NoContent))
+    .zServerLogic[Any] { _ => code =>
+      countryService.delete(CountryCode(code)).mapError(ErrorMapper.toHttpError)
+    }
+```
+
+The 403 response is declared in the Tapir error output, so it appears in the OpenAPI spec.
+
+### 6.2 Option B — ZIO Aspect (fine-grained, method-level)
+
+Define a reusable `ZIOAspect` that guards a use-case method. The principal is read from
+the ZIO environment (`CallerContext`), making the check invisible at the call site — the
+closest functional equivalent to `@PreAuthorize`.
+
+```scala
+case class CallerContext(user: AuthenticatedUser)
+
+def requireRole(role: String): ZIOAspect[CallerContext, Any, Nothing, Any, Nothing, Any] =
+  new ZIOAspect:
+    def apply[R <: CallerContext, E, A](effect: ZIO[R, E, A]): ZIO[R, E, A] =
+      ZIO.serviceWithZIO[CallerContext] { ctx =>
+        if ctx.user.roles.contains(role) then effect
+        else ZIO.die(DomainError.Forbidden(s"Role '$role' required"))
+      }
+
+// Applied at the use-case method — analogous to @PreAuthorize("hasRole('ADMIN')")
+class CountryService(repo: CountryRepository) extends DeleteCountryUseCase:
+  override def delete(code: CountryCode): ZIO[CallerContext, DomainError, Unit] =
+    repo.delete(code) @@ requireRole("ADMIN")
+```
+
+`CallerContext` must be present in the ZIO environment throughout the call stack, which
+requires threading it via `ZLayer` from the HTTP adapter down to the application service.
+
+### 6.3 Option C — Explicit caller parameter (most transparent)
+
+Pass `AuthenticatedUser` as an explicit argument to the use case. The service checks roles
+directly. No environment changes, no aspects, no framework machinery.
+
+```scala
+trait DeleteCountryUseCase:
+  def delete(caller: AuthenticatedUser, code: CountryCode): IO[DomainError, Unit]
+
+class CountryService(repo: CountryRepository) extends DeleteCountryUseCase:
+  override def delete(caller: AuthenticatedUser, code: CountryCode): IO[DomainError, Unit] =
+    if !caller.roles.contains("ADMIN") then ZIO.fail(DomainError.Forbidden)
+    else repo.delete(code)
+```
+
+### 6.4 Comparison
+
+| | Option A — Tapir phase | Option B — ZIO Aspect | Option C — Explicit param |
+|---|---|---|---|
+| Spring equivalent | Security filter chain | `@PreAuthorize` | Manual role check |
+| Where the check lives | HTTP adapter | Application service | Application service |
+| Business logic coupling | None | Minimal (aspect) | Low (if check) |
+| Caller threading | Not needed | ZIO environment | Method argument |
+| OpenAPI 403 documented | Yes (errorOut) | No | No |
+| Testability | Endpoint test | Unit test with stub env | Unit test with stub caller |
+| Complexity | Low | Medium | Low |
+| Granularity | Per endpoint | Per method | Per method |
+
+### 6.5 Recommendation
+
+Combine **Option A** and **Option C**:
+
+- Use **Option A** (Tapir phase) for coarse role gates — e.g., only `ADMIN` callers can
+  reach the admin endpoint namespace at all. This keeps the 403 in the OpenAPI contract and
+  requires no changes to use-case signatures.
+- Use **Option C** (explicit param) for fine-grained checks within a use case — e.g., a
+  user may update their own resource but not another user's. The explicit `AuthenticatedUser`
+  argument makes the dependency visible and is straightforward to stub in unit tests.
+
+Avoid Option B unless `CallerContext` is already in the environment for other cross-cutting
+concerns; the ZIO environment threading adds real complexity for modest benefit over Option C.
+
+---
+
+## 7. Open decisions
 
 | Topic | Recommendation | Notes |
 |---|---|---|
