@@ -28,8 +28,9 @@
     </appender>
 
     <!-- application loggers -->
-    <logger name="dev.cmartin.aerohex.bootstrap"    level="DEBUG"/>
-    <logger name="dev.cmartin.aerohex.adapter.http" level="DEBUG"/>
+    <logger name="dev.cmartin.aerohex.bootstrap"      level="DEBUG"/>
+    <logger name="dev.cmartin.aerohex.adapter.http"   level="DEBUG"/>
+    <logger name="dev.cmartin.aerohex.application"    level="DEBUG"/>
 
     <!-- infrastructure loggers -->
     <logger name="io.netty"          level="WARN"/>

@@ -6,21 +6,17 @@ import dev.cmartin.aerohex.application.service.*
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.model.*
 import dev.cmartin.aerohex.domain.port.out.*
+import dev.cmartin.aerohex.infrastructure.persistence.quill.config.QuillDataSourceLayer
+import dev.cmartin.aerohex.infrastructure.persistence.quill.repository.QuillCountryRepository
 import dev.cmartin.aerohex.shared.Pagination
 import zio.*
 
-// In-memory stubs — no database or Kafka needed for API-dev mode.
-// Re-wire to infrastructure layers when persistence/messaging are ready.
+// CountryRepository is wired to Postgres via Quill (POC).
+// All other repositories use in-memory stubs.
 object WiringModule {
 
-  private val countryRepoLayer: ULayer[CountryRepository] = ZLayer.succeed(
-    new CountryRepository:
-      def findByCode(code: CountryCode): IO[DomainError, Option[Country]] = ZIO.none
-      def findAll(p: Pagination): IO[DomainError, List[Country]]          = ZIO.succeed(Nil)
-      def searchByName(q: String): IO[DomainError, List[Country]]         = ZIO.succeed(Nil)
-      def save(c: Country): IO[DomainError, Country]                      = ZIO.succeed(c)
-      def delete(code: CountryCode): IO[DomainError, Unit]                = ZIO.unit
-  )
+  private val countryRepoLayer: TaskLayer[CountryRepository] =
+    QuillDataSourceLayer.live >>> QuillCountryRepository.layer
 
   private val airportRepoLayer: ULayer[AirportRepository] = ZLayer.succeed(
     new AirportRepository:
@@ -75,7 +71,7 @@ object WiringModule {
     (countryRepoLayer >>> UpdateCountryService.layer) ++
     (countryRepoLayer >>> DeleteCountryService.layer)
 
-  val appLayer: ULayer[HttpServer.AppRoutes] =
+  val appLayer: TaskLayer[HttpServer.AppRoutes] =
     (countryUseCaseLayers >>> CountryRoutes.layer) ++
       (airportRepoLayer >>> FindAirportService.layer >>> AirportRoutes.layer) ++
       (airlineRepoLayer >>> FindAirlineService.layer >>> AirlineRoutes.layer) ++

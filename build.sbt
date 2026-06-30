@@ -2,6 +2,10 @@ import Dependencies.*
 
 addCommandAlias("xdup", "dependencyUpdates")
 
+// quill-jdbc-zio pulls zio-schema-json → zio-json 0.9.1 while zio-kafka/http want 0.7.1.
+// Declare always-compatible so SBT silently selects the higher version.
+ThisBuild / libraryDependencySchemes += "dev.zio" %% "zio-json" % "always"
+
 organization  := "dev.cmartin.aerohex"
 scalaVersion  := Versions.scala3  // 3.3.8 LTS
 version       := "0.1.0-SNAPSHOT"
@@ -157,7 +161,7 @@ lazy val adapterHttp = project
 
 lazy val bootstrap = project
   .in(file("bootstrap"))
-  .dependsOn(domain, application, adapterHttp)
+  .dependsOn(domain, application, adapterHttp, persistenceQuill)
   .settings(
     name := "bootstrap",
     libraryDependencies ++= Seq(
@@ -175,6 +179,10 @@ lazy val bootstrap = project
       case PathList("META-INF", "resources", _*)                    => MergeStrategy.first
       case PathList("META-INF", "maven", "org.webjars", _*)         => MergeStrategy.first
       case PathList("META-INF", xs @ _*)                            => MergeStrategy.discard
+      case PathList("org", "jline", _*)                             => MergeStrategy.first
+      case PathList("scala", "tools", _*)                           => MergeStrategy.first
+      case PathList("io", "getquill", _*)                           => MergeStrategy.first
+      case "compiler.properties"                                     => MergeStrategy.first
       case "deriving.conf"                                           => MergeStrategy.concat
       case "reference.conf"                                          => MergeStrategy.concat
       case x =>
