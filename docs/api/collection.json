@@ -3933,6 +3933,19 @@
           },
           "event": [
             {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Idempotent setup: remove PT if left over from a previous run",
+                  "pm.sendRequest({",
+                  "    url: pm.environment.get('baseUrl') + '/api/v1/countries/PT',",
+                  "    method: 'DELETE'",
+                  "}, (err, res) => { /* 204 or 404 \u2014 both are fine */ });"
+                ]
+              }
+            },
+            {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
