@@ -66,14 +66,23 @@ jobs:
       - name: compile and unit tests
         run: |
           sbt compile
-          # Scala 3 coverage Invoker writes measurement files at runtime.
-          # Modules without tests never have their coverageSetup run, so the
-          # scoverage-data/ subdirectory is absent and the Invoker throws
-          # ExceptionInInitializerError when a class from those modules is first
-          # loaded during another module's test run.  Create the dirs after
-          # compile (which creates the parent .coverage-data/ catalog dirs).
-          find . -maxdepth 5 -name ".coverage-data" -type d \
-            -exec mkdir -p "{}/scoverage-data" \;
+          # Scala 3 coverage Invoker writes measurement files at runtime into
+          # <module>/.coverage-data/scoverage-data/.  When SBT uses CAS hits,
+          # sbt compile never writes local .coverage-data/ dirs, so modules
+          # without their own tests (e.g. shared-kernel) never get the subdir
+          # created and the Invoker throws ExceptionInInitializerError the
+          # first time a class from that module is loaded during another
+          # module's tests.  Create all dirs explicitly to avoid this.
+          mkdir -p \
+            shared-kernel/.coverage-data/scoverage-data \
+            domain/.coverage-data/scoverage-data \
+            application/.coverage-data/scoverage-data \
+            infrastructure/persistence-postgres/.coverage-data/scoverage-data \
+            infrastructure/persistence-quill/.coverage-data/scoverage-data \
+            infrastructure/messaging-kafka/.coverage-data/scoverage-data \
+            infrastructure/migration/.coverage-data/scoverage-data \
+            adapter-http/.coverage-data/scoverage-data \
+            bootstrap/.coverage-data/scoverage-data
           sbt "testOnly *"
       - name: integration tests
         run: echo "TODO"
