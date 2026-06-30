@@ -20,7 +20,7 @@ final class DoobieOutboxRepository(xa: Transactor[Task]) extends OutboxRepositor
     """.update.run
       .transact(xa)
       .as(event)
-      .mapError(e => DomainError.DatabaseError(e.getMessage))
+      .orDie
 
   override def findUnpublished(limit: Int): IO[DomainError, List[OutboxEvent]] =
     sql"SELECT id, aggregate_type, aggregate_id, event_type, payload::text, published FROM outbox_events WHERE NOT published ORDER BY created_at LIMIT $limit"
@@ -28,14 +28,14 @@ final class DoobieOutboxRepository(xa: Transactor[Task]) extends OutboxRepositor
       .to[List]
       .transact(xa)
       .map(_.map((i, at, ai, et, p, pub) => OutboxEvent(OutboxEventId(i), at, ai, et, p, pub)))
-      .mapError(e => DomainError.DatabaseError(e.getMessage))
+      .orDie
 
   override def markPublished(id: OutboxEventId): IO[DomainError, Unit] =
     sql"UPDATE outbox_events SET published = TRUE WHERE id = ${id.value}"
       .update.run
       .transact(xa)
       .unit
-      .mapError(e => DomainError.DatabaseError(e.getMessage))
+      .orDie
 }
 
 object DoobieOutboxRepository {

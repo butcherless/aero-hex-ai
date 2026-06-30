@@ -20,7 +20,7 @@ final class DoobieRouteRepository(xa: Transactor[Task]) extends RouteRepository 
       .option
       .transact(xa)
       .map(_.map((i, o, d, a, dist) => Route(RouteId(i), IataCode(o), IataCode(d), IcaoCode(a), dist)))
-      .mapError(e => DomainError.DatabaseError(e.getMessage))
+      .orDie
 
   override def findAll(pagination: Pagination): IO[DomainError, List[Route]] =
     sql"SELECT id, origin_iata, destination_iata, airline_icao, distance_km FROM routes ORDER BY id LIMIT ${pagination.pageSize} OFFSET ${pagination.offset}"
@@ -28,7 +28,7 @@ final class DoobieRouteRepository(xa: Transactor[Task]) extends RouteRepository 
       .to[List]
       .transact(xa)
       .map(_.map((i, o, d, a, dist) => Route(RouteId(i), IataCode(o), IataCode(d), IcaoCode(a), dist)))
-      .mapError(e => DomainError.DatabaseError(e.getMessage))
+      .orDie
 
   override def save(route: Route): IO[DomainError, Route] =
     sql"""
@@ -39,14 +39,14 @@ final class DoobieRouteRepository(xa: Transactor[Task]) extends RouteRepository 
     """.update.run
       .transact(xa)
       .as(route)
-      .mapError(e => DomainError.DatabaseError(e.getMessage))
+      .orDie
 
   override def delete(id: RouteId): IO[DomainError, Unit] =
     sql"DELETE FROM routes WHERE id = ${id.value}"
       .update.run
       .transact(xa)
       .unit
-      .mapError(e => DomainError.DatabaseError(e.getMessage))
+      .orDie
 }
 
 object DoobieRouteRepository {

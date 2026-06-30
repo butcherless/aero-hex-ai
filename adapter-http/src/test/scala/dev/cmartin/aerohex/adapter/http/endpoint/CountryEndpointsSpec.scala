@@ -23,29 +23,30 @@ object CountryEndpointsSpec extends ZIOSpecDefault:
   // ── Stub use-case implementations ─────────────────────────────────────────
 
   private val defaultFind: FindCountryUseCase = new FindCountryUseCase:
-    def findByCode(code: String): IO[DomainError, Country]      = ZIO.succeed(spain)
+    def findByCode(code: CountryCode): IO[DomainError, Country] = ZIO.succeed(spain)
     def findAll(p: Pagination): IO[DomainError, List[Country]]  = ZIO.succeed(List(spain, germany))
     def searchByName(q: String): IO[DomainError, List[Country]] = ZIO.succeed(List(spain))
 
   private val notFoundFind: FindCountryUseCase = new FindCountryUseCase:
-    def findByCode(code: String): IO[DomainError, Country]      = ZIO.fail(DomainError.CountryNotFound(code))
+    def findByCode(code: CountryCode): IO[DomainError, Country] = ZIO.fail(DomainError.CountryNotFound(code.value))
     def findAll(p: Pagination): IO[DomainError, List[Country]]  = ZIO.succeed(Nil)
     def searchByName(q: String): IO[DomainError, List[Country]] = ZIO.succeed(Nil)
 
   private val defaultCreate: CreateCountryUseCase = (_: CreateCountryCommand) => ZIO.succeed(spain)
 
   private val conflictCreate: CreateCountryUseCase =
-    (cmd: CreateCountryCommand) => ZIO.fail(DomainError.CountryAlreadyExists(cmd.code))
+    (cmd: CreateCountryCommand) => ZIO.fail(DomainError.CountryAlreadyExists(cmd.code.value))
 
   private val defaultUpdate: UpdateCountryUseCase =
     (cmd: UpdateCountryCommand) => ZIO.succeed(spain.copy(name = cmd.name))
 
   private val notFoundUpdate: UpdateCountryUseCase =
-    (cmd: UpdateCountryCommand) => ZIO.fail(DomainError.CountryNotFound(cmd.code))
+    (cmd: UpdateCountryCommand) => ZIO.fail(DomainError.CountryNotFound(cmd.code.value))
 
-  private val defaultDelete: DeleteCountryUseCase = (_: String) => ZIO.unit
+  private val defaultDelete: DeleteCountryUseCase = (_: CountryCode) => ZIO.unit
 
-  private val notFoundDelete: DeleteCountryUseCase = (code: String) => ZIO.fail(DomainError.CountryNotFound(code))
+  private val notFoundDelete: DeleteCountryUseCase =
+    (code: CountryCode) => ZIO.fail(DomainError.CountryNotFound(code.value))
 
   // ── Backend factory ────────────────────────────────────────────────────────
   // CountryRoutes wires use-case stubs into Tapir server endpoints.

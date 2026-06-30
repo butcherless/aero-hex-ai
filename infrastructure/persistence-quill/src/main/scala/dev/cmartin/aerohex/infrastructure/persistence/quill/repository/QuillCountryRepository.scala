@@ -6,7 +6,7 @@ import dev.cmartin.aerohex.domain.port.out.CountryRepository
 import dev.cmartin.aerohex.shared.Pagination
 import io.getquill.*
 import io.getquill.jdbczio.Quill
-import zio.{IO, URLayer, ZLayer}
+import zio.{IO, URLayer, ZIO, ZLayer}
 
 import javax.sql.DataSource
 
@@ -27,7 +27,7 @@ final class QuillCountryRepository(dataSource: DataSource) extends CountryReposi
         querySchema[CountryRow]("countries").filter(_.code == lift(code.value))
       })
       .map(_.headOption.map(toCountry))
-      .mapError(e => DomainError.DatabaseError(e.getMessage))
+      .orDie
 
   override def findAll(pagination: Pagination): IO[DomainError, List[Country]] = {
     val offset = pagination.offset
@@ -40,7 +40,7 @@ final class QuillCountryRepository(dataSource: DataSource) extends CountryReposi
           .take(lift(limit))
       })
       .map(_.map(toCountry))
-      .mapError(e => DomainError.DatabaseError(e.getMessage))
+      .orDie
   }
 
   override def searchByName(query: String): IO[DomainError, List[Country]] = {
@@ -52,7 +52,7 @@ final class QuillCountryRepository(dataSource: DataSource) extends CountryReposi
           .sortBy(_.name)
       })
       .map(_.map(toCountry))
-      .mapError(e => DomainError.DatabaseError(e.getMessage))
+      .orDie
   }
 
   override def save(country: Country): IO[DomainError, Country] = {
@@ -64,7 +64,7 @@ final class QuillCountryRepository(dataSource: DataSource) extends CountryReposi
                 ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name""".as[Action[CountryRow]]
       })
       .as(country)
-      .mapError(e => DomainError.DatabaseError(e.getMessage))
+      .orDie
   }
 
   override def delete(code: CountryCode): IO[DomainError, Unit] =
@@ -72,8 +72,10 @@ final class QuillCountryRepository(dataSource: DataSource) extends CountryReposi
       .run(quote {
         querySchema[CountryRow]("countries").filter(_.code == lift(code.value)).delete
       })
-      .unit
-      .mapError(e => DomainError.DatabaseError(e.getMessage))
+      .orDie
+      .flatMap:
+        case 0L => ZIO.fail(DomainError.CountryNotFound(code.value))
+        case _  => ZIO.unit
 }
 
 object QuillCountryRepository {

@@ -1,6 +1,6 @@
 package dev.cmartin.aerohex.adapter.http.dto
 
-import dev.cmartin.aerohex.domain.model.Country
+import dev.cmartin.aerohex.domain.model.{Country, CountryCode}
 import dev.cmartin.aerohex.domain.port.in.{CreateCountryCommand, UpdateCountryCommand}
 import sttp.tapir.Schema
 import sttp.tapir.Validator
@@ -25,7 +25,7 @@ case class CreateCountryRequest(code: String, name: String)
 
 object CreateCountryRequest {
   def toCommand(req: CreateCountryRequest): CreateCountryCommand =
-    CreateCountryCommand(req.code, req.name)
+    CreateCountryCommand(CountryCode(req.code), req.name)
 
   given Schema[CreateCountryRequest] = Schema.derived[CreateCountryRequest]
     .modify(_.code)(
@@ -42,7 +42,7 @@ case class UpdateCountryRequest(name: String)
 
 object UpdateCountryRequest {
   def toCommand(code: String, req: UpdateCountryRequest): UpdateCountryCommand =
-    UpdateCountryCommand(code, req.name)
+    UpdateCountryCommand(CountryCode(code), req.name)
 
   given Schema[UpdateCountryRequest] = Schema.derived[UpdateCountryRequest]
     .modify(_.name)(

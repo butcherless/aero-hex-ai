@@ -20,7 +20,7 @@ final class DoobieAirlineRepository(xa: Transactor[Task]) extends AirlineReposit
       .option
       .transact(xa)
       .map(_.map((i, n, fd, cc) => Airline(IcaoCode(i), n, fd, CountryCode(cc))))
-      .mapError(e => DomainError.DatabaseError(e.getMessage))
+      .orDie
 
   override def findAll(pagination: Pagination): IO[DomainError, List[Airline]] =
     sql"SELECT icao_code, name, foundation_date, country_code FROM airlines ORDER BY icao_code LIMIT ${pagination.pageSize} OFFSET ${pagination.offset}"
@@ -28,7 +28,7 @@ final class DoobieAirlineRepository(xa: Transactor[Task]) extends AirlineReposit
       .to[List]
       .transact(xa)
       .map(_.map((i, n, fd, cc) => Airline(IcaoCode(i), n, fd, CountryCode(cc))))
-      .mapError(e => DomainError.DatabaseError(e.getMessage))
+      .orDie
 
   override def save(airline: Airline): IO[DomainError, Airline] =
     sql"""
@@ -39,14 +39,14 @@ final class DoobieAirlineRepository(xa: Transactor[Task]) extends AirlineReposit
     """.update.run
       .transact(xa)
       .as(airline)
-      .mapError(e => DomainError.DatabaseError(e.getMessage))
+      .orDie
 
   override def delete(icao: IcaoCode): IO[DomainError, Unit] =
     sql"DELETE FROM airlines WHERE icao_code = ${icao.value}"
       .update.run
       .transact(xa)
       .unit
-      .mapError(e => DomainError.DatabaseError(e.getMessage))
+      .orDie
 }
 
 object DoobieAirlineRepository {

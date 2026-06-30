@@ -13,6 +13,4 @@ object DomainError {
   case class AircraftNotFound(registration: String)                  extends DomainError
   case class FlightNotFound(code: String)                            extends DomainError
   case class JourneyNotFound(id: String)                             extends DomainError
-  case class DatabaseError(cause: String)                            extends DomainError
-  case class MessagingError(cause: String)                           extends DomainError
 }

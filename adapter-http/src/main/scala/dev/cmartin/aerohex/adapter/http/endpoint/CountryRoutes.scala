@@ -2,6 +2,7 @@ package dev.cmartin.aerohex.adapter.http.endpoint
 
 import dev.cmartin.aerohex.adapter.http.dto.{CountryDto, CreateCountryRequest, UpdateCountryRequest}
 import dev.cmartin.aerohex.adapter.http.error.ErrorMapper
+import dev.cmartin.aerohex.domain.model.CountryCode
 import dev.cmartin.aerohex.domain.port.in.*
 import dev.cmartin.aerohex.shared.Pagination
 import sttp.tapir.ztapir.{RichZEndpoint, ZServerEndpoint}
@@ -31,7 +32,7 @@ class CountryRoutes(
     CountryEndpoints.findByCode.zServerLogic { code =>
       ZIO.logDebug(s"findByCode - code: $code") *>
         findSvc
-          .findByCode(code)
+          .findByCode(CountryCode(code))
           .map(CountryDto.fromDomain)
           .mapError(ErrorMapper.toHttpError)
     },
@@ -55,7 +56,7 @@ class CountryRoutes(
     CountryEndpoints.delete.zServerLogic { code =>
       ZIO.logDebug(s"delete - code: $code") *>
         deleteSvc
-          .delete(code)
+          .delete(CountryCode(code))
           .mapError(ErrorMapper.toHttpError)
     }
   )

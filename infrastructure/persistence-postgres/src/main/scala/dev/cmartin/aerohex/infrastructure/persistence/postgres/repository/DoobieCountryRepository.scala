@@ -6,7 +6,7 @@ import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.model.{Country, CountryCode}
 import dev.cmartin.aerohex.domain.port.out.CountryRepository
 import dev.cmartin.aerohex.shared.Pagination
-import zio.{IO, Task, URLayer, ZLayer}
+import zio.{IO, Task, URLayer, ZIO, ZLayer}
 import zio.interop.catz.*
 
 final class DoobieCountryRepository(xa: Transactor[Task]) extends CountryRepository {
@@ -17,7 +17,7 @@ final class DoobieCountryRepository(xa: Transactor[Task]) extends CountryReposit
       .option
       .transact(xa)
       .map(_.map((c, n) => Country(CountryCode(c), n)))
-      .mapError(e => DomainError.DatabaseError(e.getMessage))
+      .orDie
 
   override def findAll(pagination: Pagination): IO[DomainError, List[Country]] =
     sql"SELECT code, name FROM countries ORDER BY code LIMIT ${pagination.pageSize} OFFSET ${pagination.offset}"
@@ -25,7 +25,7 @@ final class DoobieCountryRepository(xa: Transactor[Task]) extends CountryReposit
       .to[List]
       .transact(xa)
       .map(_.map((c, n) => Country(CountryCode(c), n)))
-      .mapError(e => DomainError.DatabaseError(e.getMessage))
+      .orDie
 
   override def searchByName(query: String): IO[DomainError, List[Country]] =
     sql"SELECT code, name FROM countries WHERE name ILIKE ${"%" + query + "%"} ORDER BY name"
@@ -33,7 +33,7 @@ final class DoobieCountryRepository(xa: Transactor[Task]) extends CountryReposit
       .to[List]
       .transact(xa)
       .map(_.map((c, n) => Country(CountryCode(c), n)))
-      .mapError(e => DomainError.DatabaseError(e.getMessage))
+      .orDie
 
   override def save(country: Country): IO[DomainError, Country] =
     sql"""
@@ -43,14 +43,16 @@ final class DoobieCountryRepository(xa: Transactor[Task]) extends CountryReposit
     """.update.run
       .transact(xa)
       .as(country)
-      .mapError(e => DomainError.DatabaseError(e.getMessage))
+      .orDie
 
   override def delete(code: CountryCode): IO[DomainError, Unit] =
     sql"DELETE FROM countries WHERE code = ${code.value}"
       .update.run
       .transact(xa)
-      .unit
-      .mapError(e => DomainError.DatabaseError(e.getMessage))
+      .orDie
+      .flatMap:
+        case 0 => ZIO.fail(DomainError.CountryNotFound(code.value))
+        case _ => ZIO.unit
 }
 
 object DoobieCountryRepository {

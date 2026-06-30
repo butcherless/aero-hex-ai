@@ -2,6 +2,7 @@ package dev.cmartin.aerohex.adapter.http.error
 
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.error.DomainError.*
+
 import sttp.model.StatusCode
 
 case class ApiError(statusCode: StatusCode, message: String)
@@ -21,8 +22,6 @@ object ErrorMapper {
     case JourneyNotFound(id)        => ApiError(StatusCode.NotFound, s"Journey not found: $id")
     case RouteAlreadyExists(o, d)   => ApiError(StatusCode.Conflict, s"Route already exists: $o -> $d")
     case InvalidRoute(reason)       => ApiError(StatusCode.BadRequest, reason)
-    case DatabaseError(cause)       => ApiError(StatusCode.InternalServerError, s"Database error: $cause")
-    case MessagingError(cause)      => ApiError(StatusCode.InternalServerError, s"Messaging error: $cause")
   }
 
   def toMessage(error: DomainError): String = toApiError(error).message
