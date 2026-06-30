@@ -1,0 +1,32 @@
+name: Dependency Updates
+
+on:
+  schedule:
+    - cron: '0 8 * * 1'  # every Monday at 08:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    env:
+      SBT_OPTS: "-Xmx2g"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Setup JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: 'zulu'
+          java-version: '21'
+          cache: sbt
+      - name: Setup SBT
+        uses: sbt/setup-sbt@v1
+      - name: Report dependency updates
+        run: sbt dependencyUpdates

@@ -7,11 +7,21 @@ on:
   pull_request:
     types: [ opened, synchronize, reopened ]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
 
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+
+    env:
+      SBT_OPTS: "-Xmx2g"
 
     # services:
     #   postgres:
@@ -53,26 +63,22 @@ jobs:
     #       --health-start-period 30s
 
     steps:
-      - uses: actions/checkout@v7
+      - name: Checkout
+        uses: actions/checkout@v7
       - name: Setup JDK
         uses: actions/setup-java@v5
         with:
           distribution: 'zulu'
           java-version: '21'
           cache: sbt
-      - uses: sbt/setup-sbt@v1
-      - name: check formatting
+      - name: Setup SBT
+        uses: sbt/setup-sbt@v1
+      - name: Check formatting
         run: sbt scalafmtCheckAll
-      - name: compile and unit tests
+      - name: Compile and unit tests
         run: |
           sbt compile
-          # Scala 3 coverage Invoker writes measurement files at runtime into
-          # <module>/.coverage-data/scoverage-data/.  When SBT uses CAS hits,
-          # sbt compile never writes local .coverage-data/ dirs, so modules
-          # without their own tests (e.g. shared-kernel) never get the subdir
-          # created and the Invoker throws ExceptionInInitializerError the
-          # first time a class from that module is loaded during another
-          # module's tests.  Create all dirs explicitly to avoid this.
+          # Scala 3 coverage Invoker needs scoverage-data/ per module; absent on CAS hits
           mkdir -p \
             shared-kernel/.coverage-data/scoverage-data \
             domain/.coverage-data/scoverage-data \
@@ -84,11 +90,8 @@ jobs:
             adapter-http/.coverage-data/scoverage-data \
             bootstrap/.coverage-data/scoverage-data
           sbt "testOnly *"
-      - name: integration tests
-        run: echo "TODO"
-      - name: assembly
+      - name: Integration tests
+        if: false
+        run: echo "not yet implemented"
+      - name: Assembly
         run: sbt "bootstrap/assembly"
-        env:
-          SBT_OPTS: "-Xmx2g"
-      - name: dependency updates report
-        run: sbt dependencyUpdates
