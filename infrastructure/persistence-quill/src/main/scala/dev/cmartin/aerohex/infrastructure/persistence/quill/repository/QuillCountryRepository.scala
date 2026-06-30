@@ -6,7 +6,7 @@ import dev.cmartin.aerohex.domain.port.out.CountryRepository
 import dev.cmartin.aerohex.shared.Pagination
 import io.getquill.*
 import io.getquill.jdbczio.Quill
-import zio.{IO, URLayer, ZIO, ZLayer}
+import zio.{IO, UIO, URLayer, ZIO, ZLayer}
 
 import javax.sql.DataSource
 
@@ -29,7 +29,7 @@ final class QuillCountryRepository(dataSource: DataSource) extends CountryReposi
       .map(_.headOption.map(toCountry))
       .orDie
 
-  override def findAll(pagination: Pagination): IO[DomainError, List[Country]] = {
+  override def findAll(pagination: Pagination): UIO[List[Country]] = {
     val offset = pagination.offset
     val limit  = pagination.pageSize
     ctx
@@ -43,7 +43,7 @@ final class QuillCountryRepository(dataSource: DataSource) extends CountryReposi
       .orDie
   }
 
-  override def searchByName(query: String): IO[DomainError, List[Country]] = {
+  override def searchByName(query: String): UIO[List[Country]] = {
     val pattern = "%" + query + "%"
     ctx
       .run(quote {
@@ -66,6 +66,18 @@ final class QuillCountryRepository(dataSource: DataSource) extends CountryReposi
       .as(country)
       .orDie
   }
+
+  override def update(country: Country): IO[DomainError, Country] =
+    ctx
+      .run(quote {
+        querySchema[CountryRow]("countries")
+          .filter(_.code == lift(country.code.value))
+          .update(_.name -> lift(country.name))
+      })
+      .orDie
+      .flatMap:
+        case 0L => ZIO.fail(DomainError.CountryNotFound(country.code.value))
+        case _  => ZIO.succeed(country)
 
   override def delete(code: CountryCode): IO[DomainError, Unit] =
     ctx

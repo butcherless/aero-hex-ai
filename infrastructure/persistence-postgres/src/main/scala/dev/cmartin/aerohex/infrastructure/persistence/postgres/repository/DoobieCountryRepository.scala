@@ -6,7 +6,7 @@ import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.model.{Country, CountryCode}
 import dev.cmartin.aerohex.domain.port.out.CountryRepository
 import dev.cmartin.aerohex.shared.Pagination
-import zio.{IO, Task, URLayer, ZIO, ZLayer}
+import zio.{IO, Task, UIO, URLayer, ZIO, ZLayer}
 import zio.interop.catz.*
 
 final class DoobieCountryRepository(xa: Transactor[Task]) extends CountryRepository {
@@ -19,7 +19,7 @@ final class DoobieCountryRepository(xa: Transactor[Task]) extends CountryReposit
       .map(_.map((c, n) => Country(CountryCode(c), n)))
       .orDie
 
-  override def findAll(pagination: Pagination): IO[DomainError, List[Country]] =
+  override def findAll(pagination: Pagination): UIO[List[Country]] =
     sql"SELECT code, name FROM countries ORDER BY code LIMIT ${pagination.pageSize} OFFSET ${pagination.offset}"
       .query[(String, String)]
       .to[List]
@@ -27,7 +27,7 @@ final class DoobieCountryRepository(xa: Transactor[Task]) extends CountryReposit
       .map(_.map((c, n) => Country(CountryCode(c), n)))
       .orDie
 
-  override def searchByName(query: String): IO[DomainError, List[Country]] =
+  override def searchByName(query: String): UIO[List[Country]] =
     sql"SELECT code, name FROM countries WHERE name ILIKE ${"%" + query + "%"} ORDER BY name"
       .query[(String, String)]
       .to[List]
@@ -44,6 +44,15 @@ final class DoobieCountryRepository(xa: Transactor[Task]) extends CountryReposit
       .transact(xa)
       .as(country)
       .orDie
+
+  override def update(country: Country): IO[DomainError, Country] =
+    sql"UPDATE countries SET name = ${country.name} WHERE code = ${country.code.value}"
+      .update.run
+      .transact(xa)
+      .orDie
+      .flatMap:
+        case 0 => ZIO.fail(DomainError.CountryNotFound(country.code.value))
+        case _ => ZIO.succeed(country)
 
   override def delete(code: CountryCode): IO[DomainError, Unit] =
     sql"DELETE FROM countries WHERE code = ${code.value}"

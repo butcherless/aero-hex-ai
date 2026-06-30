@@ -12,7 +12,7 @@ import sttp.client4.impl.zio.RIOMonadAsyncError
 import sttp.client4.testing.BackendStub
 import sttp.model.StatusCode
 import sttp.tapir.server.stub4.TapirStubInterpreter
-import zio.*
+import zio.{IO, Scope, Task, UIO, ZIO}
 import zio.test.*
 
 object CountryEndpointsSpec extends ZIOSpecDefault:
@@ -24,13 +24,13 @@ object CountryEndpointsSpec extends ZIOSpecDefault:
 
   private val defaultFind: FindCountryUseCase = new FindCountryUseCase:
     def findByCode(code: CountryCode): IO[DomainError, Country] = ZIO.succeed(spain)
-    def findAll(p: Pagination): IO[DomainError, List[Country]]  = ZIO.succeed(List(spain, germany))
-    def searchByName(q: String): IO[DomainError, List[Country]] = ZIO.succeed(List(spain))
+    def findAll(p: Pagination): UIO[List[Country]]              = ZIO.succeed(List(spain, germany))
+    def searchByName(q: String): UIO[List[Country]]             = ZIO.succeed(List(spain))
 
   private val notFoundFind: FindCountryUseCase = new FindCountryUseCase:
     def findByCode(code: CountryCode): IO[DomainError, Country] = ZIO.fail(DomainError.CountryNotFound(code.value))
-    def findAll(p: Pagination): IO[DomainError, List[Country]]  = ZIO.succeed(Nil)
-    def searchByName(q: String): IO[DomainError, List[Country]] = ZIO.succeed(Nil)
+    def findAll(p: Pagination): UIO[List[Country]]              = ZIO.succeed(Nil)
+    def searchByName(q: String): UIO[List[Country]]             = ZIO.succeed(Nil)
 
   private val defaultCreate: CreateCountryUseCase = (_: CreateCountryCommand) => ZIO.succeed(spain)
 

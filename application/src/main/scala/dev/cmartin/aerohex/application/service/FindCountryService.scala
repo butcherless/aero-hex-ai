@@ -7,7 +7,7 @@ import dev.cmartin.aerohex.domain.model.{Country, CountryCode}
 import dev.cmartin.aerohex.domain.port.in.FindCountryUseCase
 import dev.cmartin.aerohex.domain.port.out.CountryRepository
 import dev.cmartin.aerohex.shared.Pagination
-import zio.{IO, URLayer, ZLayer}
+import zio.{IO, UIO, URLayer, ZLayer}
 
 final class FindCountryService(repo: CountryRepository) extends FindCountryUseCase:
 
@@ -15,11 +15,11 @@ final class FindCountryService(repo: CountryRepository) extends FindCountryUseCa
     repo.findByCode(code).someOrFail(CountryNotFound(code.value)) @@
       ServiceAspect.logged(s"FindCountryService.findByCode(${code.value})")
 
-  override def findAll(pagination: Pagination): IO[DomainError, List[Country]] =
-    repo.findAll(pagination) @@ ServiceAspect.logged("FindCountryService.findAll")
+  override def findAll(pagination: Pagination): UIO[List[Country]] =
+    ServiceAspect.logged("FindCountryService.findAll").apply(repo.findAll(pagination))
 
-  override def searchByName(query: String): IO[DomainError, List[Country]] =
-    repo.searchByName(query) @@ ServiceAspect.logged(s"FindCountryService.searchByName($query)")
+  override def searchByName(query: String): UIO[List[Country]] =
+    ServiceAspect.logged(s"FindCountryService.searchByName($query)").apply(repo.searchByName(query))
 
 object FindCountryService:
   val layer: URLayer[CountryRepository, FindCountryUseCase] =
