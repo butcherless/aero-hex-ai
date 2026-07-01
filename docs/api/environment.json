@@ -31,6 +31,36 @@
       "value": "",
       "type": "default",
       "enabled": true
+    },
+    {
+      "key": "code",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "iata",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "icao",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "registration",
+      "value": "",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "id",
+      "value": "",
+      "type": "default",
+      "enabled": true
     }
   ],
   "_postman_variable_scope": "environment",

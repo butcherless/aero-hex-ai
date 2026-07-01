@@ -35,7 +35,7 @@
                 {
                   "disabled": false,
                   "description": {
-                    "content": "Number of results per page (1\u2013100).",
+                    "content": "Number of results per page (1–100).",
                     "type": "text/plain"
                   },
                   "key": "pageSize",
@@ -56,7 +56,7 @@
           },
           "response": [
             {
-              "id": "349841b2-8097-4db9-abe1-c167e72490d2",
+              "id": "e732e742-adb5-43ed-aa2e-eb9395e7b7b8",
               "name": "List of countries.",
               "originalRequest": {
                 "url": {
@@ -81,7 +81,7 @@
                     {
                       "disabled": false,
                       "description": {
-                        "content": "Number of results per page (1\u2013100).",
+                        "content": "Number of results per page (1–100).",
                         "type": "text/plain"
                       },
                       "key": "pageSize",
@@ -112,7 +112,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "95f1bf65-e5db-4518-9085-bc8d7f7af854",
+              "id": "8b0033b9-d802-498f-89ff-503a99e3bc5b",
               "name": "Invalid pagination parameters.",
               "originalRequest": {
                 "url": {
@@ -137,7 +137,7 @@
                     {
                       "disabled": false,
                       "description": {
-                        "content": "Number of results per page (1\u2013100).",
+                        "content": "Number of results per page (1–100).",
                         "type": "text/plain"
                       },
                       "key": "pageSize",
@@ -168,7 +168,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "0220268d-dc78-4fa4-aa87-f4d3948efafc",
+              "id": "3855014b-f950-4567-9083-7eb792dfac33",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -193,7 +193,7 @@
                     {
                       "disabled": false,
                       "description": {
-                        "content": "Number of results per page (1\u2013100).",
+                        "content": "Number of results per page (1–100).",
                         "type": "text/plain"
                       },
                       "key": "pageSize",
@@ -261,7 +261,7 @@
             "method": "POST",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"code\": \"Um\",\n  \"name\": \"<string>\"\n}",
+              "raw": "{\n  \"code\": \"vh\",\n  \"name\": \"<string>\"\n}",
               "options": {
                 "raw": {
                   "headerFamily": "json",
@@ -273,7 +273,7 @@
           },
           "response": [
             {
-              "id": "d01cf04c-d713-44ad-9059-5f80f3a1d543",
+              "id": "96d8e0f4-e78c-4ee8-9c2e-c45ce960cdb7",
               "name": "The created country.",
               "originalRequest": {
                 "url": {
@@ -301,7 +301,7 @@
                 "method": "POST",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"code\": \"Um\",\n  \"name\": \"<string>\"\n}",
+                  "raw": "{\n  \"code\": \"vh\",\n  \"name\": \"<string>\"\n}",
                   "options": {
                     "raw": {
                       "headerFamily": "json",
@@ -332,7 +332,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "13e05c8b-f5ab-44f9-84d8-3c312ec9180d",
+              "id": "3876bd90-5800-4f68-82b9-7c6875309ae5",
               "name": "Invalid value for: body",
               "originalRequest": {
                 "url": {
@@ -360,7 +360,7 @@
                 "method": "POST",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"code\": \"Um\",\n  \"name\": \"<string>\"\n}",
+                  "raw": "{\n  \"code\": \"vh\",\n  \"name\": \"<string>\"\n}",
                   "options": {
                     "raw": {
                       "headerFamily": "json",
@@ -382,7 +382,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "8f719dc3-e78b-41c0-8c59-b484b3965ae9",
+              "id": "b2600695-7388-4eda-9646-3261fd53c379",
               "name": "Country already exists.",
               "originalRequest": {
                 "url": {
@@ -410,7 +410,7 @@
                 "method": "POST",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"code\": \"Um\",\n  \"name\": \"<string>\"\n}",
+                  "raw": "{\n  \"code\": \"vh\",\n  \"name\": \"<string>\"\n}",
                   "options": {
                     "raw": {
                       "headerFamily": "json",
@@ -432,7 +432,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "8f90c6f6-e879-49b4-99e9-ff06b24a676b",
+              "id": "3f73ea83-2a47-4965-bb28-fb3d1516479e",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -460,7 +460,7 @@
                 "method": "POST",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"code\": \"Um\",\n  \"name\": \"<string>\"\n}",
+                  "raw": "{\n  \"code\": \"vh\",\n  \"name\": \"<string>\"\n}",
                   "options": {
                     "raw": {
                       "headerFamily": "json",
@@ -529,7 +529,7 @@
           },
           "response": [
             {
-              "id": "a39b298c-1dc0-444f-a793-03677c5025f7",
+              "id": "78ffc644-1f22-4a77-9501-1ae64f2879e3",
               "name": "Matching countries.",
               "originalRequest": {
                 "url": {
@@ -577,7 +577,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "3fbc9335-ada9-494c-af2d-b394c4c18b94",
+              "id": "477013c7-bb53-4066-b24d-2ccf6c5ab85b",
               "name": "Invalid search query.",
               "originalRequest": {
                 "url": {
@@ -625,7 +625,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "dfaaed08-f8cb-48b9-9d61-d42af8005a20",
+              "id": "0647ebd9-e587-4e26-bc13-096681337a9f",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -699,7 +699,7 @@
               "variable": [
                 {
                   "type": "any",
-                  "value": "PL",
+                  "value": "mq",
                   "key": "code",
                   "disabled": false,
                   "description": {
@@ -721,7 +721,7 @@
           },
           "response": [
             {
-              "id": "2e440daa-8940-4a1c-82c8-f6c72963fc38",
+              "id": "58079d13-5f5e-4706-a194-f4b904890ae4",
               "name": "The requested country.",
               "originalRequest": {
                 "url": {
@@ -743,7 +743,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "PL",
+                      "value": "mq",
                       "key": "code"
                     }
                   ]
@@ -770,7 +770,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "ce1cb9a7-6847-4ba5-a6fb-0a28e4315895",
+              "id": "c68b1e2c-d50b-42a7-b43d-1b5715c946e9",
               "name": "Invalid value for: path parameter code",
               "originalRequest": {
                 "url": {
@@ -792,7 +792,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "PL",
+                      "value": "mq",
                       "key": "code"
                     }
                   ]
@@ -819,7 +819,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "b623cf1d-e0f9-405d-ac36-ad1180a60595",
+              "id": "c655c830-bae5-4e1a-acbc-b715b3d48868",
               "name": "Country not found.",
               "originalRequest": {
                 "url": {
@@ -841,7 +841,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "PL",
+                      "value": "mq",
                       "key": "code"
                     }
                   ]
@@ -868,7 +868,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "9a0a8619-49ee-4c08-b703-298eb00c6069",
+              "id": "b75cb417-c2db-4ca1-a727-00ed367e957a",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -890,7 +890,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "PL",
+                      "value": "mq",
                       "key": "code"
                     }
                   ]
@@ -943,7 +943,7 @@
               "variable": [
                 {
                   "type": "any",
-                  "value": "PL",
+                  "value": "mq",
                   "key": "code",
                   "disabled": false,
                   "description": {
@@ -978,7 +978,7 @@
           },
           "response": [
             {
-              "id": "45d78fce-16b3-45db-9a62-6dfc7c6d8059",
+              "id": "e743f97f-9031-4bde-aca2-1f80e16bf19d",
               "name": "The updated country.",
               "originalRequest": {
                 "url": {
@@ -1000,7 +1000,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "PL",
+                      "value": "mq",
                       "key": "code"
                     }
                   ]
@@ -1040,7 +1040,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "4895e869-e8f9-466e-a837-7e0465a37f01",
+              "id": "905b9ae8-f49b-408c-b0cc-a7018e5f75ad",
               "name": "Invalid value for: path parameter code, Invalid value for: body",
               "originalRequest": {
                 "url": {
@@ -1062,7 +1062,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "PL",
+                      "value": "mq",
                       "key": "code"
                     }
                   ]
@@ -1102,7 +1102,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "949c877f-d701-4fa1-83af-475be89ad9f4",
+              "id": "4d6e631d-cec8-4dd1-ae3e-e0558c1c9fdb",
               "name": "Country not found.",
               "originalRequest": {
                 "url": {
@@ -1124,7 +1124,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "PL",
+                      "value": "mq",
                       "key": "code"
                     }
                   ]
@@ -1164,7 +1164,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "efcd33ee-6b3c-47ee-84d0-9aa8b5d61bf3",
+              "id": "fb94a1ed-9b7d-453b-befc-2b0e9635bfc0",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -1186,7 +1186,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "PL",
+                      "value": "mq",
                       "key": "code"
                     }
                   ]
@@ -1252,7 +1252,7 @@
               "variable": [
                 {
                   "type": "any",
-                  "value": "PL",
+                  "value": "mq",
                   "key": "code",
                   "disabled": false,
                   "description": {
@@ -1274,7 +1274,7 @@
           },
           "response": [
             {
-              "id": "9aff64c9-2796-4887-a09d-131db8855ebf",
+              "id": "0b56da82-1b44-494f-8999-d3d57e64002f",
               "name": "204",
               "originalRequest": {
                 "url": {
@@ -1296,7 +1296,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "PL",
+                      "value": "mq",
                       "key": "code"
                     }
                   ]
@@ -1311,7 +1311,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "47024392-8656-4888-ad12-5837dd090a0d",
+              "id": "3f35dc34-191d-42c5-bbeb-6be2a066e890",
               "name": "Invalid value for: path parameter code",
               "originalRequest": {
                 "url": {
@@ -1333,7 +1333,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "PL",
+                      "value": "mq",
                       "key": "code"
                     }
                   ]
@@ -1360,7 +1360,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "c47f7a48-1e17-4f9d-b4b6-ce7202ee5f27",
+              "id": "8be5d4dc-bc0b-4ce4-9114-a5b2bec5b8f6",
               "name": "Country not found.",
               "originalRequest": {
                 "url": {
@@ -1382,7 +1382,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "PL",
+                      "value": "mq",
                       "key": "code"
                     }
                   ]
@@ -1409,7 +1409,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "64718b00-40c4-42e9-adf3-37af05386b17",
+              "id": "5a1b427d-6db2-4f26-8b5a-e9dae6cfbe7d",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -1431,7 +1431,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "PL",
+                      "value": "mq",
                       "key": "code"
                     }
                   ]
@@ -1519,7 +1519,7 @@
           },
           "response": [
             {
-              "id": "c456214a-fd48-4a23-abad-4fd66864ffac",
+              "id": "be0f0c79-c1c3-4b0c-9a19-c81e56aa2ce5",
               "name": "List of airports.",
               "originalRequest": {
                 "url": {
@@ -1575,7 +1575,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "33c38deb-accc-4609-bdb1-447957929d5c",
+              "id": "758a2693-7ef6-481c-b9ca-d71ab9553e54",
               "name": "Invalid value for: query parameter page, Invalid value for: query parameter pageSize",
               "originalRequest": {
                 "url": {
@@ -1631,7 +1631,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "03e3b405-741d-40ca-adc0-b069e71f1337",
+              "id": "ce6ace4b-91e6-42c1-ae9e-ec9fd9b9999c",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -1735,7 +1735,7 @@
           },
           "response": [
             {
-              "id": "b0206a42-f94b-4ac3-8168-1e9994ed059c",
+              "id": "0a516d88-e06a-4b26-a3fb-8126b722bde5",
               "name": "The requested airport.",
               "originalRequest": {
                 "url": {
@@ -1784,7 +1784,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "729402fe-a72b-4510-b351-546aee416ac2",
+              "id": "0b2cb812-0d78-4f8d-91d5-cf604c663828",
               "name": "Airport not found.",
               "originalRequest": {
                 "url": {
@@ -1833,7 +1833,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "faad4a19-f730-4059-b059-1cc1b204e88f",
+              "id": "004743ce-1937-420d-888b-679a73d98c95",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -1943,7 +1943,7 @@
           },
           "response": [
             {
-              "id": "46db8937-e252-4e0f-ad21-1fc7a336ccf3",
+              "id": "3a77c95d-decf-4fb9-a331-4c9bb0d2e439",
               "name": "List of airlines.",
               "originalRequest": {
                 "url": {
@@ -1999,7 +1999,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "4142ac45-32cd-4c61-be5e-0866abca79f9",
+              "id": "7f864263-ac02-4519-9906-17e604c471e5",
               "name": "Invalid value for: query parameter page, Invalid value for: query parameter pageSize",
               "originalRequest": {
                 "url": {
@@ -2055,7 +2055,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "ce9833ee-857a-45dd-a676-48bdc02fb997",
+              "id": "76d7ef41-0cf7-4761-8d14-c5ad66cf9e8c",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -2159,7 +2159,7 @@
           },
           "response": [
             {
-              "id": "2387d2b7-3798-4bf3-9afe-88630691f39f",
+              "id": "821eeb6a-cbd9-409e-b27d-2b5edd158304",
               "name": "The requested airline.",
               "originalRequest": {
                 "url": {
@@ -2208,7 +2208,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "ad59c5e3-910c-4be8-bfc7-240daae5f540",
+              "id": "0e50359c-0e84-4af7-a1cd-7c142e89fbe5",
               "name": "Airline not found.",
               "originalRequest": {
                 "url": {
@@ -2257,7 +2257,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "4c5ca52c-0c0c-4cbb-93f1-68357889204e",
+              "id": "9bd8124b-2b85-4540-8446-5d701199c088",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -2361,7 +2361,7 @@
           },
           "response": [
             {
-              "id": "801950fa-74ea-41ab-be94-d88602cd1268",
+              "id": "a9466bd5-5a51-4bac-9a66-db2b4311b856",
               "name": "The created route.",
               "originalRequest": {
                 "url": {
@@ -2411,7 +2411,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "b5af206e-8fc5-4ef5-a85e-eac2324456f6",
+              "id": "d561bb5b-88c4-4dce-8084-89bbf8ea9950",
               "name": "Invalid route parameters.",
               "originalRequest": {
                 "url": {
@@ -2461,7 +2461,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "5e30bdb0-05f5-4956-b778-49984d4f4f23",
+              "id": "ef71fe1a-5fe1-4c0e-9acb-fc739f606b13",
               "name": "Airport or airline not found.",
               "originalRequest": {
                 "url": {
@@ -2511,7 +2511,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "2f6833e2-852a-4eca-b5fb-b06f9a1ca6ed",
+              "id": "57883246-e283-496f-bbf2-feeb92225c8a",
               "name": "A route between these airports for this airline already exists.",
               "originalRequest": {
                 "url": {
@@ -2561,7 +2561,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "14ad920e-2e5c-430a-bb35-955c5bca6462",
+              "id": "093294c2-48f5-4720-a530-cd1abbffbb8b",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -2672,7 +2672,7 @@
           },
           "response": [
             {
-              "id": "27fea8e8-d586-4d8c-8258-50c306933f31",
+              "id": "cb76a678-a9a8-42f0-9d0b-82f3e31be278",
               "name": "List of aircraft.",
               "originalRequest": {
                 "url": {
@@ -2728,7 +2728,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "9d000b7c-6f6c-406c-9bd0-de27ab2a14ac",
+              "id": "515bf5a3-0dec-4cc7-9a32-81f507e29871",
               "name": "Invalid value for: query parameter page, Invalid value for: query parameter pageSize",
               "originalRequest": {
                 "url": {
@@ -2784,7 +2784,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "5d868061-7dc1-4c8a-b5ae-0aa4c01a1fc7",
+              "id": "906a2cd9-567b-48a1-bd8f-bc02834ee3d8",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -2888,7 +2888,7 @@
           },
           "response": [
             {
-              "id": "15ced9e7-7cfe-4b2f-9dbf-c8cf3cf05a15",
+              "id": "049ecd20-1cc0-460e-9204-caca690c9a53",
               "name": "The requested aircraft.",
               "originalRequest": {
                 "url": {
@@ -2937,7 +2937,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "9304ad40-e6bd-492c-b35f-05e7bb00b5e4",
+              "id": "101c0455-dd29-44a6-8a75-d357e002a812",
               "name": "Aircraft not found.",
               "originalRequest": {
                 "url": {
@@ -2986,7 +2986,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "df10eb01-cec2-43af-956e-83727ba655a0",
+              "id": "ab411e17-dba3-4aad-a3e2-71c644582491",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -3096,7 +3096,7 @@
           },
           "response": [
             {
-              "id": "cf9a59b7-afb2-4f1b-ac30-62af13b83d7b",
+              "id": "482002ae-68d1-4179-ade4-27216e781793",
               "name": "List of flights.",
               "originalRequest": {
                 "url": {
@@ -3152,7 +3152,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "eba02770-3822-4820-a0c6-e9ee8b76bb40",
+              "id": "c603c60d-e7cf-4f1b-865a-9bd53d6f5471",
               "name": "Invalid value for: query parameter page, Invalid value for: query parameter pageSize",
               "originalRequest": {
                 "url": {
@@ -3208,7 +3208,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "5b348389-dc15-4fa9-ace5-2705c8f15568",
+              "id": "0d5a0b93-9dda-4ce2-aa17-0879c367e417",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -3312,7 +3312,7 @@
           },
           "response": [
             {
-              "id": "1d6a4b5d-1cae-495a-ba40-2fb347f9738e",
+              "id": "dabb434c-00a7-4ced-9f79-14fb3a2ed3cc",
               "name": "The requested flight.",
               "originalRequest": {
                 "url": {
@@ -3361,7 +3361,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "c5c4a509-e639-4ae6-8f88-ede42752cc94",
+              "id": "6a10b99b-ecdf-4f1b-ad85-dd5d5b291315",
               "name": "Flight not found.",
               "originalRequest": {
                 "url": {
@@ -3410,7 +3410,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "eee4c8ac-8c2c-4754-8da4-5e021419d3ef",
+              "id": "f52aa71c-c827-430d-946c-cd22d5ca20af",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -3520,7 +3520,7 @@
           },
           "response": [
             {
-              "id": "d3b5c7f1-a891-4c15-89b9-dd59a31df170",
+              "id": "45f16bab-7bb7-46d0-a914-00360f947aeb",
               "name": "List of journeys.",
               "originalRequest": {
                 "url": {
@@ -3576,7 +3576,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "f2aab6ab-092d-425b-a3ff-91618efe9472",
+              "id": "1b78c95e-b530-4da2-ba46-ea780d328d3b",
               "name": "Invalid value for: query parameter page, Invalid value for: query parameter pageSize",
               "originalRequest": {
                 "url": {
@@ -3632,7 +3632,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "e7ba118a-8b88-4129-80f9-e7d6d73d88b5",
+              "id": "d0f1c2fc-9f23-41cb-bd7d-0ae472fd81c9",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -3736,7 +3736,7 @@
           },
           "response": [
             {
-              "id": "d68c5f9d-6ef9-41c7-9e3d-3790c0f864c3",
+              "id": "00db190b-6b51-45c6-b0be-e97251a0c76c",
               "name": "The requested journey.",
               "originalRequest": {
                 "url": {
@@ -3785,7 +3785,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "2300beb4-ff89-45ef-80ee-5ce48fb6530a",
+              "id": "b27d0cbb-7722-44ff-b2d2-b6c6040ad649",
               "name": "Journey not found.",
               "originalRequest": {
                 "url": {
@@ -3834,7 +3834,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "1451a344-70e1-4b87-b8f5-a30757167fdb",
+              "id": "e4c327cc-3d24-4324-a5c9-c49ffd827d98",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -3890,7 +3890,7 @@
     },
     {
       "id": "70297eb0-fc04-4ca8-8b0d-1ab37b436e76",
-      "name": "E2E \u2014 Country CRUD lifecycle",
+      "name": "E2E — Country CRUD lifecycle",
       "item": [
         {
           "id": "56ed7c18-b53c-4810-b6be-6508976f5e5a",
@@ -3919,7 +3919,7 @@
               "query": [],
               "variable": []
             },
-            "description": "Creates PT \u2014 Portugal. Extracts code and Location header for subsequent steps.",
+            "description": "Creates PT — Portugal. Extracts code and Location header for subsequent steps.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"code\": \"PT\",\n  \"name\": \"Portugal\"\n}",
@@ -3941,7 +3941,7 @@
                   "pm.sendRequest({",
                   "    url: pm.environment.get('baseUrl') + '/api/v1/countries/PT',",
                   "    method: 'DELETE'",
-                  "}, (err, res) => { /* 204 or 404 \u2014 both are fine */ });"
+                  "}, (err, res) => { /* 204 or 404 — both are fine */ });"
                 ]
               }
             },
@@ -4195,11 +4195,11 @@
           "response": []
         }
       ],
-      "description": "Full create \u2192 read \u2192 update \u2192 verify \u2192 delete \u2192 verify-gone chain for the Country resource. Run steps in order; countryCode is propagated automatically via environment variables."
+      "description": "Full create → read → update → verify → delete → verify-gone chain for the Country resource. Run steps in order; countryCode is propagated automatically via environment variables."
     },
     {
       "id": "376aff52-8aa7-4067-93a1-9ccac7af3a5c",
-      "name": "E2E \u2014 Country search flow",
+      "name": "E2E — Country search flow",
       "item": [
         {
           "id": "72cf5397-d369-49aa-bcb9-730ecb7029ef",
@@ -4256,7 +4256,7 @@
         },
         {
           "id": "67a3a52e-c20e-464c-a22d-8479547c6f6b",
-          "name": "2. List countries \u2014 assert non-empty",
+          "name": "2. List countries — assert non-empty",
           "request": {
             "method": "GET",
             "header": [
@@ -4364,7 +4364,7 @@
         },
         {
           "id": "27ab1dac-6d44-461e-bc8d-71e5132de861",
-          "name": "4. Cleanup \u2014 delete country",
+          "name": "4. Cleanup — delete country",
           "request": {
             "method": "DELETE",
             "header": [
