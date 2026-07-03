@@ -63,6 +63,23 @@ final class DoobieAirportRepository(xa: Transactor[Task]) extends AirportReposit
         case Right(_)    => ZIO.succeed(airport)
       }
 
+  override def update(airport: Airport): IO[DomainError, Airport] =
+    sql"""
+      UPDATE airports SET icao_code = ${airport.icaoCode}, name = ${airport.name}, city = ${airport.city},
+        country_code = ${airport.countryCode.value}
+      WHERE iata_code = ${airport.iataCode.value}
+    """.update.run
+      .attemptSomeSqlState {
+        case sqlstate.class23.FOREIGN_KEY_VIOLATION => DomainError.CountryNotFound(airport.countryCode.value)
+      }
+      .transact(xa)
+      .orDie
+      .flatMap {
+        case Left(error) => ZIO.fail(error)
+        case Right(0L)   => ZIO.fail(DomainError.AirportNotFound(airport.iataCode.value))
+        case Right(_)    => ZIO.succeed(airport)
+      }
+
   override def delete(iata: IataCode): IO[DomainError, Unit] =
     sql"DELETE FROM airports WHERE iata_code = ${iata.value}"
       .update.run

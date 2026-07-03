@@ -1,7 +1,7 @@
 package dev.cmartin.aerohex.adapter.http.dto
 
 import dev.cmartin.aerohex.domain.model.{Airport, CountryCode, IataCode}
-import dev.cmartin.aerohex.domain.port.in.CreateAirportCommand
+import dev.cmartin.aerohex.domain.port.in.{CreateAirportCommand, UpdateAirportCommand}
 import sttp.tapir.Schema
 import sttp.tapir.Validator
 
@@ -60,6 +60,43 @@ object CreateAirportRequest {
         .validate(Validator.pattern("[a-zA-Z]{3}"))
         .encodedExample("MAD")
     )
+    .modify(_.icaoCode)(
+      _.description("4-letter ICAO airport code.")
+        .validate(Validator.minLength(4))
+        .validate(Validator.maxLength(4))
+        .validate(Validator.pattern("[a-zA-Z]{4}"))
+        .encodedExample("LEMD")
+    )
+    .modify(_.name)(
+      _.description("Full airport name.")
+        .validate(Validator.minLength(1))
+        .encodedExample("Adolfo Suárez Madrid-Barajas")
+    )
+    .modify(_.city)(
+      _.description("City served by the airport.").validate(Validator.minLength(1)).encodedExample("Madrid")
+    )
+    .modify(_.countryCode)(
+      _.description("ISO 3166-1 alpha-2 country code.")
+        .validate(Validator.minLength(2))
+        .validate(Validator.maxLength(2))
+        .validate(Validator.pattern("[a-zA-Z]{2}"))
+        .encodedExample("ES")
+    )
+}
+
+case class UpdateAirportRequest(icaoCode: String, name: String, city: String, countryCode: String)
+
+object UpdateAirportRequest {
+  def toCommand(iata: String, req: UpdateAirportRequest): UpdateAirportCommand =
+    UpdateAirportCommand(
+      iataCode = IataCode(iata),
+      icaoCode = req.icaoCode,
+      name = req.name,
+      city = req.city,
+      countryCode = CountryCode(req.countryCode)
+    )
+
+  given Schema[UpdateAirportRequest] = Schema.derived[UpdateAirportRequest]
     .modify(_.icaoCode)(
       _.description("4-letter ICAO airport code.")
         .validate(Validator.minLength(4))

@@ -28,6 +28,8 @@ object AirportServiceSpec extends ZIOSpecDefault:
       ZIO.die(new NotImplementedError("findByCountry"))
     def save(a: Airport): IO[DomainError, Airport]                                   =
       ZIO.die(new NotImplementedError("save"))
+    def update(a: Airport): IO[DomainError, Airport]                                 =
+      ZIO.die(new NotImplementedError("update"))
     def delete(iata: IataCode): IO[DomainError, Unit]                                =
       ZIO.die(new NotImplementedError("delete"))
 
@@ -61,6 +63,8 @@ object AirportServiceSpec extends ZIOSpecDefault:
                             unimplementedAirportRepo.findByCountry(c, p)
                           def save(a: Airport): IO[DomainError, Airport]                                   =
                             savedRef.set(Some(a)).as(a)
+                          def update(a: Airport): IO[DomainError, Airport]                                 =
+                            unimplementedAirportRepo.update(a)
                           def delete(iata: IataCode): IO[DomainError, Unit]                                =
                             unimplementedAirportRepo.delete(iata)
             command   =
@@ -81,6 +85,8 @@ object AirportServiceSpec extends ZIOSpecDefault:
             def findByCountry(c: CountryCode, p: Pagination): IO[DomainError, List[Airport]] =
               unimplementedAirportRepo.findByCountry(c, p)
             def save(a: Airport): IO[DomainError, Airport]                                   = unimplementedAirportRepo.save(a)
+            def update(a: Airport): IO[DomainError, Airport]                                 =
+              unimplementedAirportRepo.update(a)
             def delete(iata: IataCode): IO[DomainError, Unit]                                =
               unimplementedAirportRepo.delete(iata)
           val command = CreateAirportCommand(IataCode("MAD"), "LEMD", "Other name", "Madrid", CountryCode("ES"))
@@ -98,6 +104,8 @@ object AirportServiceSpec extends ZIOSpecDefault:
             def findByCountry(c: CountryCode, p: Pagination): IO[DomainError, List[Airport]] =
               unimplementedAirportRepo.findByCountry(c, p)
             def save(a: Airport): IO[DomainError, Airport]                                   = unimplementedAirportRepo.save(a)
+            def update(a: Airport): IO[DomainError, Airport]                                 =
+              unimplementedAirportRepo.update(a)
             def delete(iata: IataCode): IO[DomainError, Unit]                                =
               unimplementedAirportRepo.delete(iata)
           for result <- new FindAirportService(repo).findByIata("MAD")
@@ -112,6 +120,8 @@ object AirportServiceSpec extends ZIOSpecDefault:
             def findByCountry(c: CountryCode, p: Pagination): IO[DomainError, List[Airport]] =
               unimplementedAirportRepo.findByCountry(c, p)
             def save(a: Airport): IO[DomainError, Airport]                                   = unimplementedAirportRepo.save(a)
+            def update(a: Airport): IO[DomainError, Airport]                                 =
+              unimplementedAirportRepo.update(a)
             def delete(iata: IataCode): IO[DomainError, Unit]                                =
               unimplementedAirportRepo.delete(iata)
           for error <- new FindAirportService(repo).findByIata("XXX").flip
@@ -126,6 +136,8 @@ object AirportServiceSpec extends ZIOSpecDefault:
             def findByCountry(c: CountryCode, p: Pagination): IO[DomainError, List[Airport]] =
               unimplementedAirportRepo.findByCountry(c, p)
             def save(a: Airport): IO[DomainError, Airport]                                   = unimplementedAirportRepo.save(a)
+            def update(a: Airport): IO[DomainError, Airport]                                 =
+              unimplementedAirportRepo.update(a)
             def delete(iata: IataCode): IO[DomainError, Unit]                                =
               unimplementedAirportRepo.delete(iata)
           for result <- new FindAirportService(repo).findAll(Pagination(1, 20))
@@ -139,6 +151,8 @@ object AirportServiceSpec extends ZIOSpecDefault:
             def findByCountry(c: CountryCode, p: Pagination): IO[DomainError, List[Airport]] =
               unimplementedAirportRepo.findByCountry(c, p)
             def save(a: Airport): IO[DomainError, Airport]                                   = unimplementedAirportRepo.save(a)
+            def update(a: Airport): IO[DomainError, Airport]                                 =
+              unimplementedAirportRepo.update(a)
             def delete(iata: IataCode): IO[DomainError, Unit]                                =
               unimplementedAirportRepo.delete(iata)
           for result <- new FindAirportService(repo).searchByName("Madrid")
@@ -163,6 +177,8 @@ object AirportServiceSpec extends ZIOSpecDefault:
               unimplementedAirportRepo.searchByName(q)
             def findByCountry(c: CountryCode, p: Pagination): IO[DomainError, List[Airport]] = ZIO.succeed(List(madrid))
             def save(a: Airport): IO[DomainError, Airport]                                   = unimplementedAirportRepo.save(a)
+            def update(a: Airport): IO[DomainError, Airport]                                 =
+              unimplementedAirportRepo.update(a)
             def delete(iata: IataCode): IO[DomainError, Unit]                                =
               unimplementedAirportRepo.delete(iata)
           for result <- new FindAirportsByCountryService(countryRepo, airportRepo)

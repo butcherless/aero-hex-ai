@@ -1,6 +1,6 @@
 package dev.cmartin.aerohex.adapter.http.endpoint
 
-import dev.cmartin.aerohex.adapter.http.dto.{AirportDto, CreateAirportRequest}
+import dev.cmartin.aerohex.adapter.http.dto.{AirportDto, CreateAirportRequest, UpdateAirportRequest}
 import dev.cmartin.aerohex.adapter.http.error.{EndpointErrors, HttpErrorResponse}
 import sttp.model.StatusCode
 import sttp.tapir.*
@@ -19,10 +19,24 @@ object AirportEndpoints {
       .validate(Validator.maxLength(2))
       .validate(Validator.pattern("[a-zA-Z]{2}"))
 
+  // #6 shared validated path param — findByIata previously captured "iata" with no validation at all
+  private val iataParam =
+    path[String]("iata")
+      .description("3-letter IATA airport code (e.g. MAD).")
+      .validate(Validator.minLength(3))
+      .validate(Validator.maxLength(3))
+      .validate(Validator.pattern("[a-zA-Z]{3}"))
+
   private val createErrorOut: EndpointOutput[(StatusCode, HttpErrorResponse)] =
     oneOf[(StatusCode, HttpErrorResponse)](
       EndpointErrors.conflictVariant("Airport already exists."),
       EndpointErrors.notFoundVariant("Referenced country not found."),
+      EndpointErrors.unexpectedError
+    )
+
+  private val updateErrorOut: EndpointOutput[(StatusCode, HttpErrorResponse)] =
+    oneOf[(StatusCode, HttpErrorResponse)](
+      EndpointErrors.notFoundVariant("Airport not found, or referenced country not found."),
       EndpointErrors.unexpectedError
     )
 
@@ -63,7 +77,7 @@ object AirportEndpoints {
       .summary("Find airport by IATA code")
       .description("Returns a single airport identified by its 3-letter IATA code.")
       .tag("Airports")
-      .in(path[String]("iata").description("3-letter IATA airport code (e.g. MAD)."))
+      .in(iataParam)
       .out(jsonBody[AirportDto].description("The requested airport."))
       .errorOut(
         oneOf[(StatusCode, HttpErrorResponse)](
@@ -108,4 +122,14 @@ object AirportEndpoints {
           .and(header[String]("Location"))
       )
       .errorOut(createErrorOut)
+
+  val update: PublicEndpoint[(String, UpdateAirportRequest), (StatusCode, HttpErrorResponse), AirportDto, Any] =
+    base.put
+      .summary("Update airport")
+      .description("Updates an existing airport's ICAO code, name, city, and country.")
+      .tag("Airports")
+      .in(iataParam)
+      .in(jsonBody[UpdateAirportRequest])
+      .out(jsonBody[AirportDto].description("The updated airport."))
+      .errorOut(updateErrorOut)
 }

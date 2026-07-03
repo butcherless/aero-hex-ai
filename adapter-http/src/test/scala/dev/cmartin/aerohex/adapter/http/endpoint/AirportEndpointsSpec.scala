@@ -47,15 +47,25 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
   private val countryNotFoundFindByCountry: FindAirportsByCountryUseCase =
     (code: CountryCode, _: Pagination) => ZIO.fail(DomainError.CountryNotFound(code.value))
 
+  private val defaultUpdate: UpdateAirportUseCase =
+    (cmd: UpdateAirportCommand) => ZIO.succeed(madrid.copy(name = cmd.name))
+
+  private val notFoundUpdate: UpdateAirportUseCase =
+    (cmd: UpdateAirportCommand) => ZIO.fail(DomainError.AirportNotFound(cmd.iataCode.value))
+
+  private val countryNotFoundUpdate: UpdateAirportUseCase =
+    (cmd: UpdateAirportCommand) => ZIO.fail(DomainError.CountryNotFound(cmd.countryCode.value))
+
   // ── Backend factory ────────────────────────────────────────────────────────
 
   private def makeBackend(
       find: FindAirportUseCase = defaultFind,
       create: CreateAirportUseCase = defaultCreate,
-      findByCountry: FindAirportsByCountryUseCase = defaultFindByCountry
+      findByCountry: FindAirportsByCountryUseCase = defaultFindByCountry,
+      update: UpdateAirportUseCase = defaultUpdate
   ): Backend[Task] =
     TapirStubInterpreter(BackendStub(new RIOMonadAsyncError[Any]))
-      .whenServerEndpointsRunLogic(new AirportRoutes(find, create, findByCountry).serverEndpoints)
+      .whenServerEndpointsRunLogic(new AirportRoutes(find, create, findByCountry, update).serverEndpoints)
       .backend()
 
   // ── Spec ──────────────────────────────────────────────────────────────────
@@ -130,6 +140,69 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
                           .get(uri"https://test.com/api/v1/airports/XXX")
                           .send(makeBackend(find = notFoundFind))
           yield assertTrue(response.code == StatusCode.NotFound)
+        },
+        test("returns 400 when the iata code is not exactly 3 letters") {
+          for
+            response <- basicRequest.get(uri"https://test.com/api/v1/airports/MA").send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        }
+      ),
+      suite("PUT /api/v1/airports/{iata}")(
+        test("returns 200 with the updated airport") {
+          for
+            response <-
+              basicRequest
+                .put(uri"https://test.com/api/v1/airports/MAD")
+                .body(
+                  """{"icaoCode":"LEMD","name":"Madrid-Barajas Adolfo Suárez","city":"Madrid","countryCode":"ES"}"""
+                )
+                .contentType("application/json")
+                .send(makeBackend())
+            airport   = decode[AirportDto](response.body.merge).toOption
+          yield assertTrue(
+            response.code == StatusCode.Ok,
+            airport.exists(_.name == "Madrid-Barajas Adolfo Suárez")
+          )
+        },
+        test("returns 404 when the airport does not exist") {
+          for
+            response <-
+              basicRequest
+                .put(uri"https://test.com/api/v1/airports/XXX")
+                .body("""{"icaoCode":"LEMD","name":"Nowhere","city":"Nowhere","countryCode":"ES"}""")
+                .contentType("application/json")
+                .send(makeBackend(update = notFoundUpdate))
+          yield assertTrue(response.code == StatusCode.NotFound)
+        },
+        test("returns 404 when the referenced country does not exist") {
+          for
+            response <-
+              basicRequest
+                .put(uri"https://test.com/api/v1/airports/MAD")
+                .body("""{"icaoCode":"LEMD","name":"Madrid","city":"Madrid","countryCode":"XX"}""")
+                .contentType("application/json")
+                .send(makeBackend(update = countryNotFoundUpdate))
+          yield assertTrue(response.code == StatusCode.NotFound)
+        },
+        test("returns 400 when the iata code is not exactly 3 letters") {
+          for
+            response <-
+              basicRequest
+                .put(uri"https://test.com/api/v1/airports/MA")
+                .body("""{"icaoCode":"LEMD","name":"Madrid","city":"Madrid","countryCode":"ES"}""")
+                .contentType("application/json")
+                .send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        },
+        test("returns 400 when the request body is invalid") {
+          for
+            response <-
+              basicRequest
+                .put(uri"https://test.com/api/v1/airports/MAD")
+                .body("""{"icaoCode":"L","name":"Madrid","city":"Madrid","countryCode":"ES"}""")
+                .contentType("application/json")
+                .send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
         }
       ),
       suite("POST /api/v1/airports")(
@@ -205,7 +278,7 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
         }
       ),
       suite("AirportRoutes.layer")(
-        test("wires all three use cases into the route list") {
+        test("wires all four use cases into the route list") {
           for
             endpointCount <- ZIO
                                .serviceWith[AirportRoutes](_.serverEndpoints.size)
@@ -213,9 +286,10 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
                                  ZLayer.succeed(defaultFind),
                                  ZLayer.succeed(defaultCreate),
                                  ZLayer.succeed(defaultFindByCountry),
+                                 ZLayer.succeed(defaultUpdate),
                                  AirportRoutes.layer
                                )
-          yield assertTrue(endpointCount == 5)
+          yield assertTrue(endpointCount == 6)
         }
       )
     )
