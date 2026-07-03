@@ -35,7 +35,11 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 ## Versioning policy
 
 - **Scala** — LTS only (3.3.x). Never upgrade to a non-LTS minor. The `scala3-library` 3.8.x entry in `dependencyUpdates` is the SBT meta-build; ignore it.
-- **Direct deps** — stable GA only (no `-RC`, `-M`, `-SNAPSHOT`). Exception: Doobie 1.x has no stable release yet; stay on the latest RC.
+- **Direct deps** — stable GA (release) versions by default. A dependency intentionally pinned to
+  a pre-release is a named exclusion, not a default state — currently just Doobie 1.x, which has
+  no GA release yet. Exclusions are left untouched: don't chase a newer RC/M/SNAPSHOT for an
+  excluded dep just because one exists — that's a deliberate call to make outside the routine bump
+  cycle, once a GA release (or a specific new capability) makes it worth revisiting.
 - **Transitive deps** — let SBT resolve via eviction; only force an override for a known vulnerability or binary-incompatibility.
 - **Updates** — run `dependencyUpdates` before each feature cycle. Patch/minor updates are free; major bumps need migration-guide review and passing compile + tests.
 
