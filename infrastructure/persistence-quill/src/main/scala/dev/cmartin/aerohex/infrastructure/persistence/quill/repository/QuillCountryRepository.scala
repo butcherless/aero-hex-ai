@@ -8,9 +8,12 @@ import io.getquill.*
 import io.getquill.jdbczio.Quill
 import zio.{IO, UIO, URLayer, ZIO, ZLayer}
 
+import java.sql.SQLException
 import javax.sql.DataSource
 
 final class QuillCountryRepository(dataSource: DataSource) extends CountryRepository {
+
+  private val uniqueViolationSqlState = "23505"
 
   private case class CountryRow(code: String, name: String)
 
@@ -60,11 +63,13 @@ final class QuillCountryRepository(dataSource: DataSource) extends CountryReposi
     val name = country.name
     ctx
       .run(quote {
-        infix"""INSERT INTO countries (code, name) VALUES (${lift(code)}, ${lift(name)})
-                ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name""".as[Action[CountryRow]]
+        querySchema[CountryRow]("countries").insert(_.code -> lift(code), _.name -> lift(name))
       })
       .as(country)
-      .orDie
+      .refineOrDie {
+        case e: SQLException if e.getSQLState == uniqueViolationSqlState =>
+          DomainError.CountryAlreadyExists(code)
+      }
   }
 
   override def update(country: Country): IO[DomainError, Country] =
