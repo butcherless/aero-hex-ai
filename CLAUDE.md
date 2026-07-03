@@ -29,22 +29,8 @@ Do not report the work as done until both succeed.
 
 ## Running the application
 
-Start local infrastructure first:
-
-```bash
-docker compose up -d
-```
-
-Build and run as fat JAR (`java -jar` runs the spec generator, not the server):
-
-```bash
-pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/null || true
-sbt ";clean;bootstrap/assembly"
-JAR=$(find target/out -name "bootstrap-assembly-*.jar" | sort | tail -1)
-java -cp "$JAR" dev.cmartin.aerohex.bootstrap.Main
-```
-
-Verify: `curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/docs/docs.yaml` → `200`
+See [README.md](./README.md#running-locally) for the standard steps. Before restarting, kill any
+previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/null || true`
 
 ## Versioning policy
 
@@ -65,7 +51,7 @@ Verify: `curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/docs/docs.
 | Persistence | Doobie + zio-interop-cats | 1.0.0-RC9 / 23.1.0.13 |
 | Persistence (POC) | Quill | 4.8.6 |
 | Messaging | ZIO Kafka | 3.6.0 |
-| Migrations | Flyway | 12.9.0 |
+| Migrations | Flyway | 12.10.0 |
 | Database | PostgreSQL JDBC | 42.7.12 |
 | JSON | Circe | 0.14.16 |
 | Logging | ZIO Logging + SLF4J + Logback | 2.5.3 / 1.5.37 |
@@ -76,12 +62,12 @@ Verify: `curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/docs/docs.
 shared-kernel
     └── domain
             ├── application
-            ├── persistence-postgres   (infrastructure)
-            ├── persistence-quill      (infrastructure — Quill POC)
-            ├── messaging-kafka        (infrastructure)
+            ├── persistence-postgres   (infrastructure — not wired into bootstrap)
+            ├── persistence-quill      (infrastructure — wired into bootstrap; CountryRepository only)
+            ├── messaging-kafka        (infrastructure — not wired into bootstrap)
             └── adapter-http
-                        └── bootstrap  (composition root)
-                migration              (standalone — SQL + Flyway only)
+                        └── bootstrap  (composition root: domain + application + adapter-http + persistence-quill)
+                migration              (standalone — SQL + Flyway only; not wired into bootstrap)
 ```
 
 Rule: inner modules never depend on outer ones. `domain` has zero framework dependencies.
@@ -89,18 +75,18 @@ Rule: inner modules never depend on outer ones. `domain` has zero framework depe
 ## Hexagonal layer conventions
 
 - **`domain/`** — pure logic, no I/O, no framework imports. Opaque types for identifiers. Ports are plain Scala traits.
-  - `model/` — Country, Airport, Airline, Route, OutboxEvent
+  - `model/` — Country, Airport, Airline, Route, Aircraft, Flight, Journey, OutboxEvent
   - `error/DomainError.scala` — sealed error hierarchy
   - `service/` — pure domain services (RouteValidator)
   - `port/in/` — driving ports / use-case interfaces
   - `port/out/` — driven ports / repository + publisher interfaces
 - **`application/`** — orchestrates ports, implements `port/in`. Each service has a companion `ZLayer`.
-- **`persistence-postgres/`** — Doobie implementations of `port/out` repositories.
-- **`persistence-quill/`** — Quill POC implementation of `CountryRepository`. Not wired into bootstrap.
-- **`messaging-kafka/`** — ZIO Kafka producer and outbox relay.
-- **`migration/`** — Flyway SQL migrations; no domain dependency.
+- **`persistence-postgres/`** — Doobie implementations of `port/out` repositories. Not wired into bootstrap (`bootstrap` does not depend on this module).
+- **`persistence-quill/`** — Quill implementation of `CountryRepository`; wired into bootstrap via `WiringModule` (the only real persistence backing the API — every other repository is an in-memory stub).
+- **`messaging-kafka/`** — ZIO Kafka producer and outbox relay. Not wired into bootstrap.
+- **`migration/`** — Flyway SQL migrations; no domain dependency. Not invoked by `Main` yet — `FlywayMigration.layer` exists but is unreferenced.
 - **`adapter-http/`** — Tapir endpoint definitions + ZIO HTTP server. DTOs live here; `ErrorMapper` maps `DomainError` → HTTP status.
-- **`bootstrap/`** — sole composition root. `WiringModule` wires all `ZLayer`s. `Main` runs migration then starts HTTP server + outbox relay concurrently.
+- **`bootstrap/`** — sole composition root. `WiringModule` wires all `ZLayer`s. `Main` only starts the HTTP server (`WiringModule.appLayer`) — no migration step, no outbox relay.
 - **`shared-kernel/`** — cross-cutting value types (`Pagination`, `NonEmptyString`).
 
 ## Key patterns
@@ -120,26 +106,20 @@ object DoobieAirportRepository:
 
 **`UIO` for infallible queries** — `findAll`/`searchByName` return `UIO[List[A]]`; no `.mapError` needed in routes.
 
-**Tapir endpoints** — each endpoint is converted individually via `.zServerLogic` to avoid union-type inference issues:
-```scala
-ZioHttpInterpreter().toHttp(myEndpoint.zServerLogic(...))  // one at a time
-```
-`toHttp` returns `Routes[Any, Response]`; seal with `.handleError(identity)` before `Server.serve`.
+**Tapir endpoints** — each `XxxRoutes` class converts its own endpoints via `.zServerLogic`, producing a `List[ZServerEndpoint[Any, Any]]`; all resources' lists are concatenated and passed to one `ZioHttpInterpreter().toHttp(...)` call together with the Swagger endpoints. `toHttp` returns `Routes[Any, Response]`; seal with `.handleError(identity)` before `Server.serve`.
 
-**Outbox pattern** — `CreateRouteService` writes to `outbox_events`. `OutboxRelay` polls every 5 s, publishes to Kafka, and marks events published.
+**Outbox pattern (partial)** — `OutboxEvent`/`OutboxRepository`/`EventPublisher` ports and `OutboxRelay` (polls every 5 s, publishes to Kafka, marks events published) exist in `messaging-kafka`, but `CreateRouteService` does not yet write to `outbox_events`, and `OutboxRelay` is not wired into `Main`.
 
 **`ZIOAspect` vs `@@`** — `@@` widens the error type to `Any`; call `.apply()` directly on the aspect to preserve `UIO` / specific error types.
 
-## Pending implementations (`???`)
+## Pending implementations
 
-These compile but throw `NotImplementedError` at runtime:
-
-| File | Missing |
+| File | Status |
 |---|---|
-| `PostgresConfig.transactorLayer` | `HikariTransactor` as a ZIO scoped resource |
-| `RouteEventCodec.routeCreatedSerde` | ZIO Kafka 3.x `Serde` with Circe JSON |
-| `RouteEventProducer.publish` | `Producer.produce` call |
-| `WiringModule.appLayer` | wires through the `???` transactor |
+| `PostgresConfig.transactorLayer` | `???` — needs `HikariTransactor` as a ZIO scoped resource |
+| `RouteEventCodec.routeCreatedSerde` | `???` — needs ZIO Kafka 3.x `Serde` with Circe JSON |
+| `RouteEventProducer.publish` | compiles, but only logs the event — doesn't call `Producer.produce` |
+| `WiringModule.appLayer` | compiles; wires Quill `CountryRepository` + in-memory stubs only, bypassing `persistence-postgres` |
 
 ## Database schema
 
@@ -211,14 +191,14 @@ sbt adapterHttp/coverageReport
 sbt compile
 sbt "adapterHttp/testOnly *"   # repeat per module with tests
 sbt coverageAggregate
-# → target/out/jvm/scala-3.3.8/aviation-hexagonal/scoverage-report/index.html
+# → target/out/jvm/scala-3.3.8/aero-hex-ai/scoverage-report/index.html
 ```
 
 **CAS caveat:** when `sbt compile` hits the content-addressed cache, it does not write local `.coverage-data/` dirs. The Scala 3 coverage `Invoker` then throws `ExceptionInInitializerError` at test runtime. Fix: `mkdir -p <module>/.coverage-data/scoverage-data` for every module before running `testOnly`. The CI workflow does this explicitly.
 
 ## Formatter
 
-`.scalafmt.conf`: `maxColumn = 120`, `align.preset = most`, `newlines.source = keep`, `lineEndings = preserve`, `rewrite.scala3.removeOptionalBraces = false`, `project.git = true` (only git-tracked files formatted; run `sbt scalafmtAll` for new files).
+`.scalafmt.conf`: `maxColumn = 120`, `align.preset = most`, `newlines.source = keep`, `lineEndings = preserve`, `rewrite.scala3.removeOptionalBraces = no`, `project.git = true` (only git-tracked files formatted; run `sbt scalafmtAll` for new files).
 
 ## Documentation sources
 

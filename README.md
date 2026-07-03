@@ -1,22 +1,56 @@
 # Aviation Hexagonal
 
-## Goal
+[![Scala CI](https://github.com/butcherless/aero-hex-ai/actions/workflows/scala.yml/badge.svg)](https://github.com/butcherless/aero-hex-ai/actions/workflows/scala.yml)
 
-Build a Scala multi-module application from scratch using Hexagonal Architecture.
+A Scala 3 / ZIO multi-module application built from scratch to demonstrate **Hexagonal Architecture**
+(ports & adapters). The domain models a small slice of the aviation world — **Country → Airport →
+Airline → Route** — with a Kafka outbox pattern for domain events still being wired in.
 
-## Technical requirements
+## Tech stack
 
-- Scala 3 latest LTS version
-- Hexagonal architecture
-- SBT 2 latest version Multi module project
-- Functional programming using ZIO latest version library as a functional effect
-- Domain, Application, Infrastructure layers
-- Additional modules to separate technologies and avoid coupling
-- Persistence via relational database, PostgreSQL
-- Messaging via Kafka for Event Streaming
+- **Scala 3** (LTS) + **SBT 2** multi-module build
+- **ZIO** for functional effects, **ZIO HTTP** for the server, **Tapir** for endpoint definitions
+  and code-first OpenAPI generation
+- **Quill** over **PostgreSQL** persists `Country` (the only repository wired to a real database
+  so far); Doobie + Flyway migrations exist in code but aren't wired into the running app yet
+- **ZIO Kafka** outbox relay exists but isn't wired in yet
+- **Circe** for JSON, **ZIO Logging** (SLF4J/Logback) for logging
 
-## Initial notes
+See [CLAUDE.md](./CLAUDE.md) for the full module dependency graph, wiring status, and
+per-dependency versions.
 
-a. Initial domain concepts:
+## Running locally
 
-Country, Airport, Airline, Route
+Start Postgres and Kafka:
+
+```bash
+docker compose up -d
+```
+
+Build and run the server as a fat JAR (`java -jar` runs the OpenAPI spec generator instead —
+use `java -cp` to start the server):
+
+```bash
+sbt ";clean;bootstrap/assembly"
+JAR=$(find target/out -name "bootstrap-assembly-*.jar" | sort | tail -1)
+java -cp "$JAR" dev.cmartin.aerohex.bootstrap.Main
+```
+
+Verify it's up:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/docs/docs.yaml   # → 200
+```
+
+Swagger UI is served at `http://localhost:8080/docs`.
+
+## API status
+
+Only **Countries** is fully implemented end-to-end (CRUD + search); Airports, Airlines,
+Aircraft, Flights, Journeys, and Route creation are stubbed. See [CLAUDE.md](./CLAUDE.md#rest-api)
+for the per-endpoint status table.
+
+## Development
+
+See [CLAUDE.md](./CLAUDE.md#build-commands) for build/test/coverage commands, versioning
+policy, and architectural conventions.
