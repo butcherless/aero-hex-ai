@@ -15,15 +15,18 @@ class CountryRoutes(
     deleteSvc: DeleteCountryUseCase
 ):
   val serverEndpoints: List[ZServerEndpoint[Any, Any]] = List(
-    CountryEndpoints.findAll.zServerLogic { (page, pageSize) =>
-      findSvc
-        .findAll(Pagination(page, pageSize))
-        .map(_.map(CountryDto.fromDomain))
-    },
-    CountryEndpoints.searchByName.zServerLogic { q =>
-      findSvc
-        .searchByName(q)
-        .map(_.map(CountryDto.fromDomain))
+    CountryEndpoints.findAll.zServerLogic { (name, page, pageSize) =>
+      val pagination = Pagination(page, pageSize)
+      name match
+        case Some(query) =>
+          findSvc
+            .searchByName(query)
+            .map(_.slice(pagination.offset, pagination.offset + pagination.pageSize))
+            .map(_.map(CountryDto.fromDomain))
+        case None        =>
+          findSvc
+            .findAll(pagination)
+            .map(_.map(CountryDto.fromDomain))
     },
     CountryEndpoints.findByCode.zServerLogic { code =>
       findSvc

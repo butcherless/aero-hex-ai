@@ -17,11 +17,11 @@ final class CreateRouteService(
     for {
       origin      <- resolveAirport(command.originIata)
       destination <- resolveAirport(command.destinationIata)
-      _           <- RouteValidator.validate(origin.iata, destination.iata, command.distanceKm)
+      _           <- RouteValidator.validate(origin.iataCode, destination.iataCode, command.distanceKm)
       route        = Route(
                        id = RouteId.generate,
-                       origin = origin.iata,
-                       destination = destination.iata,
+                       origin = origin.iataCode,
+                       destination = destination.iataCode,
                        airlineIcao = IcaoCode(command.airlineIcao),
                        distanceKm = command.distanceKm
                      )

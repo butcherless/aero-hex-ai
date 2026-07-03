@@ -161,7 +161,7 @@ lazy val adapterHttp = project
 
 lazy val bootstrap = project
   .in(file("bootstrap"))
-  .dependsOn(domain, application, adapterHttp, persistenceQuill)
+  .dependsOn(domain, application, adapterHttp, persistenceQuill, persistencePostgres)
   .settings(
     name := "bootstrap",
     libraryDependencies ++= Seq(

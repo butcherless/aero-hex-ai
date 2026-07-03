@@ -8,7 +8,7 @@ object IataCode {
 }
 
 case class Airport(
-    iata: IataCode,
+    iataCode: IataCode,
     icaoCode: String,
     name: String,
     city: String,

@@ -1,0 +1,1 @@
+ALTER TABLE airports ADD COLUMN icao_code VARCHAR(4) NOT NULL;

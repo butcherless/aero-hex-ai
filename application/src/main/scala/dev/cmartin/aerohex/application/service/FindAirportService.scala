@@ -18,6 +18,9 @@ final class FindAirportService(repo: AirportRepository) extends FindAirportUseCa
 
   override def findAll(pagination: Pagination): IO[DomainError, List[Airport]] =
     repo.findAll(pagination)
+
+  override def searchByName(query: String): IO[DomainError, List[Airport]] =
+    repo.searchByName(query)
 }
 
 object FindAirportService {

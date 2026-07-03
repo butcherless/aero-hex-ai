@@ -12,7 +12,7 @@ import sttp.client4.impl.zio.RIOMonadAsyncError
 import sttp.client4.testing.BackendStub
 import sttp.model.StatusCode
 import sttp.tapir.server.stub4.TapirStubInterpreter
-import zio.{IO, Scope, Task, UIO, ZIO}
+import zio.{IO, Scope, Task, UIO, ZIO, ZLayer}
 import zio.test.*
 
 object CountryEndpointsSpec extends ZIOSpecDefault:
@@ -90,20 +90,22 @@ object CountryEndpointsSpec extends ZIOSpecDefault:
                           .get(uri"https://test.com/api/v1/countries?page=notanumber")
                           .send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
-        }
-      ),
-      suite("GET /api/v1/countries/search")(
-        test("returns 200 with matching countries") {
-          for
-            response <- basicRequest
-                          .get(uri"https://test.com/api/v1/countries/search?q=Spa")
-                          .send(makeBackend())
-          yield assertTrue(response.code == StatusCode.Ok)
         },
-        test("returns 400 when query is shorter than 3 characters") {
+        test("returns 200 with matching countries when name is provided") {
           for
             response <- basicRequest
-                          .get(uri"https://test.com/api/v1/countries/search?q=ab")
+                          .get(uri"https://test.com/api/v1/countries?name=Spa")
+                          .send(makeBackend())
+            countries = decode[List[CountryDto]](response.body.merge).getOrElse(Nil)
+          yield assertTrue(
+            response.code == StatusCode.Ok,
+            countries.map(_.code) == List("ES")
+          )
+        },
+        test("returns 400 when name is shorter than 3 characters") {
+          for
+            response <- basicRequest
+                          .get(uri"https://test.com/api/v1/countries?name=ab")
                           .send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         }
@@ -213,6 +215,21 @@ object CountryEndpointsSpec extends ZIOSpecDefault:
           for
             response <- basicRequest.delete(uri"https://test.com/api/v1/countries/X").send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
+        }
+      ),
+      suite("CountryRoutes.layer")(
+        test("wires all four use cases into the route list") {
+          for
+            endpointCount <- ZIO
+                               .serviceWith[CountryRoutes](_.serverEndpoints.size)
+                               .provide(
+                                 ZLayer.succeed(defaultFind),
+                                 ZLayer.succeed(defaultCreate),
+                                 ZLayer.succeed(defaultUpdate),
+                                 ZLayer.succeed(defaultDelete),
+                                 CountryRoutes.layer
+                               )
+          yield assertTrue(endpointCount == 5)
         }
       )
     )

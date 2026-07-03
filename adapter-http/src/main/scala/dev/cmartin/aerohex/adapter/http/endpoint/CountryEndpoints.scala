@@ -32,11 +32,23 @@ object CountryEndpoints {
     )
 
   // #5 oneOf with single default variant makes the error contract explicit in the OpenAPI spec
-  val findAll: PublicEndpoint[(Int, Int), (StatusCode, HttpErrorResponse), List[CountryDto], Any] =
+  // #6 `name` unifies the former dedicated /search endpoint into this collection endpoint as an
+  // optional filter — REST best practice treats filtering as a query on the collection resource
+  // rather than a separate path.
+  val findAll: PublicEndpoint[(Option[String], Int, Int), (StatusCode, HttpErrorResponse), List[CountryDto], Any] =
     base.get
-      .summary("List countries")
-      .description("Returns a paginated list of all countries.")
+      .summary("List or search countries")
+      .description(
+        "Returns a paginated list of countries. If `name` is provided, filters to countries whose " +
+          "name contains the given string (case-insensitive, minimum 3 characters)."
+      )
       .tag("Countries")
+      .in(
+        query[Option[String]]("name")
+          .description("Optional name fragment to filter by (minimum 3 characters).")
+          .validateOption(Validator.minLength(3))
+          .example(Some("rep"))
+      )
       .in(query[Int]("page").description("Page number (1-based).").default(1).validate(Validator.min(1)))
       .in(
         query[Int]("pageSize")
@@ -45,32 +57,9 @@ object CountryEndpoints {
           .validate(Validator.min(1))
           .validate(Validator.max(100))
       )
-      .out(jsonBody[List[CountryDto]].description("List of countries."))
-      .errorOut(
-        oneOf[(StatusCode, HttpErrorResponse)](
-          EndpointErrors.badRequestVariant("Invalid pagination parameters."),
-          EndpointErrors.unexpectedError
-        )
-      )
-
-  // #5 badRequestVariant declared because Tapir schema validation on `q` can emit 400
-  val searchByName: PublicEndpoint[String, (StatusCode, HttpErrorResponse), List[CountryDto], Any] =
-    base.get
-      .summary("Search countries by name")
-      .description(
-        "Returns all countries whose name contains the given query string (case-insensitive). Query must be at least 3 characters."
-      )
-      .tag("Countries")
-      .in("search")
-      .in(
-        query[String]("q")
-          .description("Name fragment to search for (minimum 3 characters).")
-          .validate(Validator.minLength(3))
-          .example("rep")
-      )
       .out(
         jsonBody[List[CountryDto]]
-          .description("Matching countries.")
+          .description("List of countries.")
           .example(
             List(
               CountryDto("CZ", "Czech Republic"),
@@ -81,7 +70,7 @@ object CountryEndpoints {
       )
       .errorOut(
         oneOf[(StatusCode, HttpErrorResponse)](
-          EndpointErrors.badRequestVariant("Invalid search query."),
+          EndpointErrors.badRequestVariant("Invalid query parameters."),
           EndpointErrors.unexpectedError
         )
       )

@@ -1,7 +1,10 @@
 package dev.cmartin.aerohex.infrastructure.persistence.postgres.config
 
+import com.zaxxer.hikari.HikariConfig
+import doobie.hikari.HikariTransactor
 import doobie.util.transactor.Transactor
-import zio.{Task, TaskLayer}
+import zio.interop.catz.*
+import zio.{Task, TaskLayer, ZLayer}
 
 case class PostgresConfig(
     url: String,
@@ -19,6 +22,14 @@ object PostgresConfig {
     maxPoolSize = 10
   )
 
-  // TODO: wire up HikariTransactor with proper ZIO scoped resource
-  val transactorLayer: TaskLayer[Transactor[Task]] = ???
+  val transactorLayer: TaskLayer[Transactor[Task]] = ZLayer.scoped {
+    val hikariConfig = new HikariConfig()
+    hikariConfig.setDriverClassName("org.postgresql.Driver")
+    hikariConfig.setJdbcUrl(default.url)
+    hikariConfig.setUsername(default.user)
+    hikariConfig.setPassword(default.password)
+    hikariConfig.setMaximumPoolSize(default.maxPoolSize)
+
+    HikariTransactor.fromHikariConfig[Task](hikariConfig).toScopedZIO
+  }
 }

@@ -46,9 +46,9 @@ Swagger UI is served at `http://localhost:8080/docs`.
 
 ## API status
 
-Only **Countries** is fully implemented end-to-end (CRUD + search); Airports, Airlines,
-Aircraft, Flights, Journeys, and Route creation are stubbed. See [CLAUDE.md](./CLAUDE.md#rest-api)
-for the per-endpoint status table.
+**Countries** (CRUD + search) and **Airports** (list, search, find, create, list-by-country) are
+implemented end-to-end against real Postgres; Airlines, Aircraft, Flights, Journeys, and Route
+creation are stubbed. See [CLAUDE.md](./CLAUDE.md#rest-api) for the per-endpoint status table.
 
 ## Development
 

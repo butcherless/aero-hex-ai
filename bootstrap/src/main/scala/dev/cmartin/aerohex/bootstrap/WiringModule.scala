@@ -6,25 +6,22 @@ import dev.cmartin.aerohex.application.service.*
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.model.*
 import dev.cmartin.aerohex.domain.port.out.*
+import dev.cmartin.aerohex.infrastructure.persistence.postgres.config.PostgresConfig
+import dev.cmartin.aerohex.infrastructure.persistence.postgres.repository.DoobieAirportRepository
 import dev.cmartin.aerohex.infrastructure.persistence.quill.config.QuillDataSourceLayer
 import dev.cmartin.aerohex.infrastructure.persistence.quill.repository.QuillCountryRepository
 import dev.cmartin.aerohex.shared.Pagination
 import zio.*
 
-// CountryRepository is wired to Postgres via Quill (POC).
-// All other repositories use in-memory stubs.
+// CountryRepository is wired to Postgres via Quill (POC); AirportRepository is wired to
+// Postgres via Doobie. All other repositories use in-memory stubs.
 object WiringModule {
 
   private val countryRepoLayer: TaskLayer[CountryRepository] =
     QuillDataSourceLayer.live >>> QuillCountryRepository.layer
 
-  private val airportRepoLayer: ULayer[AirportRepository] = ZLayer.succeed(
-    new AirportRepository:
-      def findByIata(iata: IataCode): IO[DomainError, Option[Airport]] = ZIO.none
-      def findAll(p: Pagination): IO[DomainError, List[Airport]]       = ZIO.succeed(Nil)
-      def save(a: Airport): IO[DomainError, Airport]                   = ZIO.succeed(a)
-      def delete(iata: IataCode): IO[DomainError, Unit]                = ZIO.unit
-  )
+  private val airportRepoLayer: TaskLayer[AirportRepository] =
+    PostgresConfig.transactorLayer >>> DoobieAirportRepository.layer
 
   private val airlineRepoLayer: ULayer[AirlineRepository] = ZLayer.succeed(
     new AirlineRepository:
@@ -71,9 +68,13 @@ object WiringModule {
     (countryRepoLayer >>> UpdateCountryService.layer) ++
     (countryRepoLayer >>> DeleteCountryService.layer)
 
+  private val airportUseCaseLayers = (airportRepoLayer >>> FindAirportService.layer) ++
+    (airportRepoLayer >>> CreateAirportService.layer) ++
+    ((airportRepoLayer ++ countryRepoLayer) >>> FindAirportsByCountryService.layer)
+
   val appLayer: TaskLayer[HttpServer.AppRoutes] =
     (countryUseCaseLayers >>> CountryRoutes.layer) ++
-      (airportRepoLayer >>> FindAirportService.layer >>> AirportRoutes.layer) ++
+      (airportUseCaseLayers >>> AirportRoutes.layer) ++
       (airlineRepoLayer >>> FindAirlineService.layer >>> AirlineRoutes.layer) ++
       ((airportRepoLayer ++ routeRepoLayer) >>> CreateRouteService.layer >>> RouteRoutes.layer) ++
       (aircraftRepoLayer >>> FindAircraftService.layer >>> AircraftRoutes.layer) ++

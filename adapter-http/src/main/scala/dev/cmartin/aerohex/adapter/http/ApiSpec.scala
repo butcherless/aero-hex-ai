@@ -27,13 +27,15 @@ object ApiSpec:
 
   val allEndpoints: List[AnyEndpoint] = List(
     CountryEndpoints.findAll,
-    CountryEndpoints.searchByName,
     CountryEndpoints.findByCode,
     CountryEndpoints.create,
     CountryEndpoints.update,
     CountryEndpoints.delete,
     AirportEndpoints.findAll,
+    AirportEndpoints.searchByName,
     AirportEndpoints.findByIata,
+    AirportEndpoints.create,
+    AirportEndpoints.findByCountry,
     AirlineEndpoints.findAll,
     AirlineEndpoints.findByIcao,
     RouteEndpoints.create,

@@ -66,11 +66,11 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 shared-kernel
     └── domain
             ├── application
-            ├── persistence-postgres   (infrastructure — not wired into bootstrap)
+            ├── persistence-postgres   (infrastructure — wired into bootstrap; AirportRepository only)
             ├── persistence-quill      (infrastructure — wired into bootstrap; CountryRepository only)
             ├── messaging-kafka        (infrastructure — not wired into bootstrap)
             └── adapter-http
-                        └── bootstrap  (composition root: domain + application + adapter-http + persistence-quill)
+                        └── bootstrap  (composition root: domain + application + adapter-http + persistence-quill + persistence-postgres)
                 migration              (standalone — SQL + Flyway only; not wired into bootstrap)
 ```
 
@@ -85,8 +85,8 @@ Rule: inner modules never depend on outer ones. `domain` has zero framework depe
   - `port/in/` — driving ports / use-case interfaces
   - `port/out/` — driven ports / repository + publisher interfaces
 - **`application/`** — orchestrates ports, implements `port/in`. Each service has a companion `ZLayer`.
-- **`persistence-postgres/`** — Doobie implementations of `port/out` repositories. Not wired into bootstrap (`bootstrap` does not depend on this module).
-- **`persistence-quill/`** — Quill implementation of `CountryRepository`; wired into bootstrap via `WiringModule` (the only real persistence backing the API — every other repository is an in-memory stub).
+- **`persistence-postgres/`** — Doobie implementations of `port/out` repositories. `DoobieAirportRepository` is wired into bootstrap via `WiringModule` (backed by `PostgresConfig.transactorLayer`, a scoped `HikariTransactor`); the other repositories in this module (Country, Airline, Route, Outbox) exist but aren't wired.
+- **`persistence-quill/`** — Quill implementation of `CountryRepository`; wired into bootstrap via `WiringModule`. Country and Airport are the only resources backed by real persistence — every other repository is an in-memory stub.
 - **`messaging-kafka/`** — ZIO Kafka producer and outbox relay. Not wired into bootstrap.
 - **`migration/`** — Flyway SQL migrations; no domain dependency. Not invoked by `Main` yet — `FlywayMigration.layer` exists but is unreferenced.
 - **`adapter-http/`** — Tapir endpoint definitions + ZIO HTTP server. DTOs live here; `ErrorMapper` maps `DomainError` → HTTP status.
@@ -97,8 +97,8 @@ Rule: inner modules never depend on outer ones. `domain` has zero framework depe
 
 **Opaque types** — use `.value` to unwrap:
 ```scala
-IataCode("MAD")       // construct
-airport.iata.value    // unwrap to String
+IataCode("MAD")           // construct
+airport.iataCode.value    // unwrap to String
 ```
 
 **ZLayer wiring** — every infrastructure class exposes a companion `val layer`:
@@ -120,10 +120,9 @@ object DoobieAirportRepository:
 
 | File | Status |
 |---|---|
-| `PostgresConfig.transactorLayer` | `???` — needs `HikariTransactor` as a ZIO scoped resource |
 | `RouteEventCodec.routeCreatedSerde` | `???` — needs ZIO Kafka 3.x `Serde` with Circe JSON |
 | `RouteEventProducer.publish` | compiles, but only logs the event — doesn't call `Producer.produce` |
-| `WiringModule.appLayer` | compiles; wires Quill `CountryRepository` + in-memory stubs only, bypassing `persistence-postgres` |
+| `WiringModule.appLayer` | wires Quill `CountryRepository`, Doobie `AirportRepository`, and in-memory stubs for everything else |
 
 ## Database schema
 
@@ -135,7 +134,15 @@ V2 — airports      (PK: iata_code VARCHAR(3), FK → countries)
 V3 — airlines      (PK: icao_code VARCHAR(3), FK → countries)
 V4 — routes        (PK: UUID, FK → airports × 2 + airlines; UNIQUE origin+dest+airline)
 V5 — outbox_events (PK: UUID, JSONB payload, published BOOLEAN, partial index on unpublished)
+V6 — airports      adds icao_code VARCHAR(4) NOT NULL — V2 never had this column even though
+                    the Airport domain model/DTO/DoobieAirportRepository always required it;
+                    caught only once persistence-postgres was actually wired into bootstrap.
 ```
+
+**Flyway is not actually invoked anywhere yet** (`FlywayMigration.layer` is unreferenced by `Main`) —
+the local dev database's schema was applied by hand, and there is no `flyway_schema_history` table.
+Until a migration step is wired in, apply new migration files manually against the running
+Postgres container.
 
 ## Local infrastructure
 
@@ -162,14 +169,16 @@ Swagger UI: `http://localhost:8080/docs`
 
 | Resource | Method | Path | Status |
 |---|---|---|---|
-| Countries | GET | `/api/v1/countries` | ✓ implemented |
+| Countries | GET | `/api/v1/countries` (optional `name` filter, ≥3 chars) | ✓ implemented |
 | Countries | POST | `/api/v1/countries` | ✓ implemented |
-| Countries | GET | `/api/v1/countries/search` | ✓ implemented |
 | Countries | GET | `/api/v1/countries/{code}` | ✓ implemented |
 | Countries | PUT | `/api/v1/countries/{code}` | ✓ implemented |
 | Countries | DELETE | `/api/v1/countries/{code}` | ✓ implemented |
-| Airports | GET | `/api/v1/airports` | stub |
-| Airports | GET | `/api/v1/airports/{iata}` | stub |
+| Airports | GET | `/api/v1/airports` | ✓ implemented |
+| Airports | GET | `/api/v1/airports/search` | ✓ implemented |
+| Airports | GET | `/api/v1/airports/{iata}` | ✓ implemented |
+| Airports | POST | `/api/v1/airports` | ✓ implemented |
+| Airports | GET | `/api/v1/countries/{code}/airports` | ✓ implemented |
 | Airlines | GET | `/api/v1/airlines` | stub |
 | Airlines | GET | `/api/v1/airlines/{icao}` | stub |
 | Aircraft | GET | `/api/v1/aircraft` | stub |
