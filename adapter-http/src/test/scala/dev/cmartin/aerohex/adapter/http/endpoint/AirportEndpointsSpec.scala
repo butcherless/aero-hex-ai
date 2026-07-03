@@ -6,8 +6,8 @@ import dev.cmartin.aerohex.domain.model.{Airport, CountryCode, IataCode}
 import dev.cmartin.aerohex.domain.port.in.*
 import dev.cmartin.aerohex.shared.Pagination
 import io.circe.generic.auto.*
-import io.circe.parser.decode
 import sttp.client4.*
+import sttp.client4.circe.*
 import sttp.client4.impl.zio.RIOMonadAsyncError
 import sttp.client4.testing.BackendStub
 import sttp.model.StatusCode
@@ -75,8 +75,11 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
       suite("GET /api/v1/airports")(
         test("returns 200 with the full airport list") {
           for
-            response <- basicRequest.get(uri"https://test.com/api/v1/airports").send(makeBackend())
-            airports  = decode[List[AirportDto]](response.body.merge).getOrElse(Nil)
+            response <- basicRequest
+                          .get(uri"https://test.com/api/v1/airports")
+                          .response(asJson[List[AirportDto]])
+                          .send(makeBackend())
+            airports  = response.body.toOption.getOrElse(Nil)
           yield assertTrue(
             response.code == StatusCode.Ok,
             airports.map(_.iata) == List("MAD", "BCN")
@@ -102,8 +105,9 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
           for
             response <- basicRequest
                           .get(uri"https://test.com/api/v1/airports/search?q=Madrid")
+                          .response(asJson[List[AirportDto]])
                           .send(makeBackend())
-            airports  = decode[List[AirportDto]](response.body.merge).getOrElse(Nil)
+            airports  = response.body.toOption.getOrElse(Nil)
           yield assertTrue(
             response.code == StatusCode.Ok,
             airports.map(_.iata) == List("MAD")
@@ -127,8 +131,11 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
       suite("GET /api/v1/airports/{iata}")(
         test("returns 200 with the requested airport") {
           for
-            response <- basicRequest.get(uri"https://test.com/api/v1/airports/MAD").send(makeBackend())
-            airport   = decode[AirportDto](response.body.merge).toOption
+            response <- basicRequest
+                          .get(uri"https://test.com/api/v1/airports/MAD")
+                          .response(asJson[AirportDto])
+                          .send(makeBackend())
+            airport   = response.body.toOption
           yield assertTrue(
             response.code == StatusCode.Ok,
             airport.exists(_.iata == "MAD")
@@ -157,8 +164,9 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
                   """{"icaoCode":"LEMD","name":"Madrid-Barajas Adolfo Suárez","city":"Madrid","countryCode":"ES"}"""
                 )
                 .contentType("application/json")
+                .response(asJson[AirportDto])
                 .send(makeBackend())
-            airport   = decode[AirportDto](response.body.merge).toOption
+            airport   = response.body.toOption
           yield assertTrue(
             response.code == StatusCode.Ok,
             airport.exists(_.name == "Madrid-Barajas Adolfo Suárez")
@@ -215,8 +223,9 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
                   """{"iata":"MAD","icaoCode":"LEMD","name":"Adolfo Suárez Madrid-Barajas","city":"Madrid","countryCode":"ES"}"""
                 )
                 .contentType("application/json")
+                .response(asJson[AirportDto])
                 .send(makeBackend())
-            airport   = decode[AirportDto](response.body.merge).toOption
+            airport   = response.body.toOption
           yield assertTrue(
             response.code == StatusCode.Created,
             response.headers.exists(h => h.name.equalsIgnoreCase("Location") && h.value.contains("MAD")),
@@ -257,8 +266,11 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
       suite("GET /api/v1/countries/{code}/airports")(
         test("returns 200 with the airports in the country") {
           for
-            response <- basicRequest.get(uri"https://test.com/api/v1/countries/ES/airports").send(makeBackend())
-            airports  = decode[List[AirportDto]](response.body.merge).getOrElse(Nil)
+            response <- basicRequest
+                          .get(uri"https://test.com/api/v1/countries/ES/airports")
+                          .response(asJson[List[AirportDto]])
+                          .send(makeBackend())
+            airports  = response.body.toOption.getOrElse(Nil)
           yield assertTrue(
             response.code == StatusCode.Ok,
             airports.map(_.iata) == List("MAD")

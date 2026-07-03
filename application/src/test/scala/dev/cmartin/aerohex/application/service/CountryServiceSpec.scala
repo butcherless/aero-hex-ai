@@ -176,23 +176,23 @@ object CountryServiceSpec extends ZIOSpecDefault:
       ),
       suite("Country service layers")(
         test("CreateCountryService.layer constructs a usable instance") {
-          for svc <-
+          for _ <-
               ZIO.service[CreateCountryUseCase].provide(ZLayer.succeed(unimplemented), CreateCountryService.layer)
-          yield assertTrue(svc != null)
+          yield assertCompletes
         },
         test("FindCountryService.layer constructs a usable instance") {
-          for svc <- ZIO.service[FindCountryUseCase].provide(ZLayer.succeed(unimplemented), FindCountryService.layer)
-          yield assertTrue(svc != null)
+          for _ <- ZIO.service[FindCountryUseCase].provide(ZLayer.succeed(unimplemented), FindCountryService.layer)
+          yield assertCompletes
         },
         test("UpdateCountryService.layer constructs a usable instance") {
-          for svc <-
+          for _ <-
               ZIO.service[UpdateCountryUseCase].provide(ZLayer.succeed(unimplemented), UpdateCountryService.layer)
-          yield assertTrue(svc != null)
+          yield assertCompletes
         },
         test("DeleteCountryService.layer constructs a usable instance") {
-          for svc <-
+          for _ <-
               ZIO.service[DeleteCountryUseCase].provide(ZLayer.succeed(unimplemented), DeleteCountryService.layer)
-          yield assertTrue(svc != null)
+          yield assertCompletes
         }
       )
     )

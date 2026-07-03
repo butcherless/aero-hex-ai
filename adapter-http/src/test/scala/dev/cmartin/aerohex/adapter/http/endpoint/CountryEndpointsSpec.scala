@@ -6,8 +6,8 @@ import dev.cmartin.aerohex.domain.model.{Country, CountryCode}
 import dev.cmartin.aerohex.domain.port.in.*
 import dev.cmartin.aerohex.shared.Pagination
 import io.circe.generic.auto.*
-import io.circe.parser.decode
 import sttp.client4.*
+import sttp.client4.circe.*
 import sttp.client4.impl.zio.RIOMonadAsyncError
 import sttp.client4.testing.BackendStub
 import sttp.model.StatusCode
@@ -70,8 +70,11 @@ object CountryEndpointsSpec extends ZIOSpecDefault:
       suite("GET /api/v1/countries")(
         test("returns 200 with the full country list") {
           for
-            response <- basicRequest.get(uri"https://test.com/api/v1/countries").send(makeBackend())
-            countries = decode[List[CountryDto]](response.body.merge).getOrElse(Nil)
+            response <- basicRequest
+                          .get(uri"https://test.com/api/v1/countries")
+                          .response(asJson[List[CountryDto]])
+                          .send(makeBackend())
+            countries = response.body.toOption.getOrElse(Nil)
           yield assertTrue(
             response.code == StatusCode.Ok,
             countries.map(_.code) == List("ES", "DE")
@@ -95,8 +98,9 @@ object CountryEndpointsSpec extends ZIOSpecDefault:
           for
             response <- basicRequest
                           .get(uri"https://test.com/api/v1/countries?name=Spa")
+                          .response(asJson[List[CountryDto]])
                           .send(makeBackend())
-            countries = decode[List[CountryDto]](response.body.merge).getOrElse(Nil)
+            countries = response.body.toOption.getOrElse(Nil)
           yield assertTrue(
             response.code == StatusCode.Ok,
             countries.map(_.code) == List("ES")
@@ -113,8 +117,11 @@ object CountryEndpointsSpec extends ZIOSpecDefault:
       suite("GET /api/v1/countries/{code}")(
         test("returns 200 with the requested country") {
           for
-            response <- basicRequest.get(uri"https://test.com/api/v1/countries/ES").send(makeBackend())
-            country   = decode[CountryDto](response.body.merge).toOption
+            response <- basicRequest
+                          .get(uri"https://test.com/api/v1/countries/ES")
+                          .response(asJson[CountryDto])
+                          .send(makeBackend())
+            country   = response.body.toOption
           yield assertTrue(
             response.code == StatusCode.Ok,
             country.exists(_.code == "ES")
@@ -172,8 +179,9 @@ object CountryEndpointsSpec extends ZIOSpecDefault:
                           .put(uri"https://test.com/api/v1/countries/ES")
                           .body("""{"name":"Kingdom of Spain"}""")
                           .contentType("application/json")
+                          .response(asJson[CountryDto])
                           .send(makeBackend())
-            country   = decode[CountryDto](response.body.merge).toOption
+            country   = response.body.toOption
           yield assertTrue(
             response.code == StatusCode.Ok,
             country.exists(_.name == "Kingdom of Spain")

@@ -253,32 +253,32 @@ object AirportServiceSpec extends ZIOSpecDefault:
       ),
       suite("Airport service layers")(
         test("CreateAirportService.layer constructs a usable instance") {
-          for svc <- ZIO
-                       .service[CreateAirportUseCase]
-                       .provide(ZLayer.succeed(unimplementedAirportRepo), CreateAirportService.layer)
-          yield assertTrue(svc != null)
+          for _ <- ZIO
+                     .service[CreateAirportUseCase]
+                     .provide(ZLayer.succeed(unimplementedAirportRepo), CreateAirportService.layer)
+          yield assertCompletes
         },
         test("FindAirportService.layer constructs a usable instance") {
-          for svc <- ZIO
-                       .service[FindAirportUseCase]
-                       .provide(ZLayer.succeed(unimplementedAirportRepo), FindAirportService.layer)
-          yield assertTrue(svc != null)
+          for _ <- ZIO
+                     .service[FindAirportUseCase]
+                     .provide(ZLayer.succeed(unimplementedAirportRepo), FindAirportService.layer)
+          yield assertCompletes
         },
         test("UpdateAirportService.layer constructs a usable instance") {
-          for svc <- ZIO
-                       .service[UpdateAirportUseCase]
-                       .provide(ZLayer.succeed(unimplementedAirportRepo), UpdateAirportService.layer)
-          yield assertTrue(svc != null)
+          for _ <- ZIO
+                     .service[UpdateAirportUseCase]
+                     .provide(ZLayer.succeed(unimplementedAirportRepo), UpdateAirportService.layer)
+          yield assertCompletes
         },
         test("FindAirportsByCountryService.layer constructs a usable instance") {
-          for svc <- ZIO
-                       .service[FindAirportsByCountryUseCase]
-                       .provide(
-                         ZLayer.succeed(unimplementedCountryRepo),
-                         ZLayer.succeed(unimplementedAirportRepo),
-                         FindAirportsByCountryService.layer
-                       )
-          yield assertTrue(svc != null)
+          for _ <- ZIO
+                     .service[FindAirportsByCountryUseCase]
+                     .provide(
+                       ZLayer.succeed(unimplementedCountryRepo),
+                       ZLayer.succeed(unimplementedAirportRepo),
+                       FindAirportsByCountryService.layer
+                     )
+          yield assertCompletes
         }
       )
     )

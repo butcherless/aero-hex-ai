@@ -153,7 +153,8 @@ lazy val adapterHttp = project
       circeGeneric,
       circeParser,
       tapirStubServer,
-      sttpClientZio
+      sttpClientZio,
+      sttpClientCirce
     )
   )
   .settings(coverageSettings*)

@@ -45,6 +45,7 @@ object Dependencies:
   // Test — HTTP adapter
   val tapirStubServer = "com.softwaremill.sttp.tapir"  %% "tapir-sttp-stub4-server" % Versions.tapir        % Test
   val sttpClientZio   = "com.softwaremill.sttp.client4" %% "zio"                    % Versions.sttpClient4  % Test
+  val sttpClientCirce = "com.softwaremill.sttp.client4" %% "circe"                  % Versions.sttpClient4  % Test
 
   // ProtoQuill (ZIO JDBC)
   val quillJdbcZio = "io.getquill" %% "quill-jdbc-zio" % Versions.protoQuill
