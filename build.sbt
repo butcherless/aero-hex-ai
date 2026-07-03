@@ -44,7 +44,7 @@ lazy val root = rootProject
     bootstrap
   )
   .settings(
-    name           := "aviation-hexagonal",
+    name           := "aero-hex-ai",
     publish / skip := true
   )
   .disablePlugins(AssemblyPlugin)
