@@ -2,10 +2,17 @@ package dev.cmartin.aerohex.application.service
 
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.model.{Country, CountryCode}
-import dev.cmartin.aerohex.domain.port.in.{CreateCountryCommand, UpdateCountryCommand}
+import dev.cmartin.aerohex.domain.port.in.{
+  CreateCountryCommand,
+  CreateCountryUseCase,
+  DeleteCountryUseCase,
+  FindCountryUseCase,
+  UpdateCountryCommand,
+  UpdateCountryUseCase
+}
 import dev.cmartin.aerohex.domain.port.out.CountryRepository
 import dev.cmartin.aerohex.shared.Pagination
-import zio.{IO, Ref, Scope, UIO, ZIO}
+import zio.{IO, Ref, Scope, UIO, ZIO, ZLayer}
 import zio.test.*
 
 object CountryServiceSpec extends ZIOSpecDefault:
@@ -165,6 +172,27 @@ object CountryServiceSpec extends ZIOSpecDefault:
               ZIO.fail(DomainError.CountryNotFound("XX"))
           for error <- new DeleteCountryService(repo).delete(CountryCode("XX")).flip
           yield assertTrue(error == DomainError.CountryNotFound("XX"))
+        }
+      ),
+      suite("Country service layers")(
+        test("CreateCountryService.layer constructs a usable instance") {
+          for svc <-
+              ZIO.service[CreateCountryUseCase].provide(ZLayer.succeed(unimplemented), CreateCountryService.layer)
+          yield assertTrue(svc != null)
+        },
+        test("FindCountryService.layer constructs a usable instance") {
+          for svc <- ZIO.service[FindCountryUseCase].provide(ZLayer.succeed(unimplemented), FindCountryService.layer)
+          yield assertTrue(svc != null)
+        },
+        test("UpdateCountryService.layer constructs a usable instance") {
+          for svc <-
+              ZIO.service[UpdateCountryUseCase].provide(ZLayer.succeed(unimplemented), UpdateCountryService.layer)
+          yield assertTrue(svc != null)
+        },
+        test("DeleteCountryService.layer constructs a usable instance") {
+          for svc <-
+              ZIO.service[DeleteCountryUseCase].provide(ZLayer.succeed(unimplemented), DeleteCountryService.layer)
+          yield assertTrue(svc != null)
         }
       )
     )

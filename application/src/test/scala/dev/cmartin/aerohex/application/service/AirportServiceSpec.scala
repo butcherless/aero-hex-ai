@@ -2,10 +2,17 @@ package dev.cmartin.aerohex.application.service
 
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.model.{Airport, Country, CountryCode, IataCode}
-import dev.cmartin.aerohex.domain.port.in.CreateAirportCommand
+import dev.cmartin.aerohex.domain.port.in.{
+  CreateAirportCommand,
+  CreateAirportUseCase,
+  FindAirportUseCase,
+  FindAirportsByCountryUseCase,
+  UpdateAirportCommand,
+  UpdateAirportUseCase
+}
 import dev.cmartin.aerohex.domain.port.out.{AirportRepository, CountryRepository}
 import dev.cmartin.aerohex.shared.Pagination
-import zio.{IO, Ref, Scope, UIO, ZIO}
+import zio.{IO, Ref, Scope, UIO, ZIO, ZLayer}
 import zio.test.*
 
 object AirportServiceSpec extends ZIOSpecDefault:
@@ -199,6 +206,79 @@ object AirportServiceSpec extends ZIOSpecDefault:
                          .findByCountry(CountryCode("XX"), Pagination(1, 20))
                          .flip
           yield assertTrue(error == DomainError.CountryNotFound("XX"))
+        }
+      ),
+      suite("UpdateAirportService")(
+        test("builds the updated airport from the command and returns the repository's result") {
+          for
+            capturedRef <- Ref.make[Option[Airport]](None)
+            repo         = new AirportRepository:
+                             def findByIata(iata: IataCode): IO[DomainError, Option[Airport]]                 =
+                               unimplementedAirportRepo.findByIata(iata)
+                             def findAll(p: Pagination): IO[DomainError, List[Airport]]                       =
+                               unimplementedAirportRepo.findAll(p)
+                             def searchByName(q: String): IO[DomainError, List[Airport]]                      =
+                               unimplementedAirportRepo.searchByName(q)
+                             def findByCountry(c: CountryCode, p: Pagination): IO[DomainError, List[Airport]] =
+                               unimplementedAirportRepo.findByCountry(c, p)
+                             def save(a: Airport): IO[DomainError, Airport]                                   = unimplementedAirportRepo.save(a)
+                             def update(a: Airport): IO[DomainError, Airport]                                 =
+                               capturedRef.set(Some(a)).as(a)
+                             def delete(iata: IataCode): IO[DomainError, Unit]                                =
+                               unimplementedAirportRepo.delete(iata)
+            command      = UpdateAirportCommand(IataCode("MAD"), "LEMD", "Madrid-Barajas", "Madrid", CountryCode("ES"))
+            result      <- new UpdateAirportService(repo).update(command)
+            captured    <- capturedRef.get
+          yield assertTrue(
+            result == madrid.copy(name = "Madrid-Barajas"),
+            captured.contains(madrid.copy(name = "Madrid-Barajas"))
+          )
+        },
+        test("propagates AirportNotFound from the repository") {
+          val repo    = new AirportRepository:
+            def findByIata(iata: IataCode): IO[DomainError, Option[Airport]]                 = unimplementedAirportRepo.findByIata(iata)
+            def findAll(p: Pagination): IO[DomainError, List[Airport]]                       = unimplementedAirportRepo.findAll(p)
+            def searchByName(q: String): IO[DomainError, List[Airport]]                      =
+              unimplementedAirportRepo.searchByName(q)
+            def findByCountry(c: CountryCode, p: Pagination): IO[DomainError, List[Airport]] =
+              unimplementedAirportRepo.findByCountry(c, p)
+            def save(a: Airport): IO[DomainError, Airport]                                   = unimplementedAirportRepo.save(a)
+            def update(a: Airport): IO[DomainError, Airport]                                 = ZIO.fail(DomainError.AirportNotFound("XXX"))
+            def delete(iata: IataCode): IO[DomainError, Unit]                                =
+              unimplementedAirportRepo.delete(iata)
+          val command = UpdateAirportCommand(IataCode("XXX"), "LEMD", "Nowhere", "Nowhere", CountryCode("ES"))
+          for error <- new UpdateAirportService(repo).update(command).flip
+          yield assertTrue(error == DomainError.AirportNotFound("XXX"))
+        }
+      ),
+      suite("Airport service layers")(
+        test("CreateAirportService.layer constructs a usable instance") {
+          for svc <- ZIO
+                       .service[CreateAirportUseCase]
+                       .provide(ZLayer.succeed(unimplementedAirportRepo), CreateAirportService.layer)
+          yield assertTrue(svc != null)
+        },
+        test("FindAirportService.layer constructs a usable instance") {
+          for svc <- ZIO
+                       .service[FindAirportUseCase]
+                       .provide(ZLayer.succeed(unimplementedAirportRepo), FindAirportService.layer)
+          yield assertTrue(svc != null)
+        },
+        test("UpdateAirportService.layer constructs a usable instance") {
+          for svc <- ZIO
+                       .service[UpdateAirportUseCase]
+                       .provide(ZLayer.succeed(unimplementedAirportRepo), UpdateAirportService.layer)
+          yield assertTrue(svc != null)
+        },
+        test("FindAirportsByCountryService.layer constructs a usable instance") {
+          for svc <- ZIO
+                       .service[FindAirportsByCountryUseCase]
+                       .provide(
+                         ZLayer.succeed(unimplementedCountryRepo),
+                         ZLayer.succeed(unimplementedAirportRepo),
+                         FindAirportsByCountryService.layer
+                       )
+          yield assertTrue(svc != null)
         }
       )
     )
