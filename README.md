@@ -56,3 +56,13 @@ for the per-endpoint status table.
 
 See [CLAUDE.md](./CLAUDE.md#build-commands) for build/test/coverage commands, versioning
 policy, and architectural conventions.
+
+Unit tests (`sbt "testOnly *"`) run against in-memory stubs / a Tapir stub server and never touch a
+real database. A separate opt-in suite exercises the persistence layer against a real Postgres
+started via Testcontainers (requires Docker):
+
+```bash
+sbt integrationTests/test
+```
+
+See [CLAUDE.md](./CLAUDE.md#integration-tests-opt-in-real-postgres) for coverage and setup details.

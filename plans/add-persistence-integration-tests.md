@@ -152,14 +152,20 @@ listing).
 | `it.migration` | `FlywayMigrationItSpec` | Fresh container, run all `V1`–`V7` migrations via `FlywayMigration.migrate`, assert success and that `flyway_schema_history` reaches `V7`. This is the automated version of the manual `\d countries`/`\d airports` check just done by hand — it would have caught the original FK-dependency ordering bug in `V7` (see `plans/surrogate-long-keys-country-airport.md`, Issue 1) without needing manual review. | ✅ implemented, green (2026-07-04) |
 | `it.postgres` | `DoobieCountryRepositoryItSpec` | The unwired-but-schema-consistent repository: `save`/`findAll`/`searchByName`/`update`/`delete` round trip against a migrated container, including both `*NotFound` failure paths | ✅ implemented, green (2026-07-04) |
 | `it.quill` | `QuillCountryRepositoryItSpec` | The wired, real repository: `findByCode`/`findAll`/`searchByName`/`save`/`update`/`delete` round trip, including `CountryAlreadyExists` and both `*NotFound` failure paths | ✅ implemented, green (2026-07-04) |
-| `it.postgres` | `DoobieAirportRepositoryItSpec` | The wired, real repository: `save`/`findByIata`/`findAll`/`searchByName`/`findByCountry`/`update`/`delete` round trip against a migrated + seeded container; explicit case for `save` with an unknown `countryCode` asserting `DomainError.CountryNotFound` (the `resolveCountryId` path added in the surrogate-key work) | ⬜ not yet implemented |
+| `it.postgres` | `DoobieAirportRepositoryItSpec` | Unwired-but-schema-consistent repository: `save`/`findByIata`/`findAll`/`searchByName`/`findByCountry`/`update`/`delete` round trip against a migrated + seeded container; explicit cases for `save`/`update` with an unknown `countryCode` asserting `DomainError.CountryNotFound` (the `resolveCountryId` path added in the surrogate-key work), plus `AirportNotFound`/`AirportAlreadyExists` | ✅ implemented, green (2026-07-04) |
+| `it.quill` | `QuillAirportRepositoryItSpec` | The wired, real repository — same coverage as the Doobie spec above (Quill's `AirportRepository` has the identical `resolveCountryId` pattern and the same not-found/already-exists error cases) | ✅ implemented, green (2026-07-04) |
 | `it.postgres` | `DoobieAirlineRepositoryItSpec`, `DoobieRouteRepositoryItSpec` | Unwired today, but real SQL that should stay correct — would have caught the pre-existing `DoobieAirlineRepository.foundation_date` column mismatch noted during the surrogate-key review immediately, instead of silently at some future wiring point | ⬜ not yet implemented |
 
 Country was implemented first, as a validation slice for the whole approach (module
 structure, aggregation exclusion, Testcontainers lifecycle, Flyway bootstrap) — see the
-Decision 2 gotcha note above for what that validation surfaced. Airport/Airline/Route
-follow the same `PostgresContainerSupport` layers; no further structural decisions are
-expected before writing them.
+Decision 2 gotcha note above for what that validation surfaced. Airport followed the same
+`PostgresContainerSupport` layers with no further structural decisions needed; each
+Airport test seeds its own `Country` row first (via the corresponding `CountryRepository`
+implementation, same `DataSource`/`Transactor`) since `airports.country_id` FKs to
+`countries.id`. Note neither Airport repository's `delete` checks the affected row count
+(unlike Country's), so deleting an unknown `iata` silently succeeds rather than failing
+with `AirportNotFound` — this is existing repository behavior, not a test gap. Airline
+and Route remain unimplemented.
 
 Each spec migrates a **fresh** container per suite (not shared/reused across suites) —
 simplest correctness story, avoids state bleeding between specs, and Testcontainers'

@@ -108,14 +108,24 @@ Tapir stub server. It is deliberately **not** in `root`'s `.aggregate(...)`, so 
 sbt integrationTests/test   # or: sbt integrationTest (alias)
 ```
 
-Requires Docker running locally. See `plans/add-persistence-integration-tests.md` for the design
-(why a plain subproject instead of sbt's deprecated `IntegrationTest` config, why one module instead
-of three, why fresh-container-per-suite). One gotcha baked into `build.sbt` as
-`Test / javaOptions += "-Dapi.version=1.41"`: Testcontainers 1.21.x's Docker-environment probe falls
-back to a hardcoded, very old API version when none is negotiated, and recent Docker Desktop
-releases reject that below their `MinAPIVersion` — surfacing as a misleading "Could not find a
-valid Docker environment" with no obvious cause unless you add a temporary SLF4J binding to see the
-underlying 400 from the daemon.
+Coverage so far: `FlywayMigrationItSpec` (migrations reach `V7`), Country (`DoobieCountryRepositoryItSpec`
++ `QuillCountryRepositoryItSpec`), Airport (`DoobieAirportRepositoryItSpec` +
+`QuillAirportRepositoryItSpec`, each seeding its own `Country` row first since `airports.country_id`
+FKs to `countries.id`) — 36 tests total, all green. Airline and Route are not implemented yet. See
+`plans/add-persistence-integration-tests.md` for the full scope table and design rationale (why a
+plain subproject instead of sbt's deprecated `IntegrationTest` config, why one module instead of
+three, why fresh-container-per-suite).
+
+Two gotchas baked into the setup, both documented with why in the plan doc:
+- `build.sbt` sets `Test / javaOptions += "-Dapi.version=1.41"` because Testcontainers 1.21.x's
+  Docker-environment probe falls back to a hardcoded, very old API version when none is negotiated,
+  and recent Docker Desktop releases reject that below their `MinAPIVersion` — surfacing as a
+  misleading "Could not find a valid Docker environment" with no obvious cause unless you add a
+  temporary SLF4J binding to see the underlying 400 from the daemon.
+- **Every spec must call `.provideLayerShared(...)`, never `.provideLayer(...)`,** on its
+  `suite(...)`. `provideLayer` silently rebuilds the layer per `test` block instead of once per
+  suite — caught during validation when 15 Country tests started 16 separate Postgres containers
+  instead of 3.
 
 ## Key patterns
 
