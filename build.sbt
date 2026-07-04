@@ -1,6 +1,7 @@
 import Dependencies.*
 
 addCommandAlias("xdup", "dependencyUpdates")
+addCommandAlias("integrationTest", "integrationTests/test")
 
 // quill-jdbc-zio pulls zio-schema-json → zio-json 0.9.1 while zio-kafka/http want 0.7.1.
 // Declare always-compatible so SBT silently selects the higher version.
@@ -192,3 +193,25 @@ lazy val bootstrap = project
     }
   )
   .settings(coverageSettings*)
+
+// Opt-in integration tests against a real Postgres (Testcontainers). Deliberately NOT
+// added to `root`'s .aggregate(...) below, so `sbt compile`, `sbt "testOnly *"`, and
+// `sbt coverageAggregate` at the root never reach it — see
+// plans/add-persistence-integration-tests.md. Invoke directly with
+// `sbt integrationTests/test` or the `integrationTest` alias.
+lazy val integrationTests = project
+  .in(file("infrastructure/integration-tests"))
+  .dependsOn(migration, persistencePostgres, persistenceQuill)
+  .settings(
+    name           := "integration-tests",
+    publish / skip := true,
+    Test / fork    := true,
+    // Testcontainers 1.21.x's Docker environment probe falls back to a hardcoded API
+    // version (1.32) when none is negotiated; recent Docker Desktop releases reject
+    // that as below their MinAPIVersion (400 Bad Request), so container startup fails
+    // with a misleading "Could not find a valid Docker environment". Pinning a modern
+    // api.version sidesteps the probe's stale default.
+    Test / javaOptions += "-Dapi.version=1.41",
+    libraryDependencies ++= Seq(testcontainersCore, testcontainersPostgres, logback % Test)
+  )
+  .disablePlugins(AssemblyPlugin)

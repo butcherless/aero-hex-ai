@@ -21,7 +21,8 @@ per-dependency versions.
 
 ## Running locally
 
-Start Postgres and Kafka:
+Requires **Java 21 LTS** (ZIO is only certified for Java 17/21; Java 25 silently breaks the test
+framework). Start Postgres and Kafka:
 
 ```bash
 docker compose up -d

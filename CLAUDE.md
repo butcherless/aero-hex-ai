@@ -35,6 +35,9 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 ## Versioning policy
 
 - **Scala** — LTS only (3.3.x). Never upgrade to a non-LTS minor. The `scala3-library` 3.8.x entry in `dependencyUpdates` is the SBT meta-build; ignore it.
+- **JDK** — Java 21 LTS required, locally and in CI (`java-version: '21'` in `.github/workflows/*.yml`). Never Java 25 or other
+  non-LTS versions — Java 25 silently breaks ZIO 2.1.26's test framework (tests report "Failed" with zero SBT test events,
+  no pass/fail per test). ZIO is only certified for Java 17/21.
 - **Direct deps** — stable GA by default. Only named exception: Doobie 1.x (no GA release yet) —
   don't chase a newer RC/M/SNAPSHOT for it without a deliberate reason (a GA release or a needed capability).
 - **Transitive deps** — let SBT resolve via eviction; only force an override for a known vulnerability or binary-incompatibility.
@@ -44,6 +47,7 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 
 | Concern | Library | Version |
 |---|---|---|
+| Runtime | Java LTS | 21 |
 | Language | Scala 3 LTS | 3.3.8 |
 | Build | SBT | 2.0.1 |
 | Effect | ZIO | 2.1.26 |
@@ -56,6 +60,7 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 | Database | PostgreSQL JDBC | 42.7.12 |
 | JSON | Circe | 0.14.16 |
 | Logging | ZIO Logging + SLF4J + Logback | 2.5.3 / 1.5.37 |
+| Integration testing | Testcontainers | 1.21.3 |
 
 ## Module dependency graph
 
@@ -69,6 +74,7 @@ shared-kernel
             └── adapter-http
                         └── bootstrap  (composition root: domain + application + adapter-http + persistence-quill + persistence-postgres)
                 migration              (standalone — SQL + Flyway only; not wired into bootstrap)
+                integration-tests      (standalone — opt-in, real-Postgres tests; NOT in root's aggregate)
 ```
 
 Rule: inner modules never depend on outer ones. `domain` has zero framework dependencies.
@@ -90,6 +96,26 @@ Rule: inner modules never depend on outer ones. `domain` has zero framework depe
 - **`adapter-http/`** — Tapir endpoint definitions + ZIO HTTP server. DTOs live here; `ErrorMapper` maps `DomainError` → HTTP status.
 - **`bootstrap/`** — sole composition root. `WiringModule` wires all `ZLayer`s. `Main` only starts the HTTP server (`WiringModule.appLayer`) — no migration step, no outbox relay.
 - **`shared-kernel/`** — cross-cutting value types (`Pagination`, `NonEmptyString`).
+
+## Integration tests (opt-in, real Postgres)
+
+`infrastructure/integration-tests/` runs `FlywayMigration`, `DoobieXxxRepository`, and
+`QuillXxxRepository` against a real Postgres started via Testcontainers — no in-memory stubs, no
+Tapir stub server. It is deliberately **not** in `root`'s `.aggregate(...)`, so `sbt compile`,
+`sbt "testOnly *"`, and `sbt coverageAggregate` never touch it; invoke it explicitly:
+
+```bash
+sbt integrationTests/test   # or: sbt integrationTest (alias)
+```
+
+Requires Docker running locally. See `plans/add-persistence-integration-tests.md` for the design
+(why a plain subproject instead of sbt's deprecated `IntegrationTest` config, why one module instead
+of three, why fresh-container-per-suite). One gotcha baked into `build.sbt` as
+`Test / javaOptions += "-Dapi.version=1.41"`: Testcontainers 1.21.x's Docker-environment probe falls
+back to a hardcoded, very old API version when none is negotiated, and recent Docker Desktop
+releases reject that below their `MinAPIVersion` — surfacing as a misleading "Could not find a
+valid Docker environment" with no obvious cause unless you add a temporary SLF4J binding to see the
+underlying 400 from the daemon.
 
 ## Key patterns
 

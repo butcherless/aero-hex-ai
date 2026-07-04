@@ -16,63 +16,67 @@ This directly automates what was just done by hand to validate the
 hand-run `curl`/`psql` checks against the dev container. An integration test suite
 turns that one-off verification into a repeatable regression check.
 
+> **Revision note (2026-07-04):** this plan originally recommended sbt's built-in
+> `IntegrationTest` configuration (`.configs(IntegrationTest)` + `Defaults.itSettings`,
+> `src/it/scala`). That mechanism is **deprecated as of sbt 1.9.0** (RFC-3: sbt is
+> deprecating general use of the configuration axis beyond `Compile`/`Test`) and the
+> official sbt 2.x migration guide says explicitly: *"To migrate away from the
+> `IntegrationTest` configuration, create a separate subproject and implement it as
+> normal test."* (verified against `https://www.scala-sbt.org/2.x/docs/en/changes/migrating-from-sbt-1.x.html`
+> and the sbt 1.9.0 release notes). Decisions 1 and 3 below are rewritten accordingly.
+> Everything else in the original plan (scope table, container-lifecycle idiom,
+> naming convention, non-blocking guarantees) still holds and is carried over.
+
 ## Design decisions to confirm before implementing
 
-### Decision 1 — sbt's built-in `IntegrationTest` configuration (recommended)
+### Decision 1 — dedicated `integration-tests` subproject, plain `Test` config (sbt 2.x correct approach)
 
-sbt ships a standard `IntegrationTest` configuration for exactly this purpose:
-sources live in `src/it/scala`, tests run via `sbt IntegrationTest/test` (or
-`sbt it:test`), and — critically — this configuration is **structurally separate**
-from `Test`. `sbt compile`, `sbt "testOnly *"`, and `sbt coverageAggregate` never
-touch it. This gives "optional and non-blocking" for free, with no custom task
-wiring, no `Tags`/`exclude` gymnastics, and no risk of accidentally being picked up
-by the existing CI workflow (per `CLAUDE.md`'s coverage section, CI runs
-`<module>/testOnly *`, which is a different configuration than `IntegrationTest`).
-
-Per-module wiring needed (`build.sbt`):
+Per sbt's own migration guidance, integration tests belong in a **separate subproject**
+using the standard `Test` configuration — not a scoped configuration inside an existing
+module. The "optional and non-blocking" property no longer comes from a structurally
+separate configuration axis (that mechanism is gone); it comes from **subproject
+aggregation**: the new module is simply never added to the root project's
+`.aggregate(...)` list, so none of the root-scoped commands (`sbt compile`,
+`sbt "testOnly *"`, `sbt coverageAggregate`) ever cascade into it. This is still a
+structural guarantee, not a tag/filter one — a developer would have to deliberately
+add the module to root's `aggregate(...)` to break it, the same class of mistake the
+old `IntegrationTest` config protected against.
 
 ```scala
-lazy val persistencePostgres = project
-  .in(file("infrastructure/persistence-postgres"))
-  .dependsOn(domain)
-  .configs(IntegrationTest)
-  .settings(Defaults.itSettings)
+lazy val integrationTests = project
+  .in(file("infrastructure/integration-tests"))
+  .dependsOn(migration, persistencePostgres, persistenceQuill)
   .settings(
-    name := "persistence-postgres",
-    libraryDependencies ++= Seq(doobieCore, doobieHikari, doobiePostgres, zioInteropCats, postgresql, hikaricp),
-    libraryDependencies ++= Seq(zioTestIT, zioTestSbtIT, testcontainersCore, testcontainersPostgres),
-    IntegrationTest / testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
+    name             := "integration-tests",
+    publish / skip   := true,
+    Test / fork      := true, // isolates the Docker/Testcontainers lifecycle from sbt's own JVM
+    libraryDependencies ++= Seq(zioTest, zioTestSbt, testcontainersCore, testcontainersPostgres).map(_ % Test),
+    testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
   )
-  .settings(coverageSettings*)
   .disablePlugins(AssemblyPlugin)
+// deliberately NOT added to `root`'s .aggregate(...) list — see Decision 1
 ```
 
-Same shape for `persistenceQuill` and `migration`. New `Dependencies.scala` vals
-needed (today's `zioTest`/`zioTestSbt` are hardcoded `% Test`, so they can't be
-reused as-is for a different configuration):
+Reuses the project's existing `zioTest`/`zioTestSbt` vals as-is (plain `% Test`,
+same as every other module) — no `*IT`-suffixed dependency variants needed, since
+there's no second configuration axis anymore. Only two genuinely new
+`Dependencies.scala` vals are needed:
 
 ```scala
-val zioTestIT       = "dev.zio" %% "zio-test"     % Versions.zio % IntegrationTest
-val zioTestSbtIT     = "dev.zio" %% "zio-test-sbt" % Versions.zio % IntegrationTest
-val testcontainersCore     = "org.testcontainers" % "testcontainers" % Versions.testcontainers % IntegrationTest
-val testcontainersPostgres = "org.testcontainers" % "postgresql"     % Versions.testcontainers % IntegrationTest
+val testcontainersCore     = "org.testcontainers" % "testcontainers" % Versions.testcontainers
+val testcontainersPostgres = "org.testcontainers" % "postgresql"     % Versions.testcontainers
 ```
 
-**Not evaluated/rejected:** a third-party sbt test-tagging scheme (e.g. custom
-`Tags.Tag` + `-l`/`-n` filtering) — this is what ScalaTest projects often reach for,
-but it means integration tests still live under the default `Test` configuration
-and could accidentally run under `sbt "testOnly *"` if the exclusion tag is ever
-forgotten on a new spec. sbt's own `IntegrationTest` config makes the separation
-structural instead of tag-based, which is safer against exactly that kind of
-mistake.
+**Rejected:** keeping `.configs(IntegrationTest)` — deprecated, and would carry a
+migration cost the moment this project ever moves to sbt's next major line where the
+mechanism is removed entirely.
 
 ### Decision 2 — Testcontainers Java directly, no Scala wrapper (recommended)
 
 Use the plain `org.testcontainers:testcontainers` + `org.testcontainers:postgresql`
 Java artifacts and wrap the container lifecycle in `ZIO.acquireRelease` /
 `ZLayer.scoped` — the same idiom this project already uses for
-`QuillDataSourceLayer.live` and `PostgresConfig.transactorLayer`. No
-`testcontainers-scala` wrapper dependency:
+`QuillDataSourceLayer.live` and `PostgresConfig.transactorLayer`:
 
 ```scala
 val containerLayer: TaskLayer[PostgreSQLContainer[?]] = ZLayer.scoped {
@@ -86,113 +90,150 @@ val containerLayer: TaskLayer[PostgreSQLContainer[?]] = ZLayer.scoped {
 }
 ```
 
-Rejected: a Scala-idiomatic `testcontainers-scala` wrapper library — it adds a
-second, less-established dependency with its own ZIO-2/Scala-3 compatibility
-surface to track, for a thin lifecycle wrapper this project can write directly in
-~10 lines using patterns already established in the codebase. Also rejected:
-the `jdbc:tc:postgresql:...` magic JDBC URL prefix (auto-starts a container via
-driver-level interception) — it hides container lifecycle from ZIO's resource
-management entirely, which fights the `ZLayer.scoped` style used everywhere else
-in this codebase.
+**Rejected:** `testcontainers-scala` — a second, less-established dependency with its
+own ZIO-2/Scala-3 compatibility surface to track, for a thin lifecycle wrapper this
+project can write directly in ~10 lines using patterns already established in the
+codebase. Also rejected: the `jdbc:tc:postgresql:...` magic JDBC URL prefix — it hides
+container lifecycle from ZIO's resource management entirely, which fights the
+`ZLayer.scoped` style used everywhere else in this codebase.
 
-### Decision 3 — shared container+migration bootstrap: new thin testkit module (recommended)
+**Gotcha found during validation (2026-07-04):** on a machine with a recent Docker
+Desktop, container startup failed with a misleading
+`IllegalStateException: Could not find a valid Docker environment` even though Docker
+was running and reachable. Root cause: Testcontainers 1.21.x's environment-detection
+probe falls back to a hardcoded, old Docker API version (`1.32`) when none is
+negotiated, and this Docker Desktop's engine (`MinAPIVersion: 1.40`) rejects it with a
+400. The failure was silent by default (no SLF4J binding on the module's test
+classpath to surface Testcontainers' own warn/error logs) — `logback % Test` was added
+to `integrationTests`' dependencies specifically so this class of failure is
+diagnosable, not just "tests failed." The actual fix is
+`Test / javaOptions += "-Dapi.version=1.41"` in `build.sbt`, pinning docker-java to a
+modern API version so the stale probe default is never used. Also note: **a stale,
+detached sbt server process ignores shell environment changes** (Java version
+switches, env vars) made in a later terminal session — if a fix that should apply
+(env var, `sdk use`) seems to have no effect, check `ps aux | grep sbt-launch` and
+kill/restart the server.
 
-All three test suites (`migration`, `persistence-postgres`, `persistence-quill`)
-need the identical sequence: start a Postgres container → run Flyway against it →
-hand back a `DataSource`/JDBC URL. That's genuine logic duplication across three
-places, not "three similar lines" — worth a small shared module rather than
-copy-pasted per-module setup code.
+### Decision 3 — shared container+migration bootstrap: a plain object inside the one new module (supersedes the old testkit-module question)
 
-**Option A (recommended)** — new module `infrastructure/persistence-testkit`,
-depended on only via `IntegrationTest`-scoped `dependsOn`
-(`persistencePostgres.dependsOn(persistenceTestkit % IntegrationTest)`), so it never
-appears on the main compile classpath or in `bootstrap`'s assembly. It depends on
-`migration` (for `FlywayMigration`) and exposes one `ZLayer`:
-`PostgresContainerLayer: TaskLayer[DataSource]` that starts the container, runs
-`Flyway.configure().dataSource(...).load().migrate()` against it, and returns a
-`HikariDataSource` pointed at the container. `disablePlugins(AssemblyPlugin)`, no
-`coverageSettings` (it's test-support code, not production logic to measure).
+The original plan wrestled with whether cross-module duplication of container+Flyway
+bootstrap logic justified a new `persistence-testkit` module. That question is now
+moot: since sbt 2.x collapses everything into **one** `integration-tests` subproject
+(Decision 1) rather than three separate `src/it/scala` trees, there is no cross-module
+duplication to solve. The shared bootstrap is just a plain object living in the same
+subproject as the specs that use it:
 
-**Option B** — duplicate the ~30–40 lines of container+Flyway bootstrap directly
-in each of the three modules' `src/it/scala`. Simpler to review in isolation, but
-three copies of the same non-trivial lifecycle code that must all stay in sync
-(e.g. if the Postgres image tag or Flyway invocation changes).
+`infrastructure/integration-tests/src/test/scala/dev/cmartin/aerohex/it/support/PostgresContainerSupport.scala`
+— exposes `containerLayer: TaskLayer[PostgreSQLContainer[?]]` (Decision 2, raw and
+unmigrated — used by `FlywayMigrationItSpec` itself, which is the one spec that needs
+to run the migration as its own test action rather than as fixture setup) and
+`migratedContainerLayer: TaskLayer[PostgreSQLContainer[?]]`, which calls
+`FlywayMigration.migrate(url, user, password)` (the real `migration` module's function,
+not its `.layer` — that reads `POSTGRES_URL`/etc. from `sys.env`, which doesn't fit a
+container with a randomly assigned port) against the started container. `dataSourceLayer`
+and `transactorLayer` both compose on top of `migratedContainerLayer` to hand back a
+`HikariDataSource` / `Transactor[Task]` respectively, for the Quill and Doobie specs.
 
-Recommend Option A given three real consumers of identical setup logic. If this
-feels like too much ceremony for what's fundamentally test-only scaffolding, Option
-B is the fallback — flagging this as the one structural decision most worth a second
-opinion before implementing.
+Spec packages organize by what they cover, mirroring the original scope table:
+`dev.cmartin.aerohex.it.migration`, `.it.postgres`, `.it.quill`.
 
 ### Decision 4 — naming convention: `*ItSpec`
 
 Existing unit specs use `*Spec` (`AirportEndpointsSpec`, `CountryEndpointsSpec`).
-Recommend `*ItSpec` for integration specs — mirrors sbt's own abbreviation for the
-`IntegrationTest` configuration (`it:test`), immediately signals "this needs Docker
-and a real DB" at a glance, and avoids the ambiguity of `*IntegrationSpec` reading
-almost identically to `*Spec` in a directory listing sorted alphabetically.
+`*ItSpec` mirrors that convention while immediately signaling "this needs Docker and a
+real DB." Preferred over a bare `*IT` suffix (breaks from the project's established
+`ZIOSpecDefault`/`*Spec` naming, and reads ambiguously next to `*Spec` in a directory
+listing).
 
 ## Scope — which specs get written
 
-| Module | Spec | Covers |
-|---|---|---|
-| `infrastructure/migration` | `FlywayMigrationItSpec` | Fresh container, run all `V1`–`V7` migrations via `FlywayMigration.layer`, assert success and that `flyway_schema_history` reaches `V7`. This is the automated version of the manual `\d countries`/`\d airports` check just done by hand — it would have caught the original FK-dependency ordering bug in `V7` (see `plans/surrogate-long-keys-country-airport.md`, Issue 1) without needing manual review. |
-| `infrastructure/persistence-postgres` | `DoobieAirportRepositoryItSpec` | The wired, real repository: `save`/`findByIata`/`findAll`/`searchByName`/`findByCountry`/`update`/`delete` round trip against a migrated + seeded container; explicit case for `save` with an unknown `countryCode` asserting `DomainError.CountryNotFound` (the `resolveCountryId` path added in the surrogate-key work) |
-| `infrastructure/persistence-postgres` | `DoobieCountryRepositoryItSpec`, `DoobieAirlineRepositoryItSpec`, `DoobieRouteRepositoryItSpec` | Unwired today, but real SQL that should stay correct — would have caught the pre-existing `DoobieAirlineRepository.foundation_date` column mismatch noted during the surrogate-key review immediately, instead of silently at some future wiring point |
-| `infrastructure/persistence-quill` | `QuillCountryRepositoryItSpec` | The wired, real repository: `findByCode`/`findAll`/`searchByName`/`save`/`update`/`delete` round trip |
+| Package (in `integration-tests`) | Spec | Covers | Status |
+|---|---|---|---|
+| `it.migration` | `FlywayMigrationItSpec` | Fresh container, run all `V1`–`V7` migrations via `FlywayMigration.migrate`, assert success and that `flyway_schema_history` reaches `V7`. This is the automated version of the manual `\d countries`/`\d airports` check just done by hand — it would have caught the original FK-dependency ordering bug in `V7` (see `plans/surrogate-long-keys-country-airport.md`, Issue 1) without needing manual review. | ✅ implemented, green (2026-07-04) |
+| `it.postgres` | `DoobieCountryRepositoryItSpec` | The unwired-but-schema-consistent repository: `save`/`findAll`/`searchByName`/`update`/`delete` round trip against a migrated container, including both `*NotFound` failure paths | ✅ implemented, green (2026-07-04) |
+| `it.quill` | `QuillCountryRepositoryItSpec` | The wired, real repository: `findByCode`/`findAll`/`searchByName`/`save`/`update`/`delete` round trip, including `CountryAlreadyExists` and both `*NotFound` failure paths | ✅ implemented, green (2026-07-04) |
+| `it.postgres` | `DoobieAirportRepositoryItSpec` | The wired, real repository: `save`/`findByIata`/`findAll`/`searchByName`/`findByCountry`/`update`/`delete` round trip against a migrated + seeded container; explicit case for `save` with an unknown `countryCode` asserting `DomainError.CountryNotFound` (the `resolveCountryId` path added in the surrogate-key work) | ⬜ not yet implemented |
+| `it.postgres` | `DoobieAirlineRepositoryItSpec`, `DoobieRouteRepositoryItSpec` | Unwired today, but real SQL that should stay correct — would have caught the pre-existing `DoobieAirlineRepository.foundation_date` column mismatch noted during the surrogate-key review immediately, instead of silently at some future wiring point | ⬜ not yet implemented |
 
-Each spec migrates a **fresh** container per suite (not shared/reused across
-suites) — simplest correctness story, avoids state bleeding between specs, and
-Testcontainers' container startup (~1–2s for `postgres:16-alpine`) is cheap enough
-that this isn't a meaningful runtime cost for an opt-in suite.
+Country was implemented first, as a validation slice for the whole approach (module
+structure, aggregation exclusion, Testcontainers lifecycle, Flyway bootstrap) — see the
+Decision 2 gotcha note above for what that validation surfaced. Airport/Airline/Route
+follow the same `PostgresContainerSupport` layers; no further structural decisions are
+expected before writing them.
+
+Each spec migrates a **fresh** container per suite (not shared/reused across suites) —
+simplest correctness story, avoids state bleeding between specs, and Testcontainers'
+container startup (~1–2s for `postgres:16-alpine`) is cheap enough that this isn't a
+meaningful runtime cost for an opt-in suite across six specs.
+
+**Bug found during validation (2026-07-04):** the first working version used
+`.provideLayer(PostgresContainerSupport.xxxLayer)` on each `suite(...)`. `provideLayer`
+does **not** share a layer across a suite's tests — ZIO Test rebuilds it once per `test`
+block. A run of the three Country specs (15 tests total) started **16 separate Postgres
+containers** (confirmed via `grep "started in PT"` in the run log), one per test case
+instead of one per suite, each paying the full container-start + Flyway-migrate cost.
+Fix: use **`provideLayerShared`** instead — it builds the layer once and shares it
+across every test in that `suite(...)` block, matching the "fresh container per suite"
+design actually intended here. After the fix, the same three specs started exactly 3
+containers (confirmed the same way) and suite wall-clock dropped from ~9s to ~2.8s.
+**Every new `*ItSpec` must use `provideLayerShared`, never `provideLayer`,** or it
+silently reverts to one container per test. The tests were written with `contains`/
+`exists`-style assertions rather than exact-list equality specifically so that sharing
+one container/database across a suite's tests is safe regardless of execution order.
+
+(Rejected: a single
+container shared across all specs via a ZIO Test shared layer — the analysis that
+originally suggested this also required `Test / parallelExecution := false` to avoid
+races on shared tables; fresh-per-suite containers sidestep that entirely and keep
+specs independent, at the cost of a few extra seconds of total runtime that doesn't
+matter for a manually-invoked suite.)
 
 ## Non-blocking guarantees — explicit checklist
 
-- `sbt compile` — unaffected (`IntegrationTest` sources aren't compiled by `compile`,
-  only by `IntegrationTest/compile`).
-- `sbt "testOnly *"` — unaffected, different configuration.
-- `sbt coverageAggregate` — unaffected; **no `coverageSettings` applied to
-  `IntegrationTest`** in any of the three modules (deliberate — see Decision 3's
-  testkit module note; keeps the existing CAS-cache-bust dance in `CLAUDE.md`
-  scoped to `Test` only, not a fourth configuration to juggle).
-- CI workflow (per `CLAUDE.md`'s coverage section: `<module>/testOnly *` per
-  module) — unaffected, same reasoning as above.
+- `sbt compile` — unaffected; `integrationTests` is not in root's `.aggregate(...)`.
+- `sbt "testOnly *"` — unaffected, same reason: not aggregated, so root-scoped test
+  commands never reach it.
+- `sbt coverageAggregate` — unaffected; **no `coverageSettings` applied** to
+  `integrationTests` (it's test-support/verification code, not production logic to
+  measure) and it isn't aggregated in the first place.
+- CI workflow (per `CLAUDE.md`'s coverage section: `<module>/testOnly *` per module) —
+  unaffected; CI invokes modules by explicit name and `integrationTests` is never named.
 - Requires Docker running locally to invoke at all (Testcontainers). Not adding
-  Docker-availability detection/auto-skip in this plan — out of scope; a developer
-  who runs `IntegrationTest/test` without Docker gets a clear container-startup
-  failure, which is an acceptable opt-in cost.
+  Docker-availability detection/auto-skip in this plan — out of scope; a developer who
+  runs `integrationTests/test` without Docker gets a clear container-startup failure,
+  which is an acceptable opt-in cost.
 - New optional command alias for convenience, alongside the existing `xdup` alias:
-  `addCommandAlias("it", "migration/IntegrationTest/test; persistencePostgres/IntegrationTest/test; persistenceQuill/IntegrationTest/test")`.
+  `addCommandAlias("integrationTest", "integrationTests/test")`.
 - **Explicitly out of scope:** wiring these into the CI workflow. The ask here is
-  local/manual opt-in via `sbt`; whether CI should ever run a Docker-dependent job
-  is a separate decision with its own tradeoffs (CI runner Docker-in-Docker support,
-  runtime cost per PR) not addressed by this plan.
+  local/manual opt-in via `sbt`; whether CI should ever run a Docker-dependent job is a
+  separate decision with its own tradeoffs (CI runner Docker-in-Docker support, runtime
+  cost per PR) not addressed by this plan.
 
 ## Verification
 
-- `sbt scalafmtAll && sbt compile` — zero warnings, confirms `IntegrationTest`
-  sources don't leak into the default `compile` task.
+- `sbt scalafmtAll && sbt compile` — zero warnings; confirms `integrationTests` doesn't
+  leak into the default `compile` task (it isn't aggregated).
 - `sbt "testOnly *"` still passes and still excludes the new specs.
-- `sbt "persistencePostgres/IntegrationTest/test"` (and the other two modules) run
-  green against a real, freshly-started container.
-- `sbt dependencyUpdates` — confirm the Testcontainers version pinned here is still
-  the current stable GA at implementation time (per `CLAUDE.md`'s versioning
-  policy); this plan intentionally doesn't hardcode a version number for that
-  reason.
+- `sbt integrationTests/test` runs green against real, freshly-started containers
+  (six specs, one container each).
+- `sbt dependencyUpdates` — confirm the Testcontainers version pinned here is still the
+  current stable GA at implementation time (per `CLAUDE.md`'s versioning policy); this
+  plan intentionally doesn't hardcode a version number for that reason.
 
 ## Files touched (summary)
 
-- `build.sbt` — `.configs(IntegrationTest)` + `Defaults.itSettings` on `migration`,
-  `persistencePostgres`, `persistenceQuill`; new `persistenceTestkit` module
-  (Decision 3, Option A); new `it` command alias
-- `project/Dependencies.scala` — `Versions.testcontainers`, `zioTestIT`,
-  `zioTestSbtIT`, `testcontainersCore`, `testcontainersPostgres`
-- `infrastructure/persistence-testkit/src/main/scala/.../PostgresContainerLayer.scala` (new module)
-- `infrastructure/migration/src/it/scala/.../FlywayMigrationItSpec.scala` (new)
-- `infrastructure/persistence-postgres/src/it/scala/.../DoobieAirportRepositoryItSpec.scala` (new)
-- `infrastructure/persistence-postgres/src/it/scala/.../DoobieCountryRepositoryItSpec.scala` (new)
-- `infrastructure/persistence-postgres/src/it/scala/.../DoobieAirlineRepositoryItSpec.scala` (new)
-- `infrastructure/persistence-postgres/src/it/scala/.../DoobieRouteRepositoryItSpec.scala` (new)
-- `infrastructure/persistence-quill/src/it/scala/.../QuillCountryRepositoryItSpec.scala` (new)
-- `CLAUDE.md` — document the `sbt "<module>/IntegrationTest/test"` / `sbt it`
+- `build.sbt` — new `integrationTests` project (Decision 1); deliberately **not**
+  added to `root`'s `.aggregate(...)`; new `integrationTest` command alias
+- `project/Dependencies.scala` — `Versions.testcontainers`, `testcontainersCore`,
+  `testcontainersPostgres`
+- `infrastructure/integration-tests/src/test/scala/dev/cmartin/aerohex/it/support/PostgresContainerSupport.scala` (new)
+- `infrastructure/integration-tests/src/test/scala/dev/cmartin/aerohex/it/migration/FlywayMigrationItSpec.scala` (new)
+- `infrastructure/integration-tests/src/test/scala/dev/cmartin/aerohex/it/postgres/DoobieAirportRepositoryItSpec.scala` (new)
+- `infrastructure/integration-tests/src/test/scala/dev/cmartin/aerohex/it/postgres/DoobieCountryRepositoryItSpec.scala` (new)
+- `infrastructure/integration-tests/src/test/scala/dev/cmartin/aerohex/it/postgres/DoobieAirlineRepositoryItSpec.scala` (new)
+- `infrastructure/integration-tests/src/test/scala/dev/cmartin/aerohex/it/postgres/DoobieRouteRepositoryItSpec.scala` (new)
+- `infrastructure/integration-tests/src/test/scala/dev/cmartin/aerohex/it/quill/QuillCountryRepositoryItSpec.scala` (new)
+- `CLAUDE.md` — document the `sbt integrationTests/test` / `sbt integrationTest`
   workflow as opt-in, Docker-dependent, and separate from the `testOnly *`/coverage
-  workflow already documented
+  workflow already documented; note the module is intentionally excluded from root
+  aggregation
