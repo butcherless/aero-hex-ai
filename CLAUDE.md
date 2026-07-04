@@ -52,8 +52,8 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 | Effect | ZIO | 2.1.26 |
 | HTTP server | ZIO HTTP | 3.11.3 |
 | HTTP endpoints | Tapir | 1.13.25 |
-| Persistence | Doobie + zio-interop-cats | 1.0.0-RC9 / 23.1.0.13 |
-| Persistence (POC) | Quill | 4.8.6 |
+| Persistence (wired default) | Quill | 4.8.6 |
+| Persistence (unwired alternate) | Doobie + zio-interop-cats | 1.0.0-RC9 / 23.1.0.13 |
 | Messaging | ZIO Kafka | 3.6.0 |
 | Migrations | Flyway | 12.10.0 |
 | Database | PostgreSQL JDBC | 42.7.12 |
@@ -66,8 +66,8 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 shared-kernel
     └── domain
             ├── application
-            ├── persistence-postgres   (infrastructure — wired into bootstrap; CountryRepository + AirportRepository)
-            ├── persistence-quill      (infrastructure — not wired into bootstrap; QuillCountryRepository is unused)
+            ├── persistence-postgres   (infrastructure — not wired into bootstrap; Doobie repos kept schema-consistent)
+            ├── persistence-quill      (infrastructure — wired into bootstrap; CountryRepository + AirportRepository)
             ├── messaging-kafka        (infrastructure — not wired into bootstrap)
             └── adapter-http
                         └── bootstrap  (composition root: domain + application + adapter-http + persistence-quill + persistence-postgres)
@@ -85,8 +85,9 @@ Rule: inner modules never depend on outer ones. `domain` has zero framework depe
   - `port/in/` — driving ports / use-case interfaces
   - `port/out/` — driven ports / repository + publisher interfaces
 - **`application/`** — orchestrates ports, implements `port/in`. Each service has a companion `ZLayer`.
-- **`persistence-postgres/`** — Doobie implementations of `port/out` repositories. `DoobieCountryRepository` and `DoobieAirportRepository` are wired into bootstrap via `WiringModule` (both share one scoped `PostgresConfig.transactorLayer` `HikariTransactor` — ZIO layers referenced by the same value are built and shared once, not once per consumer); `DoobieAirlineRepository`/`DoobieRouteRepository`/`DoobieOutboxRepository` exist but aren't wired. Country and Airport are the only resources backed by real persistence — every other repository is an in-memory stub.
-- **`persistence-quill/`** — Quill implementation of `CountryRepository`. No longer wired into bootstrap — `WiringModule` switched Country to the Doobie implementation so all real queries go through one persistence solution. `QuillDataSourceLayer`/`QuillCountryRepository` still exist and compile but are unreferenced by `bootstrap`.
+- **`persistence-postgres/`** — Doobie implementations of `port/out` repositories (`DoobieCountryRepository`, `DoobieAirportRepository`, `DoobieAirlineRepository`, `DoobieRouteRepository`, `DoobieOutboxRepository`). None are wired into bootstrap today — Country and Airport both briefly ran through Doobie during the surrogate-key rollout, then were switched to Quill so every wired repository uses one implementation (see policy note below). Kept schema-consistent for if Doobie is ever chosen again.
+- **`persistence-quill/`** — Quill implementations of `CountryRepository` and `AirportRepository`; both wired into bootstrap via `WiringModule`, sharing one `QuillDataSourceLayer.live` `DataSource`. Country and Airport are the only resources backed by real persistence — every other repository is an in-memory stub.
+- **Persistence-implementation policy:** every wired repository must use the same implementation (Quill or Doobie) — never mix, e.g. Country on one and Airport on the other. Switching implementations is an all-or-nothing change across every wired entity, done in one commit. See the policy comment at the top of `WiringModule.scala`.
 - **`messaging-kafka/`** — ZIO Kafka producer and outbox relay. Not wired into bootstrap.
 - **`migration/`** — Flyway SQL migrations; no domain dependency. Not invoked by `Main` yet — `FlywayMigration.layer` exists but is unreferenced.
 - **`adapter-http/`** — Tapir endpoint definitions + ZIO HTTP server. DTOs live here; `ErrorMapper` maps `DomainError` → HTTP status.
@@ -122,7 +123,7 @@ object DoobieAirportRepository:
 |---|---|
 | `RouteEventCodec.routeCreatedSerde` | `???` — needs ZIO Kafka 3.x `Serde` with Circe JSON |
 | `RouteEventProducer.publish` | compiles, but only logs the event — doesn't call `Producer.produce` |
-| `WiringModule.appLayer` | wires Doobie `CountryRepository`, Doobie `AirportRepository`, and in-memory stubs for everything else |
+| `WiringModule.appLayer` | wires Quill `CountryRepository`, Quill `AirportRepository`, and in-memory stubs for everything else |
 
 ## Database schema
 

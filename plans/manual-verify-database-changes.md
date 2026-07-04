@@ -102,8 +102,8 @@ Expected (real output, captured this session):
 
 Confirms `FindAirportsByCountryService` → `DoobieAirportRepository.findByCountry`'s
 rewritten join-and-filter-by-`c.code` query, and the 404-on-unknown-country check
-against the real `CountryRepository` (Doobie-backed as of the Quill→Doobie wiring
-switch — see `CLAUDE.md`'s module dependency graph).
+against the real, Quill-backed `CountryRepository` — see `CLAUDE.md`'s module
+dependency graph for current wiring.
 
 ### h) Print results to console for review
 

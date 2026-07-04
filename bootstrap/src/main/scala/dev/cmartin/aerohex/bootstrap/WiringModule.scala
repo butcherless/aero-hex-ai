@@ -6,23 +6,25 @@ import dev.cmartin.aerohex.application.service.*
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.model.*
 import dev.cmartin.aerohex.domain.port.out.*
-import dev.cmartin.aerohex.infrastructure.persistence.postgres.config.PostgresConfig
-import dev.cmartin.aerohex.infrastructure.persistence.postgres.repository.{
-  DoobieAirportRepository, DoobieCountryRepository
-}
+import dev.cmartin.aerohex.infrastructure.persistence.quill.config.QuillDataSourceLayer
+import dev.cmartin.aerohex.infrastructure.persistence.quill.repository.{QuillAirportRepository, QuillCountryRepository}
 import dev.cmartin.aerohex.shared.Pagination
 import zio.*
 
-// CountryRepository and AirportRepository are both wired to Postgres via Doobie, sharing one
-// HikariTransactor (ZIO layers with the same reference are built and shared once, not per-use).
-// All other repositories use in-memory stubs.
+// POLICY: every real-persistence repository must be wired to the SAME implementation (currently
+// Quill, sharing one QuillDataSourceLayer.live DataSource/pool) — no mixing Quill and Doobie
+// across entities. If this ever switches (e.g. back to Doobie), switch every wired repository in
+// the same change, not one at a time, to avoid the split Country=Quill/Airport=Doobie state this
+// project went through. Doobie implementations (DoobieCountryRepository, DoobieAirportRepository,
+// DoobieAirlineRepository, DoobieRouteRepository) still exist in persistence-postgres and are kept
+// schema-consistent, but none are wired here today. All other repositories use in-memory stubs.
 object WiringModule {
 
   private val countryRepoLayer: TaskLayer[CountryRepository] =
-    PostgresConfig.transactorLayer >>> DoobieCountryRepository.layer
+    QuillDataSourceLayer.live >>> QuillCountryRepository.layer
 
   private val airportRepoLayer: TaskLayer[AirportRepository] =
-    PostgresConfig.transactorLayer >>> DoobieAirportRepository.layer
+    QuillDataSourceLayer.live >>> QuillAirportRepository.layer
 
   private val airlineRepoLayer: ULayer[AirlineRepository] = ZLayer.succeed(
     new AirlineRepository:
