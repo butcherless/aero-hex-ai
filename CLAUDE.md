@@ -66,8 +66,8 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 shared-kernel
     └── domain
             ├── application
-            ├── persistence-postgres   (infrastructure — wired into bootstrap; AirportRepository only)
-            ├── persistence-quill      (infrastructure — wired into bootstrap; CountryRepository only)
+            ├── persistence-postgres   (infrastructure — wired into bootstrap; CountryRepository + AirportRepository)
+            ├── persistence-quill      (infrastructure — not wired into bootstrap; QuillCountryRepository is unused)
             ├── messaging-kafka        (infrastructure — not wired into bootstrap)
             └── adapter-http
                         └── bootstrap  (composition root: domain + application + adapter-http + persistence-quill + persistence-postgres)
@@ -85,8 +85,8 @@ Rule: inner modules never depend on outer ones. `domain` has zero framework depe
   - `port/in/` — driving ports / use-case interfaces
   - `port/out/` — driven ports / repository + publisher interfaces
 - **`application/`** — orchestrates ports, implements `port/in`. Each service has a companion `ZLayer`.
-- **`persistence-postgres/`** — Doobie implementations of `port/out` repositories. `DoobieAirportRepository` is wired into bootstrap via `WiringModule` (backed by `PostgresConfig.transactorLayer`, a scoped `HikariTransactor`); the other repositories in this module (Country, Airline, Route, Outbox) exist but aren't wired.
-- **`persistence-quill/`** — Quill implementation of `CountryRepository`; wired into bootstrap via `WiringModule`. Country and Airport are the only resources backed by real persistence — every other repository is an in-memory stub.
+- **`persistence-postgres/`** — Doobie implementations of `port/out` repositories. `DoobieCountryRepository` and `DoobieAirportRepository` are wired into bootstrap via `WiringModule` (both share one scoped `PostgresConfig.transactorLayer` `HikariTransactor` — ZIO layers referenced by the same value are built and shared once, not once per consumer); `DoobieAirlineRepository`/`DoobieRouteRepository`/`DoobieOutboxRepository` exist but aren't wired. Country and Airport are the only resources backed by real persistence — every other repository is an in-memory stub.
+- **`persistence-quill/`** — Quill implementation of `CountryRepository`. No longer wired into bootstrap — `WiringModule` switched Country to the Doobie implementation so all real queries go through one persistence solution. `QuillDataSourceLayer`/`QuillCountryRepository` still exist and compile but are unreferenced by `bootstrap`.
 - **`messaging-kafka/`** — ZIO Kafka producer and outbox relay. Not wired into bootstrap.
 - **`migration/`** — Flyway SQL migrations; no domain dependency. Not invoked by `Main` yet — `FlywayMigration.layer` exists but is unreferenced.
 - **`adapter-http/`** — Tapir endpoint definitions + ZIO HTTP server. DTOs live here; `ErrorMapper` maps `DomainError` → HTTP status.
@@ -122,7 +122,7 @@ object DoobieAirportRepository:
 |---|---|
 | `RouteEventCodec.routeCreatedSerde` | `???` — needs ZIO Kafka 3.x `Serde` with Circe JSON |
 | `RouteEventProducer.publish` | compiles, but only logs the event — doesn't call `Producer.produce` |
-| `WiringModule.appLayer` | wires Quill `CountryRepository`, Doobie `AirportRepository`, and in-memory stubs for everything else |
+| `WiringModule.appLayer` | wires Doobie `CountryRepository`, Doobie `AirportRepository`, and in-memory stubs for everything else |
 
 ## Database schema
 
@@ -137,6 +137,17 @@ V5 — outbox_events (PK: UUID, JSONB payload, published BOOLEAN, partial index 
 V6 — airports      adds icao_code VARCHAR(4) NOT NULL — V2 never had this column even though
                     the Airport domain model/DTO/DoobieAirportRepository always required it;
                     caught only once persistence-postgres was actually wired into bootstrap.
+V7 — countries/airports/airlines swap their PK from the natural business key to a surrogate
+     `id BIGINT GENERATED ALWAYS AS IDENTITY`; the natural key (`code`/`iata_code`/`icao_code`)
+     stays as a UNIQUE NOT NULL column for business lookups. Every FK in the schema is
+     redirected to reference the parent's surrogate id instead of its natural key
+     (`airports.country_code` → `country_id`, `airlines.country_code` → `country_id`,
+     `routes.origin_iata`/`destination_iata`/`airline_icao` → `origin_airport_id`/
+     `destination_airport_id`/`airline_id`). `routes.id`/`outbox_events.id` stay UUID —
+     nothing FKs to either. Adds `pg_trgm` GIN indexes on `countries.name`/`airports.name`
+     for the ILIKE `searchByName` finders, which had no index support before. The surrogate
+     id never leaves the persistence layer — domain models and ports are untouched.
+     See `plans/surrogate-long-keys-country-airport.md`.
 ```
 
 **Flyway is not actually invoked anywhere yet** (`FlywayMigration.layer` is unreferenced by `Main`) —

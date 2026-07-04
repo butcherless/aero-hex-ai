@@ -15,7 +15,7 @@ final class QuillCountryRepository(dataSource: DataSource) extends CountryReposi
 
   private val uniqueViolationSqlState = "23505"
 
-  private case class CountryRow(code: String, name: String)
+  private case class CountryRow(id: Long, code: String, name: String)
 
   private val ctx = new Quill.Postgres(SnakeCase, dataSource)
 

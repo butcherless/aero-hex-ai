@@ -7,18 +7,19 @@ import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.model.*
 import dev.cmartin.aerohex.domain.port.out.*
 import dev.cmartin.aerohex.infrastructure.persistence.postgres.config.PostgresConfig
-import dev.cmartin.aerohex.infrastructure.persistence.postgres.repository.DoobieAirportRepository
-import dev.cmartin.aerohex.infrastructure.persistence.quill.config.QuillDataSourceLayer
-import dev.cmartin.aerohex.infrastructure.persistence.quill.repository.QuillCountryRepository
+import dev.cmartin.aerohex.infrastructure.persistence.postgres.repository.{
+  DoobieAirportRepository, DoobieCountryRepository
+}
 import dev.cmartin.aerohex.shared.Pagination
 import zio.*
 
-// CountryRepository is wired to Postgres via Quill (POC); AirportRepository is wired to
-// Postgres via Doobie. All other repositories use in-memory stubs.
+// CountryRepository and AirportRepository are both wired to Postgres via Doobie, sharing one
+// HikariTransactor (ZIO layers with the same reference are built and shared once, not per-use).
+// All other repositories use in-memory stubs.
 object WiringModule {
 
   private val countryRepoLayer: TaskLayer[CountryRepository] =
-    QuillDataSourceLayer.live >>> QuillCountryRepository.layer
+    PostgresConfig.transactorLayer >>> DoobieCountryRepository.layer
 
   private val airportRepoLayer: TaskLayer[AirportRepository] =
     PostgresConfig.transactorLayer >>> DoobieAirportRepository.layer

@@ -7,15 +7,42 @@ import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.model.{IataCode, IcaoCode, Route, RouteId}
 import dev.cmartin.aerohex.domain.port.out.RouteRepository
 import dev.cmartin.aerohex.shared.Pagination
-import zio.{IO, Task, URLayer, ZLayer}
+import zio.{IO, Task, URLayer, ZIO, ZLayer}
 import zio.interop.catz.*
 
 import java.util.UUID
 
 final class DoobieRouteRepository(xa: Transactor[Task]) extends RouteRepository {
 
+  private def resolveAirportId(iata: IataCode): IO[DomainError, Long] =
+    sql"SELECT id FROM airports WHERE iata_code = ${iata.value}"
+      .query[Long]
+      .option
+      .transact(xa)
+      .orDie
+      .flatMap {
+        case Some(id) => ZIO.succeed(id)
+        case None     => ZIO.fail(DomainError.AirportNotFound(iata.value))
+      }
+
+  private def resolveAirlineId(icao: IcaoCode): IO[DomainError, Long] =
+    sql"SELECT id FROM airlines WHERE icao_code = ${icao.value}"
+      .query[Long]
+      .option
+      .transact(xa)
+      .orDie
+      .flatMap {
+        case Some(id) => ZIO.succeed(id)
+        case None     => ZIO.fail(DomainError.AirlineNotFound(icao.value))
+      }
+
   override def findById(id: RouteId): IO[DomainError, Option[Route]] =
-    sql"SELECT id, origin_iata, destination_iata, airline_icao, distance_km FROM routes WHERE id = ${id.value}"
+    sql"""SELECT r.id, ao.iata_code, ad.iata_code, al.icao_code, r.distance_km
+          FROM routes r
+            JOIN airports ao ON r.origin_airport_id = ao.id
+            JOIN airports ad ON r.destination_airport_id = ad.id
+            JOIN airlines al ON r.airline_id = al.id
+          WHERE r.id = ${id.value}"""
       .query[(UUID, String, String, String, Int)]
       .option
       .transact(xa)
@@ -23,7 +50,12 @@ final class DoobieRouteRepository(xa: Transactor[Task]) extends RouteRepository 
       .orDie
 
   override def findAll(pagination: Pagination): IO[DomainError, List[Route]] =
-    sql"SELECT id, origin_iata, destination_iata, airline_icao, distance_km FROM routes ORDER BY id LIMIT ${pagination.pageSize} OFFSET ${pagination.offset}"
+    sql"""SELECT r.id, ao.iata_code, ad.iata_code, al.icao_code, r.distance_km
+          FROM routes r
+            JOIN airports ao ON r.origin_airport_id = ao.id
+            JOIN airports ad ON r.destination_airport_id = ad.id
+            JOIN airlines al ON r.airline_id = al.id
+          ORDER BY r.id LIMIT ${pagination.pageSize} OFFSET ${pagination.offset}"""
       .query[(UUID, String, String, String, Int)]
       .to[List]
       .transact(xa)
@@ -31,15 +63,19 @@ final class DoobieRouteRepository(xa: Transactor[Task]) extends RouteRepository 
       .orDie
 
   override def save(route: Route): IO[DomainError, Route] =
-    sql"""
-      INSERT INTO routes (id, origin_iata, destination_iata, airline_icao, distance_km)
-      VALUES (${route.id.value}, ${route.origin.value}, ${route.destination.value}, ${route.airlineIcao.value}, ${route.distanceKm})
-      ON CONFLICT (id) DO UPDATE
-        SET distance_km = EXCLUDED.distance_km
-    """.update.run
-      .transact(xa)
-      .as(route)
-      .orDie
+    for {
+      originId      <- resolveAirportId(route.origin)
+      destinationId <- resolveAirportId(route.destination)
+      airlineId     <- resolveAirlineId(route.airlineIcao)
+      _             <- sql"""
+             INSERT INTO routes (id, origin_airport_id, destination_airport_id, airline_id, distance_km)
+             VALUES (${route.id.value}, $originId, $destinationId, $airlineId, ${route.distanceKm})
+             ON CONFLICT (id) DO UPDATE
+               SET distance_km = EXCLUDED.distance_km
+           """.update.run
+                         .transact(xa)
+                         .orDie
+    } yield route
 
   override def delete(id: RouteId): IO[DomainError, Unit] =
     sql"DELETE FROM routes WHERE id = ${id.value}"
