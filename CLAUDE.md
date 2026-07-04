@@ -35,11 +35,8 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 ## Versioning policy
 
 - **Scala** — LTS only (3.3.x). Never upgrade to a non-LTS minor. The `scala3-library` 3.8.x entry in `dependencyUpdates` is the SBT meta-build; ignore it.
-- **Direct deps** — stable GA (release) versions by default. A dependency intentionally pinned to
-  a pre-release is a named exclusion, not a default state — currently just Doobie 1.x, which has
-  no GA release yet. Exclusions are left untouched: don't chase a newer RC/M/SNAPSHOT for an
-  excluded dep just because one exists — that's a deliberate call to make outside the routine bump
-  cycle, once a GA release (or a specific new capability) makes it worth revisiting.
+- **Direct deps** — stable GA by default. Only named exception: Doobie 1.x (no GA release yet) —
+  don't chase a newer RC/M/SNAPSHOT for it without a deliberate reason (a GA release or a needed capability).
 - **Transitive deps** — let SBT resolve via eviction; only force an override for a known vulnerability or binary-incompatibility.
 - **Updates** — run `dependencyUpdates` before each feature cycle. Patch/minor updates are free; major bumps need migration-guide review and passing compile + tests.
 
@@ -66,8 +63,8 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 shared-kernel
     └── domain
             ├── application
-            ├── persistence-postgres   (infrastructure — not wired into bootstrap; Doobie repos kept schema-consistent)
-            ├── persistence-quill      (infrastructure — wired into bootstrap; CountryRepository + AirportRepository)
+            ├── persistence-postgres   (infrastructure — unwired; Doobie repos kept schema-consistent)
+            ├── persistence-quill      (infrastructure — wired into bootstrap; Country + Airport)
             ├── messaging-kafka        (infrastructure — not wired into bootstrap)
             └── adapter-http
                         └── bootstrap  (composition root: domain + application + adapter-http + persistence-quill + persistence-postgres)
@@ -85,9 +82,9 @@ Rule: inner modules never depend on outer ones. `domain` has zero framework depe
   - `port/in/` — driving ports / use-case interfaces
   - `port/out/` — driven ports / repository + publisher interfaces
 - **`application/`** — orchestrates ports, implements `port/in`. Each service has a companion `ZLayer`.
-- **`persistence-postgres/`** — Doobie implementations of `port/out` repositories (`DoobieCountryRepository`, `DoobieAirportRepository`, `DoobieAirlineRepository`, `DoobieRouteRepository`, `DoobieOutboxRepository`). None are wired into bootstrap today — Country and Airport both briefly ran through Doobie during the surrogate-key rollout, then were switched to Quill so every wired repository uses one implementation (see policy note below). Kept schema-consistent for if Doobie is ever chosen again.
-- **`persistence-quill/`** — Quill implementations of `CountryRepository` and `AirportRepository`; both wired into bootstrap via `WiringModule`, sharing one `QuillDataSourceLayer.live` `DataSource`. Country and Airport are the only resources backed by real persistence — every other repository is an in-memory stub.
-- **Persistence-implementation policy:** every wired repository must use the same implementation (Quill or Doobie) — never mix, e.g. Country on one and Airport on the other. Switching implementations is an all-or-nothing change across every wired entity, done in one commit. See the policy comment at the top of `WiringModule.scala`.
+- **`persistence-postgres/`** — Doobie implementations of `port/out` (`DoobieCountryRepository`, `DoobieAirportRepository`, `DoobieAirlineRepository`, `DoobieRouteRepository`, `DoobieOutboxRepository`). Unwired but kept schema-consistent, in case Doobie is chosen again.
+- **`persistence-quill/`** — Quill implementations of `CountryRepository`/`AirportRepository`; both wired via `WiringModule`, sharing one `QuillDataSourceLayer.live` `DataSource`. The only resources backed by real persistence — everything else is an in-memory stub.
+- **Persistence policy:** all wired repositories must use the same implementation — switching is all-or-nothing across every entity, in one commit (see the header comment in `WiringModule.scala`).
 - **`messaging-kafka/`** — ZIO Kafka producer and outbox relay. Not wired into bootstrap.
 - **`migration/`** — Flyway SQL migrations; no domain dependency. Not invoked by `Main` yet — `FlywayMigration.layer` exists but is unreferenced.
 - **`adapter-http/`** — Tapir endpoint definitions + ZIO HTTP server. DTOs live here; `ErrorMapper` maps `DomainError` → HTTP status.
@@ -104,9 +101,9 @@ airport.iataCode.value    // unwrap to String
 
 **ZLayer wiring** — every infrastructure class exposes a companion `val layer`:
 ```scala
-object DoobieAirportRepository:
-  val layer: URLayer[Transactor[Task], AirportRepository] =
-    ZLayer.fromFunction(new DoobieAirportRepository(_))
+object QuillAirportRepository:
+  val layer: URLayer[DataSource, AirportRepository] =
+    ZLayer.fromFunction(new QuillAirportRepository(_))
 ```
 
 **`UIO` for infallible queries** — `findAll`/`searchByName` return `UIO[List[A]]`; no `.mapError` needed in routes.
@@ -138,17 +135,14 @@ V5 — outbox_events (PK: UUID, JSONB payload, published BOOLEAN, partial index 
 V6 — airports      adds icao_code VARCHAR(4) NOT NULL — V2 never had this column even though
                     the Airport domain model/DTO/DoobieAirportRepository always required it;
                     caught only once persistence-postgres was actually wired into bootstrap.
-V7 — countries/airports/airlines swap their PK from the natural business key to a surrogate
-     `id BIGINT GENERATED ALWAYS AS IDENTITY`; the natural key (`code`/`iata_code`/`icao_code`)
-     stays as a UNIQUE NOT NULL column for business lookups. Every FK in the schema is
-     redirected to reference the parent's surrogate id instead of its natural key
-     (`airports.country_code` → `country_id`, `airlines.country_code` → `country_id`,
-     `routes.origin_iata`/`destination_iata`/`airline_icao` → `origin_airport_id`/
-     `destination_airport_id`/`airline_id`). `routes.id`/`outbox_events.id` stay UUID —
-     nothing FKs to either. Adds `pg_trgm` GIN indexes on `countries.name`/`airports.name`
-     for the ILIKE `searchByName` finders, which had no index support before. The surrogate
-     id never leaves the persistence layer — domain models and ports are untouched.
-     See `plans/surrogate-long-keys-country-airport.md`.
+V7 — countries/airports/airlines: PK → surrogate `id BIGINT GENERATED ALWAYS AS IDENTITY`; natural
+     key (`code`/`iata_code`/`icao_code`) becomes a UNIQUE NOT NULL column for business lookups.
+     Every FK now targets the parent's surrogate id instead of its natural key (`country_code` →
+     `country_id`; `origin_iata`/`destination_iata`/`airline_icao` → `origin_airport_id`/
+     `destination_airport_id`/`airline_id`). `routes.id`/`outbox_events.id` stay UUID (nothing FKs
+     to them). Adds `pg_trgm` GIN indexes for the ILIKE `searchByName` finders (no index before).
+     Surrogate id is persistence-only — domain/ports untouched. See
+     `plans/surrogate-long-keys-country-airport.md`.
 ```
 
 **Flyway is not actually invoked anywhere yet** (`FlywayMigration.layer` is unreferenced by `Main`) —
@@ -187,7 +181,7 @@ Swagger UI: `http://localhost:8080/docs`
 | Countries | PUT | `/api/v1/countries/{code}` | ✓ implemented |
 | Countries | DELETE | `/api/v1/countries/{code}` | ✓ implemented |
 | Airports | GET | `/api/v1/airports` | ✓ implemented |
-| Airports | GET | `/api/v1/airports/search` | ✓ implemented |
+| Airports | GET | `/api/v1/airports/search` (name filter, ≥3 chars) | ✓ implemented |
 | Airports | GET | `/api/v1/airports/{iata}` | ✓ implemented |
 | Airports | POST | `/api/v1/airports` | ✓ implemented |
 | Airports | PUT | `/api/v1/airports/{iata}` | ✓ implemented |
@@ -201,6 +195,13 @@ Swagger UI: `http://localhost:8080/docs`
 | Journeys | GET | `/api/v1/journeys` | stub |
 | Journeys | GET | `/api/v1/journeys/{id}` | stub |
 | Routes | POST | `/api/v1/routes` | stub |
+
+## Plans directory
+
+Non-trivial changes (new endpoints, schema/persistence migrations, test refactors) get a design doc
+in `plans/` before implementation: goal, decisions with a recommendation + rejected alternatives,
+steps, files touched. Keep docs after their work lands — they're the record of *why* — and update
+one instead of duplicating it if a later change revises the same decision.
 
 ## Coverage
 
@@ -220,7 +221,7 @@ sbt coverageAggregate
 # → target/out/jvm/scala-3.3.8/aero-hex-ai/scoverage-report/index.html
 ```
 
-**CAS caveat:** when `sbt compile` hits the content-addressed cache, it does not write local `.coverage-data/` dirs. The Scala 3 coverage `Invoker` then throws `ExceptionInInitializerError` at test runtime. Fix: `mkdir -p <module>/.coverage-data/scoverage-data` for every module before running `testOnly`. The CI workflow does this explicitly.
+**CAS caveat:** a cached `sbt compile` skips writing local `.coverage-data/` dirs, causing `ExceptionInInitializerError` at test runtime. Fix: `mkdir -p <module>/.coverage-data/scoverage-data` per module before `testOnly` (the CI workflow does this).
 
 ## Formatter
 
