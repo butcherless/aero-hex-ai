@@ -1,13 +1,11 @@
 name: Setup build environment
-description: Checkout the repository and set up JDK 21 + sbt for Scala builds
+description: Set up JDK 21 + sbt for Scala builds
+# Assumes the caller has already run actions/checkout — local composite actions are resolved
+# against the checked-out workspace, so checkout can't live inside this action (chicken-and-egg).
 
 runs:
   using: composite
   steps:
-    - name: Checkout
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-      with:
-        persist-credentials: false
     - name: Setup JDK
       uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5.5.0
       with:
