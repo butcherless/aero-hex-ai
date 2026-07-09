@@ -16,12 +16,13 @@ object FlywayMigration {
       ZIO.logInfo(s"Flyway: applied ${result.migrationsExecuted} migration(s)")
     }.flatten
 
+  val migrateFromEnv: Task[Unit] =
+    migrate(
+      url = sys.env.getOrElse("POSTGRES_URL", "jdbc:postgresql://localhost:5432/aviation"),
+      user = sys.env.getOrElse("POSTGRES_USER", "aviation"),
+      password = sys.env.getOrElse("POSTGRES_PASSWORD", "aviation")
+    )
+
   val layer: TaskLayer[Unit] =
-    ZLayer.fromZIO {
-      migrate(
-        url = sys.env.getOrElse("POSTGRES_URL", "jdbc:postgresql://localhost:5432/aviation"),
-        user = sys.env.getOrElse("POSTGRES_USER", "aviation"),
-        password = sys.env.getOrElse("POSTGRES_PASSWORD", "aviation")
-      )
-    }
+    ZLayer.fromZIO(migrateFromEnv)
 }

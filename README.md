@@ -37,6 +37,15 @@ JAR=$(find target/out -name "bootstrap-assembly-*.jar" | sort | tail -1)
 java -cp "$JAR" dev.cmartin.aerohex.bootstrap.Main
 ```
 
+On startup the app runs Flyway migrations in-process, before the HTTP port binds — new
+`V*.sql` files under `infrastructure/migration/` apply automatically, and a migration failure
+aborts startup. Set `FLYWAY_MIGRATE_ON_START=false` to skip.
+
+> **One-time, per machine:** if your dev database predates migrate-on-start (hand-applied
+> schema, no `flyway_schema_history` table), reset it once — `docker compose down -v &&
+> docker compose up -d`, start the app (applies `V1`–`V7` from scratch), then re-seed:
+> `docker exec -i aero-hex-ai-postgres-1 psql -U aviation -d aviation < plans/seed-data-countries-airports.sql`
+
 Verify it's up:
 
 ```bash

@@ -71,8 +71,8 @@ shared-kernel
             ├── persistence-quill      (infrastructure — wired into bootstrap; Country + Airport)
             ├── messaging-kafka        (infrastructure — not wired into bootstrap)
             └── adapter-http
-                        └── bootstrap  (composition root: domain + application + adapter-http + persistence-quill + persistence-postgres)
-                migration              (standalone — SQL + Flyway only; not wired into bootstrap)
+                        └── bootstrap  (composition root: domain + application + adapter-http + persistence-quill + persistence-postgres + migration)
+                migration              (SQL + Flyway only; no domain dependency — wired into bootstrap for migrate-on-start)
                 integration-tests      (standalone — opt-in, real-Postgres tests; NOT in root's aggregate)
 ```
 
@@ -91,9 +91,9 @@ Rule: inner modules never depend on outer ones. `domain` has zero framework depe
 - **`persistence-quill/`** — Quill implementations of `CountryRepository`/`AirportRepository`; both wired via `WiringModule`, sharing one `QuillDataSourceLayer.live` `DataSource`. The only resources backed by real persistence — everything else is an in-memory stub.
 - **Persistence policy:** all wired repositories must use the same implementation — switching is all-or-nothing across every entity, in one commit (see the header comment in `WiringModule.scala`).
 - **`messaging-kafka/`** — ZIO Kafka producer and outbox relay. Not wired into bootstrap.
-- **`migration/`** — Flyway SQL migrations; no domain dependency. Not invoked by `Main` yet — `FlywayMigration.layer` exists but is unreferenced.
+- **`migration/`** — Flyway SQL migrations; no domain dependency. `Main` runs `FlywayMigration.migrateFromEnv` at startup (see the `bootstrap` bullet).
 - **`adapter-http/`** — Tapir endpoint definitions + ZIO HTTP server. DTOs live here; `ErrorMapper` maps `DomainError` → HTTP status.
-- **`bootstrap/`** — sole composition root. `WiringModule` wires all `ZLayer`s. `Main` only starts the HTTP server (`WiringModule.appLayer`) — no migration step, no outbox relay.
+- **`bootstrap/`** — sole composition root. `WiringModule` wires all `ZLayer`s. `Main` runs Flyway migrations in-process (skip with `FLYWAY_MIGRATE_ON_START=false`), then starts the HTTP server (`WiringModule.appLayer`) — no outbox relay.
 - **`shared-kernel/`** — cross-cutting value types (`Pagination`, `NonEmptyString`).
 
 ## Integration tests (opt-in, real Postgres)
@@ -180,10 +180,12 @@ V7 — countries/airports/airlines: PK → surrogate `id BIGINT GENERATED ALWAYS
      `plans/surrogate-long-keys-country-airport.md`.
 ```
 
-**Flyway is not actually invoked anywhere yet** (`FlywayMigration.layer` is unreferenced by `Main`) —
-the local dev database's schema was applied by hand, and there is no `flyway_schema_history` table.
-Until a migration step is wired in, apply new migration files manually against the running
-Postgres container.
+**Flyway runs at application startup**: `Main` executes `FlywayMigration.migrateFromEnv` before
+the HTTP server binds (disable with `FLYWAY_MIGRATE_ON_START=false`; a failure aborts startup).
+New migration files apply automatically on the next app start — no manual psql step. The dev
+database is migration-produced (one-time reset performed 2026-07-09; see
+`plans/run-flyway-on-startup.md` for the design and the adoption procedure for machines whose
+database predates this).
 
 ## Local infrastructure
 
@@ -196,6 +198,7 @@ Environment variables (with fallbacks):
 POSTGRES_URL / POSTGRES_USER / POSTGRES_PASSWORD
 KAFKA_BOOTSTRAP_SERVERS / KAFKA_GROUP_ID
 HTTP_PORT  (default 8080)
+FLYWAY_MIGRATE_ON_START  (default true; "false" skips the startup migration)
 ```
 
 ## REST API
