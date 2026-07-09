@@ -15,17 +15,13 @@ sbt "testOnly *"      # run all tests (SBT 2.0: use testOnly *, not test)
 sbt scalafmtAll       # format all sources (run before committing new files)
 sbt scalafmtCheckAll  # check formatting (CI gate; requires git-tracked files)
 sbt bloopInstall      # regenerate .bloop/ after dependency changes
-sbt dependencyUpdates # show outdated dependencies
+sbt xdup              # show outdated dependencies (alias for dependencyUpdates)
 ```
 
 ## After every implementation
 
-```bash
-sbt scalafmtAll  # format
-sbt compile      # must pass with zero errors and zero warnings
-```
-
-Do not report the work as done until both succeed.
+Run `sbt scalafmtAll` then `sbt compile` (must pass with zero errors and zero warnings) — do not
+report the work as done until both succeed.
 
 ## Running the application
 
@@ -41,7 +37,7 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 - **Direct deps** — stable GA by default. Only named exception: Doobie 1.x (no GA release yet) —
   don't chase a newer RC/M/SNAPSHOT for it without a deliberate reason (a GA release or a needed capability).
 - **Transitive deps** — let SBT resolve via eviction; only force an override for a known vulnerability or binary-incompatibility.
-- **Updates** — run `dependencyUpdates` before each feature cycle. Patch/minor updates are free; major bumps need migration-guide review and passing compile + tests.
+- **Updates** — run `sbt xdup` before each feature cycle. Patch/minor updates are free; major bumps need migration-guide review and passing compile + tests.
 
 ## Tech stack
 
@@ -52,14 +48,15 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 | Build | SBT | 2.0.1 |
 | Effect | ZIO | 2.1.26 |
 | HTTP server | ZIO HTTP | 3.11.3 |
-| HTTP endpoints | Tapir | 1.13.25 |
+| HTTP endpoints | Tapir | 1.13.26 |
 | Persistence (wired default) | Quill | 4.8.6 |
 | Persistence (unwired alternate) | Doobie + zio-interop-cats | 1.0.0-RC9 / 23.1.0.13 |
-| Messaging | ZIO Kafka | 3.6.0 |
-| Migrations | Flyway | 12.10.0 |
-| Database | PostgreSQL JDBC | 42.7.12 |
+| Connection pooling | HikariCP | 7.1.0 |
+| Messaging | ZIO Kafka | 3.7.0 |
+| Migrations | Flyway | 12.11.0 |
+| Database | PostgreSQL JDBC | 42.7.13 |
 | JSON | Circe | 0.14.16 |
-| Logging | ZIO Logging + SLF4J + Logback | 2.5.3 / 1.5.37 |
+| Logging | ZIO Logging + SLF4J + Logback | 2.5.3 / 1.5.38 |
 | Integration testing | Testcontainers | 1.21.3 |
 
 ## Module dependency graph
