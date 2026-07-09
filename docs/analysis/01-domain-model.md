@@ -55,7 +55,8 @@ classDiagram
 
     Country "1" --> "many" Airport
     Country "1" --> "many" Airline
-    Airport "1" --> "many" Route
+    Airport "1" --> "many" Route: origin of
+    Airport "1" --> "many" Route: destination of
     Airline "1" --> "many" Route
     Airline "1" --> "many" Aircraft
     Route "1" --> "many" Flight
@@ -69,7 +70,7 @@ classDiagram
 | Name | Kind | Identity | Key Attributes & Invariants | Module / File |
 |---|---|---|---|---|
 | `Country` | Entity (Aggregate Root) | `CountryCode` (natural key) | `code: CountryCode`, `name: String` (no blank check in the domain type itself) | `domain/model/Country.scala` |
-| `CountryCode` | Value Object (opaque `String`) | — | `apply` performs no validation; a validating `from` smart constructor exists (`length == 2 && forall(_.isLetter)`) but is **dead code** — never called anywhere outside its own file (§7) | `domain/model/Country.scala:1-10` |
+| `CountryCode` | Value Object (opaque `String`) | — | `apply` performs no validation; a validating `from` smart constructor exists (`length == 2 && forall(_.isLetter)`) but is **dead code** — never called anywhere (§7) | `domain/model/Country.scala:1-10` |
 | `Airport` | Entity (Aggregate Root) | `IataCode` (natural key) | `iataCode: IataCode`, `icaoCode: String` (raw, not opaque — inconsistent with `IataCode`/`IcaoCode`), `name`, `city`, `countryCode: CountryCode` (FK) | `domain/model/Airport.scala` |
 | `IataCode` | Value Object (opaque `String`) | — | No format validation in the type itself; format enforced only at the HTTP boundary (§5 BR-02) | `domain/model/Airport.scala:1-8` |
 | `Airline` | Entity (Aggregate Root) | `IcaoCode` (natural key) | `icao: IcaoCode`, `name`, `foundationDate: LocalDate`, `countryCode: CountryCode` (FK) | `domain/model/Airline.scala` |
@@ -103,7 +104,7 @@ classDiagram
 | BR-11 | Name-search queries (Country, Airport) must be at least 3 characters. | HTTP layer only: `AirportEndpoints.searchByName` (`Validator.minLength(3)`, `adapter-http/.../AirportEndpoints.scala:64`), `CountryEndpoints` (`validateOption(Validator.minLength(3))`, line 49). |
 | BR-12 | List pagination: `page ≥ 1`; `pageSize` between 1 and 100. | Enforced inconsistently. `Pagination.apply` (`shared-kernel/Pagination.scala:9-10`) always *clamps* silently rather than rejecting. Some endpoints additionally reject out-of-range values at the HTTP layer with `Validator.min/max` (`AirportEndpoints.findByCountry`, `CountryEndpoints.findAll`) — but `AirportEndpoints.findAll`'s own `page`/`pageSize` query params carry **no validator at all** (`AirportEndpoints.scala:48-49`), relying solely on the silent domain-level clamp. `[ASSUMPTION]` whether silent clamping vs. HTTP 400 rejection is the intended behavior for every endpoint. |
 | BR-13 | Every domain-level mutation (e.g. Route creation) should durably record an event for downstream publication (outbox pattern). | **[MISSING]** — `CreateRouteService` does not write to `outbox_events` (confirmed: no `OutboxRepository` dependency in `CreateRouteService`, `application/.../CreateRouteService.scala`); `OutboxRelay` exists in `messaging-kafka` but is not wired into `Main` (per `CLAUDE.md`). |
-| BR-14 | Country/Airport/Airline names, Airport city, must not be blank. | Enforced only at the HTTP write boundary via `Validator.minLength(1)` on create/update DTOs (`CountryDto.scala`, `AirportDto.scala`) — **not** in the domain model itself. `NonEmptyString` (`shared-kernel/NonEmptyString.scala`) was built for exactly this purpose but is unused (`[MISSING]`/dead code, see §7). |
+| BR-14 | Country/Airport/Airline names, Airport city, must not be blank. | Country/Airport: enforced only at the HTTP write boundary via `Validator.minLength(1)` on create/update DTOs (`CountryDto.scala`, `AirportDto.scala`) — **not** in the domain model itself. Airline: enforced nowhere — it has no write endpoints at all (see BR-03), so only the `NOT NULL` column stands between it and a blank name. `NonEmptyString` (`shared-kernel/NonEmptyString.scala`) was built for exactly this purpose but is unused (`[MISSING]`/dead code, see §7). |
 
 ## 6. Constraints
 
@@ -113,7 +114,7 @@ classDiagram
 | Airport IATA code | 3 alphabetic chars | `V2__create_airports.sql` (`VARCHAR(3)`), HTTP validators |
 | Airport ICAO code | 4 alphabetic chars | `V6__add_airport_icao_code.sql` (`VARCHAR(4)`), HTTP validators |
 | Airline ICAO code | 3 chars (column length only; no alpha pattern anywhere) | `V3__create_airlines.sql` (`VARCHAR(3)`) |
-| Country/Airport/Airline name | ≤ 100/200/200 chars respectively; non-blank at HTTP layer only | `V1`/`V2`/`V3` migrations, DTO validators |
+| Country/Airport/Airline name, Airport city | ≤ 100/200/200 chars respectively, city ≤ 100; non-blank at HTTP layer only | `V1`/`V2`/`V3` migrations, DTO validators |
 | Route distance | Positive integer, unit is **kilometres** per code (`distanceKm`, `RouteDto` description "Flight distance in kilometres"); IATA distance tables typically express this as Great Circle Distance (GCD) | `domain/model/Route.scala`, `V4__create_routes.sql` (`CHECK (distance_km > 0)`) — see §7 for a unit discrepancy against the incubator source, which describes the equivalent field in nautical miles |
 | Route/FlightInstance/OutboxEvent identifiers | UUID, app-generated (`RouteId.generate`, `FlightInstanceId.generate`, `OutboxEventId.generate`) | `domain/model/Route.scala`, `FlightInstance.scala`, `OutboxEvent.scala` |
 | Country/Airport/Airline identifiers (persistence) | Surrogate `BIGINT GENERATED ALWAYS AS IDENTITY`, natural key kept as `UNIQUE NOT NULL` | `V7__add_surrogate_keys.sql` |

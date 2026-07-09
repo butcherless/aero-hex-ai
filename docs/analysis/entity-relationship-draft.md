@@ -1,13 +1,12 @@
 # aero-hex-ai — Entity Relationship Draft (Working Doc)
 
 > **Status: DRAFT / working notes.** This is not a source of truth — it's a scratch space for
-> reviewing and refining entity relationships and business rules before any conclusion gets
-> promoted into `01-domain-model.md`. Entity and value-object **definitions** (kind, identity,
-> attributes) live in `01-domain-model.md` §4 and are not repeated here — this doc only reasons
-> about the *edges* between them: who relates to whom, in which direction, at what cardinality,
-> and under what name.
+> reviewing and refining entity relationships before any conclusion gets promoted into
+> `01-domain-model.md`. Entity and value-object **definitions** (kind, identity, attributes) live
+> in `01-domain-model.md` §4 and are not repeated here — this doc only reasons about the *edges*
+> between them: who relates to whom, in which direction, at what cardinality, and under what name.
 >
-> **Status: all seven entities covered.** `Country`, `Airport`, `Airline`, `Route`, `Flight`,
+> **Coverage: all seven entities.** `Country`, `Airport`, `Airline`, `Route`, `Flight`,
 > `Aircraft`, and `FlightInstance` each have a chapter below. `OutboxEvent` is excluded throughout
 > — it references its subject generically, not via a typed FK to any specific entity, so it
 > doesn't belong in this relationship graph.
@@ -31,7 +30,7 @@ classDiagram
     Airport "1" --> "many" Route: origin of
     Airport "1" --> "many" Route: destination of
     Airline "1" --> "many" Route: operates
-    Airline "1" --> "many" Aircraft: fleet of
+    Airline "1" --> "many" Aircraft: has fleet of
     Airline "1" --> "many" Flight: operates
     Route "1" --> "many" Flight: scheduled as
     Flight "1" --> "many" FlightInstance: occurs as
@@ -78,8 +77,8 @@ time.
 ### 2.2 Airport
 
 Belongs to one `Country`; every `Route` references it twice, independently, as origin and as
-destination (`Route.origin`, `Route.destination` — both typed `IataCode`, no other field in the
-domain model is).
+destination (`Route.origin`, `Route.destination` — the only FK-shaped references to `IataCode`
+in the model; the type's only other use is `Airport.iataCode`, its own identity).
 
 | Related entity | Direction | Cardinality | Relationship   |
 |----------------|-----------|-------------|----------------|
@@ -111,7 +110,7 @@ Belongs to one `Country`; three entities reference it independently by `IcaoCode
 |----------------|-----------|-------------|---------------|
 | Country        | incoming  | many → 1    | registered in |
 | Route          | outgoing  | 1 → many    | operates      |
-| Aircraft       | outgoing  | 1 → many    | fleet of      |
+| Aircraft       | outgoing  | 1 → many    | has fleet of  |
 | Flight         | outgoing  | 1 → many    | operates      |
 
 Common queries, against the current (post-`V7`) surrogate-key schema:
@@ -174,7 +173,7 @@ Neither persisted (no Flyway table) nor creatable (`FindFlightUseCase` is read-o
 
 | Related entity | Direction | Cardinality | Relationship |
 |---|---|---|---|
-| Route | incoming | many → 1 | scheduled as |
+| Route | incoming | many → 1 | scheduled on |
 | Airline | incoming | many → 1 | operated by |
 | FlightInstance | outgoing | 1 → many | occurs as |
 
@@ -253,8 +252,7 @@ picking one of the four paths arbitrarily.
 
 ---
 
-All seven entities are now covered (§2.1–§2.7); `OutboxEvent` remains intentionally excluded (see
-the top of this doc). Cross-cutting analysis — the recurring `Country`-ambiguity pattern, the
-`Aircraft`/`Flight`/`FlightInstance` persistence gap, and anything else that only shows up once
-every chapter is compared side by side — belongs in a follow-up section once this per-entity shape
-is confirmed to be the right one.
+Cross-cutting analysis — the recurring `Country`-ambiguity pattern, the
+`Aircraft`/`Flight`/`FlightInstance` persistence gap, business rules implied by the edges, and
+anything else that only shows up once every chapter is compared side by side — belongs in a
+follow-up section once this per-entity shape is confirmed to be the right one.
