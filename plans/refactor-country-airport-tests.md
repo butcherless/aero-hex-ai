@@ -151,7 +151,7 @@ boundary (`application` vs `adapter-http`) — see the design decision below.
      `adapter-http` both adding a `Test`-scoped dependency on it) — real build
      complexity for a very small payoff in a demo/teaching-scoped project.
    - **(Alternative) Introduce a shared `test-kit` module.** Only worth it if more
-     resources (Airline, Aircraft, Flight, Journey) get test suites later and the
+     resources (Airline, Aircraft, Flight, FlightInstance) get test suites later and the
      fixture-duplication problem grows across many more file pairs. Flag as a future
      revisit point, not something to do now.
 

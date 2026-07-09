@@ -10,7 +10,8 @@ object ApiSpec:
   val info: Info = Info(
     title = "Aviation Hexagonal API",
     version = "0.1.0",
-    description = Some("REST API for managing countries, airports, airlines, routes, aircraft, flights, and journeys."),
+    description =
+      Some("REST API for managing countries, airports, airlines, routes, aircraft, flights, and flight instances."),
     contact = Some(Contact(name = Some("Aviation API Team"), email = Some("api@aviation.example"))),
     license = Some(License(name = "Apache 2.0", url = Some("https://www.apache.org/licenses/LICENSE-2.0")))
   )
@@ -22,7 +23,10 @@ object ApiSpec:
     ApiTag("Routes", description = Some("Flight route management operations.")),
     ApiTag("Aircraft", description = Some("Aircraft lookup operations.")),
     ApiTag("Flights", description = Some("Scheduled flight lookup operations.")),
-    ApiTag("Journeys", description = Some("Journey (actual flight instance) lookup operations."))
+    ApiTag(
+      "Flight Instances",
+      description = Some("Flight instance (actual, dated flight occurrence) lookup operations.")
+    )
   )
 
   val allEndpoints: List[AnyEndpoint] = List(
@@ -44,6 +48,6 @@ object ApiSpec:
     AircraftEndpoints.findByRegistration,
     FlightEndpoints.findAll,
     FlightEndpoints.findByCode,
-    JourneyEndpoints.findAll,
-    JourneyEndpoints.findById
+    FlightInstanceEndpoints.findAll,
+    FlightInstanceEndpoints.findById
   )

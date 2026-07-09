@@ -58,12 +58,12 @@ object WiringModule {
       def delete(code: FlightCode): IO[DomainError, Unit]               = ZIO.unit
   )
 
-  private val journeyRepoLayer: ULayer[JourneyRepository] = ZLayer.succeed(
-    new JourneyRepository:
-      def findById(id: JourneyId): IO[DomainError, Option[Journey]] = ZIO.none
-      def findAll(p: Pagination): IO[DomainError, List[Journey]]    = ZIO.succeed(Nil)
-      def save(j: Journey): IO[DomainError, Journey]                = ZIO.succeed(j)
-      def delete(id: JourneyId): IO[DomainError, Unit]              = ZIO.unit
+  private val flightInstanceRepoLayer: ULayer[FlightInstanceRepository] = ZLayer.succeed(
+    new FlightInstanceRepository:
+      def findById(id: FlightInstanceId): IO[DomainError, Option[FlightInstance]] = ZIO.none
+      def findAll(p: Pagination): IO[DomainError, List[FlightInstance]]           = ZIO.succeed(Nil)
+      def save(j: FlightInstance): IO[DomainError, FlightInstance]                = ZIO.succeed(j)
+      def delete(id: FlightInstanceId): IO[DomainError, Unit]                     = ZIO.unit
   )
 
   private val countryUseCaseLayers = (countryRepoLayer >>> FindCountryService.layer) ++
@@ -83,5 +83,5 @@ object WiringModule {
       ((airportRepoLayer ++ routeRepoLayer) >>> CreateRouteService.layer >>> RouteRoutes.layer) ++
       (aircraftRepoLayer >>> FindAircraftService.layer >>> AircraftRoutes.layer) ++
       (flightRepoLayer >>> FindFlightService.layer >>> FlightRoutes.layer) ++
-      (journeyRepoLayer >>> FindJourneyService.layer >>> JourneyRoutes.layer)
+      (flightInstanceRepoLayer >>> FindFlightInstanceService.layer >>> FlightInstanceRoutes.layer)
 }

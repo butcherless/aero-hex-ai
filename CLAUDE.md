@@ -82,7 +82,7 @@ Rule: inner modules never depend on outer ones. `domain` has zero framework depe
 ## Hexagonal layer conventions
 
 - **`domain/`** — pure logic, no I/O, no framework imports. Opaque types for identifiers. Ports are plain Scala traits.
-  - `model/` — Country, Airport, Airline, Route, Aircraft, Flight, Journey, OutboxEvent
+  - `model/` — Country, Airport, Airline, Route, Aircraft, Flight, FlightInstance, OutboxEvent
   - `error/DomainError.scala` — sealed error hierarchy
   - `service/` — pure domain services (RouteValidator)
   - `port/in/` — driving ports / use-case interfaces
@@ -228,8 +228,8 @@ Swagger UI: `http://localhost:8080/docs`
 | Aircraft | GET | `/api/v1/aircraft/{registration}` | stub |
 | Flights | GET | `/api/v1/flights` | stub |
 | Flights | GET | `/api/v1/flights/{code}` | stub |
-| Journeys | GET | `/api/v1/journeys` | stub |
-| Journeys | GET | `/api/v1/journeys/{id}` | stub |
+| Flight Instances | GET | `/api/v1/flight-instances` | stub |
+| Flight Instances | GET | `/api/v1/flight-instances/{id}` | stub |
 | Routes | POST | `/api/v1/routes` | stub |
 
 ## Plans directory

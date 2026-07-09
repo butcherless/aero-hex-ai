@@ -32,12 +32,12 @@ The generic instructions above were written before inspecting this repo. Actual 
 - **Package root:** `domain/src/main/scala/dev/cmartin/aerohex/domain/` (not `domain/src/main/scala/domain/`).
   Subpackages: `model/`, `port/in/`, `port/out/`, `service/`, `error/`.
 - **Domain entities/VOs found (8, not 4):** `Country`, `Airport`, `Airline`, `Route`, `Aircraft`, `Flight`,
-  `Journey`, `OutboxEvent` — all in `domain/model/`.
+  `FlightInstance`, `OutboxEvent` — all in `domain/model/`.
 - **`application/service/`** implements only some `port/in` use cases so far: Country (Create/Update/Delete/Find),
-  Airport (Create/Update/Find/FindByCountry), Route (Create), Aircraft/Airline/Flight/Journey (Find only — read
-  stubs). Cross-reference against the REST API table in `CLAUDE.md` (`## REST API`), which marks Airlines,
-  Aircraft, Flights, Journeys, and Routes-POST as **stub** (not wired end-to-end at the HTTP layer even where an
-  application service exists).
+  Airport (Create/Update/Find/FindByCountry), Route (Create), Aircraft/Airline/Flight/FlightInstance (Find only —
+  read stubs). Cross-reference against the REST API table in `CLAUDE.md` (`## REST API`), which marks Airlines,
+  Aircraft, Flights, Flight Instances, and Routes-POST as **stub** (not wired end-to-end at the HTTP layer even
+  where an application service exists).
 - **Persistence policy:** only `Country` and `Airport` are backed by real persistence (Quill, wired). Everything
   else is an in-memory stub. This matters for Task 2's "Postconditions" — a use case's persistence may not be
   durable yet, which should be called out rather than assumed.

@@ -17,7 +17,7 @@
 | Aircraft | An airplane capable of flight to transport people and cargo. Belongs to one Airline. (adapted from `../incubator/README.adoc`) |
 | Route | A way or course taken in getting from a starting point (Airport) to a destination (Airport), operated by an Airline. (adapted from `../incubator/README.adoc`) |
 | Flight | A timetabled journey made by an airline, running along a Route on a schedule. (adapted from `../incubator/README.adoc`) — modeled in code but **not yet backed by any database table** ([MISSING], see §7). |
-| Journey | An actual, dated occurrence of a Flight: a single act of travelling that takes place inside a specific Aircraft. (adapted from `../incubator/README.adoc`) — modeled in code but **not yet backed by any database table** ([MISSING], see §7). |
+| FlightInstance | An actual, dated occurrence of a Flight: a single act of travelling that takes place inside a specific Aircraft. (adapted from `../incubator/README.adoc`) — modeled in code but **not yet backed by any database table** ([MISSING], see §7). |
 | IATA Code | The 3-letter alphabetic code assigned by the International Air Transport Association identifying an Airport (e.g. `MAD`). |
 | ICAO Code | The alphabetic code assigned by the International Civil Aviation Organization. Used for two *different* concepts at two *different* lengths in this codebase: a 4-letter Airport code (e.g. `LEMD`) and a 3-letter Airline code (e.g. `AEA`) — see BR-03/§6. |
 | Country Code | ISO 3166-1 alpha-2 code identifying a Country (e.g. `ES`). |
@@ -28,7 +28,7 @@
 ## 2. Bounded Context
 
 **Name:** Aviation Network (reference/master data + route network for an airline network — countries,
-airports, airlines, aircraft, routes, and the flights/journeys that run on them).
+airports, airlines, aircraft, routes, and the flights/flight instances that run on them).
 
 **Explicitly out of scope** (no model, no port, no endpoint references any of these anywhere in the
 codebase):
@@ -45,47 +45,24 @@ codebase):
 
 ```mermaid
 classDiagram
-    class Country {
-        <<persisted>>
-    }
-    class Airport {
-        <<persisted>>
-    }
-    class Airline {
-        <<in-memory stub>>
-    }
-    class Aircraft {
-        <<in-memory stub, no schema>>
-    }
-    class Route {
-        <<in-memory stub>>
-    }
-    class Flight {
-        <<in-memory stub, no schema>>
-    }
-    class Journey {
-        <<in-memory stub, no schema>>
-    }
-    class OutboxEvent {
-        <<schema exists, unused>>
-    }
+    class Country
+    class Airport
+    class Airline
+    class Aircraft
+    class Route
+    class Flight
+    class FlightInstance
 
-    Country "1" --> "many" Airport : contains
-    Country "1" --> "many" Airline : registers
-    Airport "1" --> "many" Route : origin of
-    Airport "1" --> "many" Route : destination of
-    Airline "1" --> "many" Route : operates
-    Airline "1" --> "many" Aircraft : fleet of
-    Route "1" --> "many" Flight : scheduled as
-    Airline "1" --> "many" Flight : operates
-    Flight "1" --> "many" Journey : occurs as
-    Aircraft "1" --> "many" Journey : carries
+    Country "1" --> "many" Airport
+    Country "1" --> "many" Airline
+    Airport "1" --> "many" Route
+    Airline "1" --> "many" Route
+    Airline "1" --> "many" Aircraft
+    Route "1" --> "many" Flight
+    Airline "1" --> "many" Flight
+    Flight "1" --> "many" FlightInstance
+    Aircraft "1" --> "many" FlightInstance
 ```
-
-Stereotypes mark actual wiring status (`bootstrap/WiringModule.scala`), not aspirational design:
-`<<persisted>>` = real Postgres via Quill; `<<in-memory stub>>` = `ZLayer.succeed` with no-op
-save/delete; `<<schema exists, unused>>` = Flyway table present but nothing writes to it from the
-application layer yet.
 
 ## 4. Entities and Value Objects
 
@@ -103,8 +80,8 @@ application layer yet.
 | `RouteId` | Value Object (opaque `UUID`) | — | `generate` factory produces a fresh random UUID | `domain/model/Route.scala:5-11` |
 | `Flight` | Entity | `FlightCode` (natural key) | `code: FlightCode`, `alias: Option[String]`, `schedDeparture`/`schedArrival: LocalTime`, `routeId: RouteId` (FK), `airlineIcao: IcaoCode` (FK — see §7 for possible redundancy with `Route`'s airline) | `domain/model/Flight.scala` |
 | `FlightCode` | Value Object (opaque `String`) | — | No format validation | `domain/model/Flight.scala:1-10` |
-| `Journey` | Entity | `JourneyId` (UUID, surrogate) | `departureDate`/`arrivalDate: LocalDateTime`, `flightCode: FlightCode` (FK), `registration: Registration` (FK) | `domain/model/Journey.scala` |
-| `JourneyId` | Value Object (opaque `UUID`) | — | `generate` factory | `domain/model/Journey.scala:6-12` |
+| `FlightInstance` | Entity | `FlightInstanceId` (UUID, surrogate) | `departureDate`/`arrivalDate: LocalDateTime`, `flightCode: FlightCode` (FK), `registration: Registration` (FK) | `domain/model/FlightInstance.scala` |
+| `FlightInstanceId` | Value Object (opaque `UUID`) | — | `generate` factory | `domain/model/FlightInstance.scala:6-12` |
 | `OutboxEvent` | Entity | `OutboxEventId` (UUID) | `aggregateType`/`aggregateId`/`eventType`/`payload: String` (JSON serialized as plain `String`, stored as `JSONB`), `published: Boolean` | `domain/model/OutboxEvent.scala` |
 | `Pagination` | Value Object | — | `page`/`pageSize`; **smart-constructor clamps rather than rejects**: `page` floors to 1, `pageSize` clamps to `[1, 100]` (silent correction, not a validation error) | `shared-kernel/Pagination.scala` |
 | `NonEmptyString` | Value Object (opaque `String`) | — | Validating `from`/`unsafeFrom` exist (rejects blank/all-whitespace) but the type is **entirely unused** — no domain model field anywhere has this type (§7) | `shared-kernel/NonEmptyString.scala` |
@@ -138,7 +115,7 @@ application layer yet.
 | Airline ICAO code | 3 chars (column length only; no alpha pattern anywhere) | `V3__create_airlines.sql` (`VARCHAR(3)`) |
 | Country/Airport/Airline name | ≤ 100/200/200 chars respectively; non-blank at HTTP layer only | `V1`/`V2`/`V3` migrations, DTO validators |
 | Route distance | Positive integer, unit is **kilometres** per code (`distanceKm`, `RouteDto` description "Flight distance in kilometres") | `domain/model/Route.scala`, `V4__create_routes.sql` (`CHECK (distance_km > 0)`) — see §7 for a unit discrepancy against the incubator source, which describes the equivalent field in nautical miles |
-| Route/Journey/OutboxEvent identifiers | UUID, app-generated (`RouteId.generate`, `JourneyId.generate`, `OutboxEventId.generate`) | `domain/model/Route.scala`, `Journey.scala`, `OutboxEvent.scala` |
+| Route/FlightInstance/OutboxEvent identifiers | UUID, app-generated (`RouteId.generate`, `FlightInstanceId.generate`, `OutboxEventId.generate`) | `domain/model/Route.scala`, `FlightInstance.scala`, `OutboxEvent.scala` |
 | Country/Airport/Airline identifiers (persistence) | Surrogate `BIGINT GENERATED ALWAYS AS IDENTITY`, natural key kept as `UNIQUE NOT NULL` | `V7__add_surrogate_keys.sql` |
 | Pagination | `page ≥ 1`, `1 ≤ pageSize ≤ 100` (see BR-12 for enforcement gaps) | `shared-kernel/Pagination.scala` |
 | Name search | Minimum 3 characters | `AirportEndpoints.scala`, `CountryEndpoints.scala` |
@@ -163,7 +140,7 @@ application layer yet.
    (2-letter alpha check; non-blank check) that mirrors rules enforced only at the HTTP layer today.
    Should domain-level smart constructors become the actual enforcement point (defense in depth against
    any future non-HTTP caller), or should the unused code be removed as noise?
-5. **Aircraft, Flight, Journey have no Flyway schema at all** (migrations `V1`–`V7` cover only
+5. **Aircraft, Flight, FlightInstance have no Flyway schema at all** (migrations `V1`–`V7` cover only
    `countries`, `airports`, `airlines`, `routes`, `outbox_events`). They exist purely as domain models
    + in-memory stubs. Is a schema for these planned, or are they deliberately out of scope until a
    later phase?

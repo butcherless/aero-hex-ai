@@ -13,5 +13,5 @@ object DomainError {
   case class InvalidRoute(reason: String)                            extends DomainError
   case class AircraftNotFound(registration: String)                  extends DomainError
   case class FlightNotFound(code: String)                            extends DomainError
-  case class JourneyNotFound(id: String)                             extends DomainError
+  case class FlightInstanceNotFound(id: String)                      extends DomainError
 }

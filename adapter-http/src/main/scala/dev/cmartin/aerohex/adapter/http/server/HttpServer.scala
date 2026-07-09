@@ -11,31 +11,31 @@ object HttpServer {
 
   type AppRoutes =
     CountryRoutes & AirportRoutes & AirlineRoutes & RouteRoutes &
-      AircraftRoutes & FlightRoutes & JourneyRoutes
+      AircraftRoutes & FlightRoutes & FlightInstanceRoutes
 
   val port: Int = sys.env.get("HTTP_PORT").flatMap(_.toIntOption).getOrElse(8080)
 
   val serve: ZIO[AppRoutes, Throwable, Nothing] =
     for {
-      countries <- ZIO.service[CountryRoutes]
-      airports  <- ZIO.service[AirportRoutes]
-      airlines  <- ZIO.service[AirlineRoutes]
-      routes    <- ZIO.service[RouteRoutes]
-      aircraft  <- ZIO.service[AircraftRoutes]
-      flights   <- ZIO.service[FlightRoutes]
-      journeys  <- ZIO.service[JourneyRoutes]
-      business   = countries.serverEndpoints ++
-                     airports.serverEndpoints ++
-                     airlines.serverEndpoints ++
-                     routes.serverEndpoints ++
-                     aircraft.serverEndpoints ++
-                     flights.serverEndpoints ++
-                     journeys.serverEndpoints
-      swagger    = SwaggerInterpreter(customiseDocsModel = _.tags(ApiSpec.topLevelTags))
-                     .fromServerEndpoints[Task](business, ApiSpec.info)
-      _         <- ZIO.logInfo(s"HTTP server starting on port $port")
-      result    <- Server
-                     .serve(ZioHttpInterpreter().toHttp(business ++ swagger).handleError(identity))
-                     .provide(Server.defaultWithPort(port))
+      countries       <- ZIO.service[CountryRoutes]
+      airports        <- ZIO.service[AirportRoutes]
+      airlines        <- ZIO.service[AirlineRoutes]
+      routes          <- ZIO.service[RouteRoutes]
+      aircraft        <- ZIO.service[AircraftRoutes]
+      flights         <- ZIO.service[FlightRoutes]
+      flightInstances <- ZIO.service[FlightInstanceRoutes]
+      business         = countries.serverEndpoints ++
+                           airports.serverEndpoints ++
+                           airlines.serverEndpoints ++
+                           routes.serverEndpoints ++
+                           aircraft.serverEndpoints ++
+                           flights.serverEndpoints ++
+                           flightInstances.serverEndpoints
+      swagger          = SwaggerInterpreter(customiseDocsModel = _.tags(ApiSpec.topLevelTags))
+                           .fromServerEndpoints[Task](business, ApiSpec.info)
+      _               <- ZIO.logInfo(s"HTTP server starting on port $port")
+      result          <- Server
+                           .serve(ZioHttpInterpreter().toHttp(business ++ swagger).handleError(identity))
+                           .provide(Server.defaultWithPort(port))
     } yield result
 }
