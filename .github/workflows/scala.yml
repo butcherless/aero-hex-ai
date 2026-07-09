@@ -6,6 +6,7 @@ on:
       - 'main'
   pull_request:
     types: [ opened, synchronize, reopened ]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -63,16 +64,8 @@ jobs:
     #       --health-start-period 30s
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-      - name: Setup JDK
-        uses: actions/setup-java@v5
-        with:
-          distribution: 'zulu'
-          java-version: '21'
-          cache: sbt
-      - name: Setup SBT
-        uses: sbt/setup-sbt@v1
+      - name: Setup build environment
+        uses: ./.github/actions/setup-build-env
       - name: Check formatting
         run: sbt scalafmtCheckAll
       - name: Compile and unit tests
@@ -90,8 +83,5 @@ jobs:
             adapter-http/.coverage-data/scoverage-data \
             bootstrap/.coverage-data/scoverage-data
           sbt "testOnly *"
-      - name: Integration tests
-        if: false
-        run: echo "not yet implemented"
       - name: Assembly
         run: sbt "bootstrap/assembly"

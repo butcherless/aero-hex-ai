@@ -8,6 +8,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
 
@@ -18,15 +22,12 @@ jobs:
       SBT_OPTS: "-Xmx2g"
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
-      - name: Setup JDK
-        uses: actions/setup-java@v5
-        with:
-          distribution: 'zulu'
-          java-version: '21'
-          cache: sbt
-      - name: Setup SBT
-        uses: sbt/setup-sbt@v1
+      - name: Setup build environment
+        uses: ./.github/actions/setup-build-env
       - name: Report dependency updates
-        run: sbt dependencyUpdates
+        run: |
+          {
+            echo '```'
+            sbt -no-colors dependencyUpdates
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
