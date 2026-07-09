@@ -1,7 +1,8 @@
 # Aviation Hexagonal — CLAUDE.md
 
 Scala 3 multi-module project demonstrating Hexagonal Architecture with ZIO.
-Domain concepts: **Country → Airport → Airline → Route** with an outbox pattern for Kafka events.
+Domain concepts: **Country → Airport → Airline → Route**, plus **Aircraft → Flight → FlightInstance**
+(models + stub endpoints only), with an outbox pattern for Kafka events.
 
 ## Git workflow
 
@@ -58,6 +59,7 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 | JSON | Circe | 0.14.16 |
 | Logging | ZIO Logging + SLF4J + Logback | 2.5.3 / 1.5.38 |
 | Integration testing | Testcontainers | 1.21.3 |
+| HTTP-adapter tests (test scope) | sttp-client4 + Tapir stub server | 4.0.26 |
 
 ## Module dependency graph
 
@@ -235,6 +237,22 @@ Non-trivial changes (new endpoints, schema/persistence migrations, test refactor
 in `plans/` before implementation: goal, decisions with a recommendation + rejected alternatives,
 steps, files touched. Keep docs after their work lands — they're the record of *why* — and update
 one instead of duplicating it if a later change revises the same decision.
+
+## Docs directory
+
+`docs/` holds analysis and API artifacts (distinct from `plans/`, which holds implementation designs):
+
+- `docs/analysis/01-domain-model.md` — DDD glossary + domain model with standard IATA/ICAO
+  terminology; the source of truth for entity/value-object definitions.
+- `docs/analysis/entity-relationship-draft.md` — working notes on entity relationships and
+  cardinalities; a scratch space, **not** a source of truth — conclusions get promoted into
+  `01-domain-model.md`.
+- `docs/analysis-plan.md` — the task plan that drives the analysis docs (glossary → use cases → ADR).
+- `docs/api/collection.json` + `environment.json` — Postman collection kept in sync with the
+  Tapir-generated OpenAPI spec via the `sync-postman-collection` skill; regenerate after any
+  endpoint change, never edit by hand.
+- `docs/todo/` — analysis for future work not yet implemented (e.g. `auth-jwt.md`, JWT auth with
+  Tapir + ZIO).
 
 ## Coverage
 
