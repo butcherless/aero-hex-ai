@@ -8,6 +8,9 @@ Domain concepts: **Country → Airport → Airline → Route**, plus **Aircraft 
 
 Always ask for confirmation before pushing. Never push automatically after a commit.
 
+After a push completes, do not monitor GitHub Actions (no `gh run watch`/polling loop) unless the
+user explicitly asks for CI status.
+
 ## Build commands
 
 ```bash

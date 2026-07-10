@@ -10,18 +10,14 @@ import dev.cmartin.aerohex.shared.Pagination
 import zio.{IO, Task, URLayer, ZIO, ZLayer}
 import zio.interop.catz.*
 
-final class DoobieAirportRepository(xa: Transactor[Task]) extends AirportRepository {
+final class DoobieAirportRepository(protected val xa: Transactor[Task]) extends AirportRepository
+    with DoobieIdResolver {
 
   private def resolveCountryId(code: CountryCode): IO[DomainError, Long] =
-    sql"SELECT id FROM countries WHERE code = ${code.value}"
-      .query[Long]
-      .option
-      .transact(xa)
-      .orDie
-      .flatMap {
-        case Some(id) => ZIO.succeed(id)
-        case None     => ZIO.fail(DomainError.CountryNotFound(code.value))
-      }
+    resolveId(
+      sql"SELECT id FROM countries WHERE code = ${code.value}".query[Long],
+      DomainError.CountryNotFound(code.value)
+    )
 
   override def findByIata(iata: IataCode): IO[DomainError, Option[Airport]] =
     sql"SELECT iata_code, icao_code, name, city FROM airports WHERE iata_code = ${iata.value}"

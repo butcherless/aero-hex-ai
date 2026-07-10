@@ -7,34 +7,25 @@ import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.model.{IataCode, IcaoCode, Route, RouteId}
 import dev.cmartin.aerohex.domain.port.out.RouteRepository
 import dev.cmartin.aerohex.shared.Pagination
-import zio.{IO, Task, URLayer, ZIO, ZLayer}
+import zio.{IO, Task, URLayer, ZLayer}
 import zio.interop.catz.*
 
 import java.util.UUID
 
-final class DoobieRouteRepository(xa: Transactor[Task]) extends RouteRepository {
+final class DoobieRouteRepository(protected val xa: Transactor[Task]) extends RouteRepository
+    with DoobieIdResolver {
 
   private def resolveAirportId(iata: IataCode): IO[DomainError, Long] =
-    sql"SELECT id FROM airports WHERE iata_code = ${iata.value}"
-      .query[Long]
-      .option
-      .transact(xa)
-      .orDie
-      .flatMap {
-        case Some(id) => ZIO.succeed(id)
-        case None     => ZIO.fail(DomainError.AirportNotFound(iata.value))
-      }
+    resolveId(
+      sql"SELECT id FROM airports WHERE iata_code = ${iata.value}".query[Long],
+      DomainError.AirportNotFound(iata.value)
+    )
 
   private def resolveAirlineId(icao: IcaoCode): IO[DomainError, Long] =
-    sql"SELECT id FROM airlines WHERE icao_code = ${icao.value}"
-      .query[Long]
-      .option
-      .transact(xa)
-      .orDie
-      .flatMap {
-        case Some(id) => ZIO.succeed(id)
-        case None     => ZIO.fail(DomainError.AirlineNotFound(icao.value))
-      }
+    resolveId(
+      sql"SELECT id FROM airlines WHERE icao_code = ${icao.value}".query[Long],
+      DomainError.AirlineNotFound(icao.value)
+    )
 
   override def findById(id: RouteId): IO[DomainError, Option[Route]] =
     sql"""SELECT r.id, ao.iata_code, ad.iata_code, al.icao_code, r.distance_km

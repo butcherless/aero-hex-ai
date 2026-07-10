@@ -8,12 +8,9 @@ import io.getquill.*
 import io.getquill.jdbczio.Quill
 import zio.{IO, URLayer, ZIO, ZLayer}
 
-import java.sql.SQLException
 import javax.sql.DataSource
 
-final class QuillAirportRepository(dataSource: DataSource) extends AirportRepository {
-
-  private val uniqueViolationSqlState = "23505"
+final class QuillAirportRepository(dataSource: DataSource) extends AirportRepository with QuillCountryIdResolver {
 
   private case class AirportRow(
       id: Long,
@@ -23,25 +20,13 @@ final class QuillAirportRepository(dataSource: DataSource) extends AirportReposi
       city: String,
       countryId: Long
   )
-  private case class CountryRef(id: Long, code: String)
 
-  private val ctx = new Quill.Postgres(SnakeCase, dataSource)
+  protected val ctx = new Quill.Postgres(SnakeCase, dataSource)
 
   import ctx.*
 
   private def toAirport(a: AirportRow): Airport =
     Airport(IataCode(a.iataCode), IcaoCode(a.icaoCode), a.name, a.city)
-
-  private def resolveCountryId(code: CountryCode): IO[DomainError, Long] =
-    ctx
-      .run(quote {
-        querySchema[CountryRef]("countries").filter(_.code == lift(code.value)).map(_.id)
-      })
-      .orDie
-      .flatMap {
-        case id :: _ => ZIO.succeed(id)
-        case Nil     => ZIO.fail(DomainError.CountryNotFound(code.value))
-      }
 
   override def findByIata(iata: IataCode): IO[DomainError, Option[Airport]] =
     ctx
@@ -97,21 +82,19 @@ final class QuillAirportRepository(dataSource: DataSource) extends AirportReposi
 
   override def save(airport: Airport, countryCode: CountryCode): IO[DomainError, Airport] =
     resolveCountryId(countryCode).flatMap { countryId =>
-      ctx
-        .run(quote {
-          querySchema[AirportRow]("airports").insert(
-            _.iataCode  -> lift(airport.iataCode.value),
-            _.icaoCode  -> lift(airport.icaoCode.value),
-            _.name      -> lift(airport.name),
-            _.city      -> lift(airport.city),
-            _.countryId -> lift(countryId)
-          )
-        })
-        .as(airport)
-        .refineOrDie {
-          case e: SQLException if e.getSQLState == uniqueViolationSqlState =>
-            DomainError.AirportAlreadyExists(airport.iataCode.value)
-        }
+      QuillSqlState.refineUniqueViolation(
+        ctx
+          .run(quote {
+            querySchema[AirportRow]("airports").insert(
+              _.iataCode  -> lift(airport.iataCode.value),
+              _.icaoCode  -> lift(airport.icaoCode.value),
+              _.name      -> lift(airport.name),
+              _.city      -> lift(airport.city),
+              _.countryId -> lift(countryId)
+            )
+          })
+          .as(airport)
+      )(DomainError.AirportAlreadyExists(airport.iataCode.value))
     }
 
   override def update(airport: Airport, countryCode: CountryCode): IO[DomainError, Airport] =

@@ -7,23 +7,19 @@ import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.model.{Airline, CountryCode, IcaoCode}
 import dev.cmartin.aerohex.domain.port.out.AirlineRepository
 import dev.cmartin.aerohex.shared.Pagination
-import zio.{IO, Task, ZIO, ZLayer, URLayer}
+import zio.{IO, Task, URLayer, ZLayer}
 import zio.interop.catz.*
 
 import java.time.LocalDate
 
-final class DoobieAirlineRepository(xa: Transactor[Task]) extends AirlineRepository {
+final class DoobieAirlineRepository(protected val xa: Transactor[Task]) extends AirlineRepository
+    with DoobieIdResolver {
 
   private def resolveCountryId(code: CountryCode): IO[DomainError, Long] =
-    sql"SELECT id FROM countries WHERE code = ${code.value}"
-      .query[Long]
-      .option
-      .transact(xa)
-      .orDie
-      .flatMap {
-        case Some(id) => ZIO.succeed(id)
-        case None     => ZIO.fail(DomainError.CountryNotFound(code.value))
-      }
+    resolveId(
+      sql"SELECT id FROM countries WHERE code = ${code.value}".query[Long],
+      DomainError.CountryNotFound(code.value)
+    )
 
   override def findByIcao(icao: IcaoCode): IO[DomainError, Option[Airline]] =
     sql"SELECT icao_code, name, foundation_date FROM airlines WHERE icao_code = ${icao.value}"
