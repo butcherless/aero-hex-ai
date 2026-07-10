@@ -7,7 +7,11 @@ import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.model.*
 import dev.cmartin.aerohex.domain.port.out.*
 import dev.cmartin.aerohex.infrastructure.persistence.quill.config.QuillDataSourceLayer
-import dev.cmartin.aerohex.infrastructure.persistence.quill.repository.{QuillAirportRepository, QuillCountryRepository}
+import dev.cmartin.aerohex.infrastructure.persistence.quill.repository.{
+  QuillAirlineRepository,
+  QuillAirportRepository,
+  QuillCountryRepository
+}
 import dev.cmartin.aerohex.shared.Pagination
 import zio.*
 
@@ -26,13 +30,8 @@ object WiringModule {
   private val airportRepoLayer: TaskLayer[AirportRepository] =
     QuillDataSourceLayer.live >>> QuillAirportRepository.layer
 
-  private val airlineRepoLayer: ULayer[AirlineRepository] = ZLayer.succeed(
-    new AirlineRepository:
-      def findByIcao(icao: IcaoCode): IO[DomainError, Option[Airline]] = ZIO.none
-      def findAll(p: Pagination): IO[DomainError, List[Airline]]       = ZIO.succeed(Nil)
-      def save(a: Airline): IO[DomainError, Airline]                   = ZIO.succeed(a)
-      def delete(icao: IcaoCode): IO[DomainError, Unit]                = ZIO.unit
-  )
+  private val airlineRepoLayer: TaskLayer[AirlineRepository] =
+    QuillDataSourceLayer.live >>> QuillAirlineRepository.layer
 
   private val routeRepoLayer: ULayer[RouteRepository] = ZLayer.succeed(
     new RouteRepository:
