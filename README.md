@@ -75,3 +75,7 @@ sbt integrationTests/test
 ```
 
 See [CLAUDE.md](./CLAUDE.md#integration-tests-opt-in-real-postgres) for coverage and setup details.
+
+## TODO
+
+- Create validation for domain using ZIO Prelude Validation, smart constructor, or validation layer.
