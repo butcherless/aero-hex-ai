@@ -68,7 +68,7 @@ shared-kernel
     └── domain
             ├── application
             ├── persistence-postgres   (infrastructure — unwired; Doobie repos kept schema-consistent)
-            ├── persistence-quill      (infrastructure — wired into bootstrap; Country + Airport)
+            ├── persistence-quill      (infrastructure — wired into bootstrap; Country + Airport + Airline)
             ├── messaging-kafka        (infrastructure — not wired into bootstrap)
             └── adapter-http
                         └── bootstrap  (composition root: domain + application + adapter-http + persistence-quill + persistence-postgres + migration)
@@ -88,7 +88,7 @@ Rule: inner modules never depend on outer ones. `domain` has zero framework depe
   - `port/out/` — driven ports / repository + publisher interfaces
 - **`application/`** — orchestrates ports, implements `port/in`. Each service has a companion `ZLayer`.
 - **`persistence-postgres/`** — Doobie implementations of `port/out` (`DoobieCountryRepository`, `DoobieAirportRepository`, `DoobieAirlineRepository`, `DoobieRouteRepository`, `DoobieOutboxRepository`). Unwired but kept schema-consistent, in case Doobie is chosen again.
-- **`persistence-quill/`** — Quill implementations of `CountryRepository`/`AirportRepository`; both wired via `WiringModule`, sharing one `QuillDataSourceLayer.live` `DataSource`. The only resources backed by real persistence — everything else is an in-memory stub.
+- **`persistence-quill/`** — Quill implementations of `CountryRepository`/`AirportRepository`/`AirlineRepository`; all three wired via `WiringModule`, sharing one `QuillDataSourceLayer.live` `DataSource`. The only resources backed by real persistence — everything else is an in-memory stub.
 - **Persistence policy:** all wired repositories must use the same implementation — switching is all-or-nothing across every entity, in one commit (see the header comment in `WiringModule.scala`).
 - **`messaging-kafka/`** — ZIO Kafka producer and outbox relay. Not wired into bootstrap.
 - **`migration/`** — Flyway SQL migrations; no domain dependency. `Main` runs `FlywayMigration.migrateFromEnv` at startup (see the `bootstrap` bullet).
@@ -107,7 +107,7 @@ Tapir stub server. It is deliberately **not** in `root`'s `.aggregate(...)`, so 
 sbt integrationTests/test   # or: sbt integrationTest (alias)
 ```
 
-Coverage so far: `FlywayMigrationItSpec` (migrations reach `V7`), Country (`DoobieCountryRepositoryItSpec`
+Coverage so far: `FlywayMigrationItSpec` (migrations reach `V10`), Country (`DoobieCountryRepositoryItSpec`
 + `QuillCountryRepositoryItSpec`), Airport (`DoobieAirportRepositoryItSpec` +
 `QuillAirportRepositoryItSpec`, each seeding its own `Country` row first since `airports.country_id`
 FKs to `countries.id`) — 36 tests total, all green. Airline and Route are not implemented yet. See
@@ -155,7 +155,7 @@ object QuillAirportRepository:
 |---|---|
 | `RouteEventCodec.routeCreatedSerde` | `???` — needs ZIO Kafka 3.x `Serde` with Circe JSON |
 | `RouteEventProducer.publish` | compiles, but only logs the event — doesn't call `Producer.produce` |
-| `WiringModule.appLayer` | wires Quill `CountryRepository`, Quill `AirportRepository`, and in-memory stubs for everything else |
+| `WiringModule.appLayer` | wires Quill `CountryRepository`, Quill `AirportRepository`, Quill `AirlineRepository`, and in-memory stubs for everything else |
 
 ## Database schema
 
@@ -178,6 +178,12 @@ V7 — countries/airports/airlines: PK → surrogate `id BIGINT GENERATED ALWAYS
      to them). Adds `pg_trgm` GIN indexes for the ILIKE `searchByName` finders (no index before).
      Surrogate id is persistence-only — domain/ports untouched. See
      `plans/surrogate-long-keys-country-airport.md`.
+V8 — airports      adds `idx_airports_icao_code` — previously unindexed.
+V9 — airlines      adds `foundation_date DATE NOT NULL` — the domain model's `Airline.foundationDate`
+     always required this column, but no earlier migration created it; only latent because
+     `AirlineRepository` has never been wired to real persistence.
+V10 — airlines     adds `idx_airlines_name_trgm` — same ILIKE-search index pattern as V7 gave
+      countries/airports, added even though no `searchByName` endpoint exists for Airline yet.
 ```
 
 **Flyway runs at application startup**: `Main` executes `FlywayMigration.migrateFromEnv` before
@@ -203,36 +209,10 @@ FLYWAY_MIGRATE_ON_START  (default true; "false" skips the startup migration)
 
 ## REST API
 
-**Code-first OpenAPI.** Tapir endpoint definitions are the single source of truth — types,
-validators, descriptions, and examples are declared in Scala. `OpenApiGenerator` (in
-`bootstrap/`) calls Tapir's `OpenAPIDocsInterpreter` and writes the spec to stdout as YAML.
-Running the fat JAR with `java -jar` executes the generator; `java -cp` runs the server.
-Never maintain a hand-written spec file — always regenerate from code.
-
-Swagger UI: `http://localhost:8080/docs`
-
-| Resource | Method | Path | Status |
-|---|---|---|---|
-| Countries | GET | `/api/v1/countries` (optional `name` filter, ≥3 chars) | ✓ implemented |
-| Countries | POST | `/api/v1/countries` | ✓ implemented |
-| Countries | GET | `/api/v1/countries/{code}` | ✓ implemented |
-| Countries | PUT | `/api/v1/countries/{code}` | ✓ implemented |
-| Countries | DELETE | `/api/v1/countries/{code}` | ✓ implemented |
-| Airports | GET | `/api/v1/airports` | ✓ implemented |
-| Airports | GET | `/api/v1/airports/search` (name filter, ≥3 chars) | ✓ implemented |
-| Airports | GET | `/api/v1/airports/{iata}` | ✓ implemented |
-| Airports | POST | `/api/v1/airports` | ✓ implemented |
-| Airports | PUT | `/api/v1/airports/{iata}` | ✓ implemented |
-| Airports | GET | `/api/v1/countries/{code}/airports` | ✓ implemented |
-| Airlines | GET | `/api/v1/airlines` | stub |
-| Airlines | GET | `/api/v1/airlines/{icao}` | stub |
-| Aircraft | GET | `/api/v1/aircraft` | stub |
-| Aircraft | GET | `/api/v1/aircraft/{registration}` | stub |
-| Flights | GET | `/api/v1/flights` | stub |
-| Flights | GET | `/api/v1/flights/{code}` | stub |
-| Flight Instances | GET | `/api/v1/flight-instances` | stub |
-| Flight Instances | GET | `/api/v1/flight-instances/{id}` | stub |
-| Routes | POST | `/api/v1/routes` | stub |
+Code-first OpenAPI — Tapir endpoint definitions in Scala are the single source of truth, never a
+hand-written spec file. Swagger UI: `http://localhost:8080/docs`. Full per-endpoint implementation
+status table: [docs/api/endpoint-status.md](./docs/api/endpoint-status.md) — update it whenever an
+endpoint moves from stub to implemented, or a new one is added.
 
 ## Plans directory
 
@@ -254,6 +234,8 @@ one instead of duplicating it if a later change revises the same decision.
 - `docs/api/collection.json` + `environment.json` — Postman collection kept in sync with the
   Tapir-generated OpenAPI spec via the `sync-postman-collection` skill; regenerate after any
   endpoint change, never edit by hand.
+- `docs/api/endpoint-status.md` — per-endpoint implementation status table (see `## REST API`
+  above); update whenever an endpoint's status changes.
 - `docs/todo/` — analysis for future work not yet implemented (e.g. `auth-jwt.md`, JWT auth with
   Tapir + ZIO).
 
