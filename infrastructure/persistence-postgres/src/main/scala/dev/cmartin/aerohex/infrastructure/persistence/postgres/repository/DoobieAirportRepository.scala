@@ -4,7 +4,7 @@ import doobie.Transactor
 import doobie.implicits.*
 import doobie.postgres.*
 import dev.cmartin.aerohex.domain.error.DomainError
-import dev.cmartin.aerohex.domain.model.{Airport, CountryCode, IataCode}
+import dev.cmartin.aerohex.domain.model.{Airport, CountryCode, IataCode, IcaoCode}
 import dev.cmartin.aerohex.domain.port.out.AirportRepository
 import dev.cmartin.aerohex.shared.Pagination
 import zio.{IO, Task, URLayer, ZIO, ZLayer}
@@ -24,56 +24,52 @@ final class DoobieAirportRepository(xa: Transactor[Task]) extends AirportReposit
       }
 
   override def findByIata(iata: IataCode): IO[DomainError, Option[Airport]] =
-    sql"""SELECT a.iata_code, a.icao_code, a.name, a.city, c.code
-          FROM airports a JOIN countries c ON a.country_id = c.id
-          WHERE a.iata_code = ${iata.value}"""
-      .query[(String, String, String, String, String)]
+    sql"SELECT iata_code, icao_code, name, city FROM airports WHERE iata_code = ${iata.value}"
+      .query[(String, String, String, String)]
       .option
       .transact(xa)
-      .map(_.map((i, icao, n, city, code) => Airport(IataCode(i), icao, n, city, CountryCode(code))))
+      .map(_.map((i, icao, n, city) => Airport(IataCode(i), IcaoCode(icao), n, city)))
       .orDie
 
   override def findAll(pagination: Pagination): IO[DomainError, List[Airport]] =
-    sql"""SELECT a.iata_code, a.icao_code, a.name, a.city, c.code
-          FROM airports a JOIN countries c ON a.country_id = c.id
-          ORDER BY a.iata_code LIMIT ${pagination.pageSize} OFFSET ${pagination.offset}"""
-      .query[(String, String, String, String, String)]
+    sql"""SELECT iata_code, icao_code, name, city FROM airports
+          ORDER BY iata_code LIMIT ${pagination.pageSize} OFFSET ${pagination.offset}"""
+      .query[(String, String, String, String)]
       .to[List]
       .transact(xa)
-      .map(_.map((i, icao, n, city, code) => Airport(IataCode(i), icao, n, city, CountryCode(code))))
+      .map(_.map((i, icao, n, city) => Airport(IataCode(i), IcaoCode(icao), n, city)))
       .orDie
 
   override def searchByName(query: String): IO[DomainError, List[Airport]] = {
     val pattern = s"%$query%"
-    sql"""SELECT a.iata_code, a.icao_code, a.name, a.city, c.code
-          FROM airports a JOIN countries c ON a.country_id = c.id
-          WHERE a.name ILIKE $pattern ORDER BY a.name"""
-      .query[(String, String, String, String, String)]
+    sql"""SELECT iata_code, icao_code, name, city FROM airports
+          WHERE name ILIKE $pattern ORDER BY name"""
+      .query[(String, String, String, String)]
       .to[List]
       .transact(xa)
-      .map(_.map((i, icao, n, city, code) => Airport(IataCode(i), icao, n, city, CountryCode(code))))
+      .map(_.map((i, icao, n, city) => Airport(IataCode(i), IcaoCode(icao), n, city)))
       .orDie
   }
 
   override def findByCountry(code: CountryCode, pagination: Pagination): IO[DomainError, List[Airport]] =
-    sql"""SELECT a.iata_code, a.icao_code, a.name, a.city, c.code
+    sql"""SELECT a.iata_code, a.icao_code, a.name, a.city
           FROM airports a JOIN countries c ON a.country_id = c.id
           WHERE c.code = ${code.value} ORDER BY a.iata_code LIMIT ${pagination.pageSize} OFFSET ${pagination.offset}"""
-      .query[(String, String, String, String, String)]
+      .query[(String, String, String, String)]
       .to[List]
       .transact(xa)
-      .map(_.map((i, icao, n, city, cc) => Airport(IataCode(i), icao, n, city, CountryCode(cc))))
+      .map(_.map((i, icao, n, city) => Airport(IataCode(i), IcaoCode(icao), n, city)))
       .orDie
 
-  override def save(airport: Airport): IO[DomainError, Airport] =
-    resolveCountryId(airport.countryCode).flatMap { countryId =>
+  override def save(airport: Airport, countryCode: CountryCode): IO[DomainError, Airport] =
+    resolveCountryId(countryCode).flatMap { countryId =>
       sql"""
         INSERT INTO airports (iata_code, icao_code, name, city, country_id)
-        VALUES (${airport.iataCode.value}, ${airport.icaoCode}, ${airport.name}, ${airport.city}, $countryId)
+        VALUES (${airport.iataCode.value}, ${airport.icaoCode.value}, ${airport.name}, ${airport.city}, $countryId)
       """.update.run
         .attemptSomeSqlState {
           case sqlstate.class23.UNIQUE_VIOLATION      => DomainError.AirportAlreadyExists(airport.iataCode.value)
-          case sqlstate.class23.FOREIGN_KEY_VIOLATION => DomainError.CountryNotFound(airport.countryCode.value)
+          case sqlstate.class23.FOREIGN_KEY_VIOLATION => DomainError.CountryNotFound(countryCode.value)
         }
         .transact(xa)
         .orDie
@@ -83,15 +79,15 @@ final class DoobieAirportRepository(xa: Transactor[Task]) extends AirportReposit
         }
     }
 
-  override def update(airport: Airport): IO[DomainError, Airport] =
-    resolveCountryId(airport.countryCode).flatMap { countryId =>
+  override def update(airport: Airport, countryCode: CountryCode): IO[DomainError, Airport] =
+    resolveCountryId(countryCode).flatMap { countryId =>
       sql"""
-        UPDATE airports SET icao_code = ${airport.icaoCode}, name = ${airport.name}, city = ${airport.city},
+        UPDATE airports SET icao_code = ${airport.icaoCode.value}, name = ${airport.name}, city = ${airport.city},
           country_id = $countryId
         WHERE iata_code = ${airport.iataCode.value}
       """.update.run
         .attemptSomeSqlState {
-          case sqlstate.class23.FOREIGN_KEY_VIOLATION => DomainError.CountryNotFound(airport.countryCode.value)
+          case sqlstate.class23.FOREIGN_KEY_VIOLATION => DomainError.CountryNotFound(countryCode.value)
         }
         .transact(xa)
         .orDie

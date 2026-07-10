@@ -13,7 +13,7 @@ final class CreateAirportService(repo: AirportRepository) extends CreateAirportU
     val effect = repo.findByIata(command.iataCode).flatMap:
       case Some(_) => ZIO.fail(DomainError.AirportAlreadyExists(command.iataCode.value))
       case None    =>
-        repo.save(Airport(command.iataCode, command.icaoCode, command.name, command.city, command.countryCode))
+        repo.save(Airport(command.iataCode, command.icaoCode, command.name, command.city), command.countryCode)
     effect @@ ServiceAspect.logged(s"CreateAirportService.create(${command.iataCode.value})")
 
 object CreateAirportService:

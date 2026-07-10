@@ -1,7 +1,7 @@
 package dev.cmartin.aerohex.infrastructure.persistence.quill.repository
 
 import dev.cmartin.aerohex.domain.error.DomainError
-import dev.cmartin.aerohex.domain.model.{Airport, CountryCode, IataCode}
+import dev.cmartin.aerohex.domain.model.{Airport, CountryCode, IataCode, IcaoCode}
 import dev.cmartin.aerohex.domain.port.out.AirportRepository
 import dev.cmartin.aerohex.shared.Pagination
 import io.getquill.*
@@ -29,9 +29,8 @@ final class QuillAirportRepository(dataSource: DataSource) extends AirportReposi
 
   import ctx.*
 
-  private def toAirport(row: (AirportRow, CountryRef)): Airport =
-    val (a, c) = row
-    Airport(IataCode(a.iataCode), a.icaoCode, a.name, a.city, CountryCode(c.code))
+  private def toAirport(a: AirportRow): Airport =
+    Airport(IataCode(a.iataCode), IcaoCode(a.icaoCode), a.name, a.city)
 
   private def resolveCountryId(code: CountryCode): IO[DomainError, Long] =
     ctx
@@ -47,10 +46,7 @@ final class QuillAirportRepository(dataSource: DataSource) extends AirportReposi
   override def findByIata(iata: IataCode): IO[DomainError, Option[Airport]] =
     ctx
       .run(quote {
-        for {
-          a <- querySchema[AirportRow]("airports").filter(_.iataCode == lift(iata.value))
-          c <- querySchema[CountryRef]("countries").join(c => c.id == a.countryId)
-        } yield (a, c)
+        querySchema[AirportRow]("airports").filter(_.iataCode == lift(iata.value))
       })
       .map(_.headOption.map(toAirport))
       .orDie
@@ -60,11 +56,8 @@ final class QuillAirportRepository(dataSource: DataSource) extends AirportReposi
     val limit  = pagination.pageSize
     ctx
       .run(quote {
-        (for {
-          a <- querySchema[AirportRow]("airports")
-          c <- querySchema[CountryRef]("countries").join(c => c.id == a.countryId)
-        } yield (a, c))
-          .sortBy(_._1.iataCode)
+        querySchema[AirportRow]("airports")
+          .sortBy(_.iataCode)
           .drop(lift(offset))
           .take(lift(limit))
       })
@@ -76,12 +69,9 @@ final class QuillAirportRepository(dataSource: DataSource) extends AirportReposi
     val pattern = "%" + query + "%"
     ctx
       .run(quote {
-        (for {
-          a <- querySchema[AirportRow]("airports")
-                 .filter(r => infix"${r.name} ILIKE ${lift(pattern)}".as[Boolean])
-          c <- querySchema[CountryRef]("countries").join(c => c.id == a.countryId)
-        } yield (a, c))
-          .sortBy(_._1.name)
+        querySchema[AirportRow]("airports")
+          .filter(r => infix"${r.name} ILIKE ${lift(pattern)}".as[Boolean])
+          .sortBy(_.name)
       })
       .map(_.map(toAirport))
       .orDie
@@ -96,8 +86,8 @@ final class QuillAirportRepository(dataSource: DataSource) extends AirportReposi
           a <- querySchema[AirportRow]("airports")
           c <- querySchema[CountryRef]("countries").join(c => c.id == a.countryId)
           if c.code == lift(code.value)
-        } yield (a, c))
-          .sortBy(_._1.iataCode)
+        } yield a)
+          .sortBy(_.iataCode)
           .drop(lift(offset))
           .take(lift(limit))
       })
@@ -105,13 +95,13 @@ final class QuillAirportRepository(dataSource: DataSource) extends AirportReposi
       .orDie
   }
 
-  override def save(airport: Airport): IO[DomainError, Airport] =
-    resolveCountryId(airport.countryCode).flatMap { countryId =>
+  override def save(airport: Airport, countryCode: CountryCode): IO[DomainError, Airport] =
+    resolveCountryId(countryCode).flatMap { countryId =>
       ctx
         .run(quote {
           querySchema[AirportRow]("airports").insert(
             _.iataCode  -> lift(airport.iataCode.value),
-            _.icaoCode  -> lift(airport.icaoCode),
+            _.icaoCode  -> lift(airport.icaoCode.value),
             _.name      -> lift(airport.name),
             _.city      -> lift(airport.city),
             _.countryId -> lift(countryId)
@@ -124,14 +114,14 @@ final class QuillAirportRepository(dataSource: DataSource) extends AirportReposi
         }
     }
 
-  override def update(airport: Airport): IO[DomainError, Airport] =
-    resolveCountryId(airport.countryCode).flatMap { countryId =>
+  override def update(airport: Airport, countryCode: CountryCode): IO[DomainError, Airport] =
+    resolveCountryId(countryCode).flatMap { countryId =>
       ctx
         .run(quote {
           querySchema[AirportRow]("airports")
             .filter(_.iataCode == lift(airport.iataCode.value))
             .update(
-              _.icaoCode  -> lift(airport.icaoCode),
+              _.icaoCode  -> lift(airport.icaoCode.value),
               _.name      -> lift(airport.name),
               _.city      -> lift(airport.city),
               _.countryId -> lift(countryId)

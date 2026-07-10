@@ -10,7 +10,7 @@ trait AirportRepository {
   def findAll(pagination: Pagination): IO[DomainError, List[Airport]]
   def searchByName(query: String): IO[DomainError, List[Airport]]
   def findByCountry(code: CountryCode, pagination: Pagination): IO[DomainError, List[Airport]]
-  def save(airport: Airport): IO[DomainError, Airport]
-  def update(airport: Airport): IO[DomainError, Airport]
+  def save(airport: Airport, countryCode: CountryCode): IO[DomainError, Airport]
+  def update(airport: Airport, countryCode: CountryCode): IO[DomainError, Airport]
   def delete(iata: IataCode): IO[DomainError, Unit]
 }

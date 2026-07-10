@@ -2,7 +2,7 @@ package dev.cmartin.aerohex.adapter.http.endpoint
 
 import dev.cmartin.aerohex.adapter.http.dto.*
 import dev.cmartin.aerohex.domain.error.DomainError
-import dev.cmartin.aerohex.domain.model.{Airport, CountryCode, IataCode}
+import dev.cmartin.aerohex.domain.model.{Airport, CountryCode, IataCode, IcaoCode}
 import dev.cmartin.aerohex.domain.port.in.*
 import dev.cmartin.aerohex.shared.Pagination
 import io.circe.generic.auto.*
@@ -17,9 +17,9 @@ import zio.test.*
 
 object AirportEndpointsSpec extends ZIOSpecDefault:
 
-  private val madrid    = Airport(IataCode("MAD"), "LEMD", "Adolfo Suárez Madrid-Barajas", "Madrid", CountryCode("ES"))
+  private val madrid    = Airport(IataCode("MAD"), IcaoCode("LEMD"), "Adolfo Suárez Madrid-Barajas", "Madrid")
   private val barcelona =
-    Airport(IataCode("BCN"), "LEBL", "Josep Tarradellas Barcelona-El Prat", "Barcelona", CountryCode("ES"))
+    Airport(IataCode("BCN"), IcaoCode("LEBL"), "Josep Tarradellas Barcelona-El Prat", "Barcelona")
 
   // ── Stub use-case implementations ─────────────────────────────────────────
 

@@ -1,20 +1,19 @@
 package dev.cmartin.aerohex.adapter.http.dto
 
-import dev.cmartin.aerohex.domain.model.{Airport, CountryCode, IataCode}
+import dev.cmartin.aerohex.domain.model.{Airport, CountryCode, IataCode, IcaoCode}
 import dev.cmartin.aerohex.domain.port.in.{CreateAirportCommand, UpdateAirportCommand}
 import sttp.tapir.Schema
 import sttp.tapir.Validator
 
-case class AirportDto(iata: String, icaoCode: String, name: String, city: String, countryCode: String)
+case class AirportDto(iata: String, icaoCode: String, name: String, city: String)
 
 object AirportDto {
   def fromDomain(airport: Airport): AirportDto =
     AirportDto(
       iata = airport.iataCode.value,
-      icaoCode = airport.icaoCode,
+      icaoCode = airport.icaoCode.value,
       name = airport.name,
-      city = airport.city,
-      countryCode = airport.countryCode.value
+      city = airport.city
     )
 
   given Schema[AirportDto] = Schema.derived[AirportDto]
@@ -32,12 +31,6 @@ object AirportDto {
     )
     .modify(_.name)(_.description("Full airport name.").encodedExample("Adolfo Suárez Madrid-Barajas"))
     .modify(_.city)(_.description("City served by the airport.").encodedExample("Madrid"))
-    .modify(_.countryCode)(
-      _.description("ISO 3166-1 alpha-2 country code.")
-        .validate(Validator.minLength(2))
-        .validate(Validator.maxLength(2))
-        .encodedExample("ES")
-    )
 }
 
 case class CreateAirportRequest(iata: String, icaoCode: String, name: String, city: String, countryCode: String)
@@ -46,7 +39,7 @@ object CreateAirportRequest {
   def toCommand(req: CreateAirportRequest): CreateAirportCommand =
     CreateAirportCommand(
       iataCode = IataCode(req.iata),
-      icaoCode = req.icaoCode,
+      icaoCode = IcaoCode(req.icaoCode),
       name = req.name,
       city = req.city,
       countryCode = CountryCode(req.countryCode)
@@ -90,7 +83,7 @@ object UpdateAirportRequest {
   def toCommand(iata: String, req: UpdateAirportRequest): UpdateAirportCommand =
     UpdateAirportCommand(
       iataCode = IataCode(iata),
-      icaoCode = req.icaoCode,
+      icaoCode = IcaoCode(req.icaoCode),
       name = req.name,
       city = req.city,
       countryCode = CountryCode(req.countryCode)
