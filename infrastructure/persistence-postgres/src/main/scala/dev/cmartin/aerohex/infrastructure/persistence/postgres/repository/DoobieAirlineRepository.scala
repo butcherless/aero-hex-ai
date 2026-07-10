@@ -26,27 +26,24 @@ final class DoobieAirlineRepository(xa: Transactor[Task]) extends AirlineReposit
       }
 
   override def findByIcao(icao: IcaoCode): IO[DomainError, Option[Airline]] =
-    sql"""SELECT l.icao_code, l.name, l.foundation_date, c.code
-          FROM airlines l JOIN countries c ON l.country_id = c.id
-          WHERE l.icao_code = ${icao.value}"""
-      .query[(String, String, LocalDate, String)]
+    sql"SELECT icao_code, name, foundation_date FROM airlines WHERE icao_code = ${icao.value}"
+      .query[(String, String, LocalDate)]
       .option
       .transact(xa)
-      .map(_.map((i, n, fd, cc) => Airline(IcaoCode(i), n, fd, CountryCode(cc))))
+      .map(_.map((i, n, fd) => Airline(IcaoCode(i), n, fd)))
       .orDie
 
   override def findAll(pagination: Pagination): IO[DomainError, List[Airline]] =
-    sql"""SELECT l.icao_code, l.name, l.foundation_date, c.code
-          FROM airlines l JOIN countries c ON l.country_id = c.id
-          ORDER BY l.icao_code LIMIT ${pagination.pageSize} OFFSET ${pagination.offset}"""
-      .query[(String, String, LocalDate, String)]
+    sql"""SELECT icao_code, name, foundation_date FROM airlines
+          ORDER BY icao_code LIMIT ${pagination.pageSize} OFFSET ${pagination.offset}"""
+      .query[(String, String, LocalDate)]
       .to[List]
       .transact(xa)
-      .map(_.map((i, n, fd, cc) => Airline(IcaoCode(i), n, fd, CountryCode(cc))))
+      .map(_.map((i, n, fd) => Airline(IcaoCode(i), n, fd)))
       .orDie
 
-  override def save(airline: Airline): IO[DomainError, Airline] =
-    resolveCountryId(airline.countryCode).flatMap { countryId =>
+  override def save(airline: Airline, countryCode: CountryCode): IO[DomainError, Airline] =
+    resolveCountryId(countryCode).flatMap { countryId =>
       sql"""
         INSERT INTO airlines (icao_code, name, foundation_date, country_id)
         VALUES (${airline.icao.value}, ${airline.name}, ${airline.foundationDate}, $countryId)

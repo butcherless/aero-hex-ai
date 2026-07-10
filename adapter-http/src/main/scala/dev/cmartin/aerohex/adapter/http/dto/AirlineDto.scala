@@ -4,15 +4,14 @@ import dev.cmartin.aerohex.domain.model.Airline
 import sttp.tapir.Schema
 import sttp.tapir.Validator
 
-case class AirlineDto(icao: String, name: String, foundationDate: String, countryCode: String)
+case class AirlineDto(icao: String, name: String, foundationDate: String)
 
 object AirlineDto {
   def fromDomain(airline: Airline): AirlineDto =
     AirlineDto(
       icao = airline.icao.value,
       name = airline.name,
-      foundationDate = airline.foundationDate.toString,
-      countryCode = airline.countryCode.value
+      foundationDate = airline.foundationDate.toString
     )
 
   given Schema[AirlineDto] = Schema.derived[AirlineDto]
@@ -24,10 +23,4 @@ object AirlineDto {
     )
     .modify(_.name)(_.description("Full airline name.").encodedExample("Iberia"))
     .modify(_.foundationDate)(_.description("Date the airline was founded (ISO 8601).").encodedExample("1927-06-28"))
-    .modify(_.countryCode)(
-      _.description("ISO 3166-1 alpha-2 country code of the airline's home country.")
-        .validate(Validator.minLength(2))
-        .validate(Validator.maxLength(2))
-        .encodedExample("ES")
-    )
 }

@@ -12,10 +12,10 @@ object CountryCode {
 /** A nation with its own government, occupying a particular territory.
   * Aggregate root, identified by its ISO 3166-1 alpha-2 [[code]] — the everyday
   * IATA/industry term for what ICAO documents call a *Contracting State*.
-  * Referenced by `Airline` via its `countryCode` foreign key, and by `Airport`
-  * indirectly — an `Airport`'s country is resolved by relationship
-  * (`AirportRepository.save`/`update` take a `CountryCode` parameter) rather
-  * than stored on the entity itself.
+  * Referenced by `Airport` and `Airline` indirectly, by relationship — neither
+  * entity stores `CountryCode` on itself; `AirportRepository.save`/`update` and
+  * `AirlineRepository.save` all take a `CountryCode` parameter separately
+  * instead.
   *
   * @param code
   *   the country's ISO 3166-1 alpha-2 code (e.g. `"ES"`) and natural key.
