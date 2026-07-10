@@ -1,22 +1,21 @@
 package dev.cmartin.aerohex.application.service
 
 import dev.cmartin.aerohex.domain.error.DomainError
-import dev.cmartin.aerohex.domain.error.DomainError.AirportNotFound
-import dev.cmartin.aerohex.domain.model.{IataCode, IcaoCode, Route, RouteId}
-import dev.cmartin.aerohex.domain.port.in.{CreateRouteCommand, CreateRouteUseCase}
-import dev.cmartin.aerohex.domain.port.out.{AirportRepository, RouteRepository}
+import dev.cmartin.aerohex.domain.model.{IcaoCode, Route, RouteId}
+import dev.cmartin.aerohex.domain.port.in.{CreateRouteCommand, CreateRouteUseCase, FindAirportUseCase}
+import dev.cmartin.aerohex.domain.port.out.RouteRepository
 import dev.cmartin.aerohex.domain.service.RouteValidator
-import zio.{IO, ZIO, ZLayer, URLayer}
+import zio.{IO, ZLayer, URLayer}
 
 final class CreateRouteService(
-    airportRepository: AirportRepository,
+    findAirport: FindAirportUseCase,
     routeRepository: RouteRepository
 ) extends CreateRouteUseCase {
 
   override def create(command: CreateRouteCommand): IO[DomainError, Route] =
     for {
-      origin      <- resolveAirport(command.originIata)
-      destination <- resolveAirport(command.destinationIata)
+      origin      <- findAirport.findByIata(command.originIata)
+      destination <- findAirport.findByIata(command.destinationIata)
       _           <- RouteValidator.validate(origin.iataCode, destination.iataCode, command.distanceKm)
       route        = Route(
                        id = RouteId.generate,
@@ -27,15 +26,9 @@ final class CreateRouteService(
                      )
       saved       <- routeRepository.save(route)
     } yield saved
-
-  private def resolveAirport(iata: String) =
-    airportRepository.findByIata(IataCode(iata)).flatMap {
-      case Some(a) => ZIO.succeed(a)
-      case None    => ZIO.fail(AirportNotFound(iata))
-    }
 }
 
 object CreateRouteService {
-  val layer: URLayer[AirportRepository & RouteRepository, CreateRouteUseCase] =
+  val layer: URLayer[FindAirportUseCase & RouteRepository, CreateRouteUseCase] =
     ZLayer.fromFunction(new CreateRouteService(_, _))
 }

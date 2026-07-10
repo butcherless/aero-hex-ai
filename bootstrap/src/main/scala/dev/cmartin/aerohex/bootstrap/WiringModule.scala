@@ -79,7 +79,8 @@ object WiringModule {
     (countryUseCaseLayers >>> CountryRoutes.layer) ++
       (airportUseCaseLayers >>> AirportRoutes.layer) ++
       (airlineRepoLayer >>> FindAirlineService.layer >>> AirlineRoutes.layer) ++
-      ((airportRepoLayer ++ routeRepoLayer) >>> CreateRouteService.layer >>> RouteRoutes.layer) ++
+      (((airportRepoLayer >>> FindAirportService.layer) ++ routeRepoLayer) >>> CreateRouteService.layer >>>
+        RouteRoutes.layer) ++
       (aircraftRepoLayer >>> FindAircraftService.layer >>> AircraftRoutes.layer) ++
       (flightRepoLayer >>> FindFlightService.layer >>> FlightRoutes.layer) ++
       (flightInstanceRepoLayer >>> FindFlightInstanceService.layer >>> FlightInstanceRoutes.layer)
