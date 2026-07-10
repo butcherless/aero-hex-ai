@@ -11,6 +11,14 @@ object AirlineEndpoints {
 
   private val base = endpoint.in("api" / "v1" / "airlines")
 
+  // same validated shape as AirportEndpoints.iataParam / CountryEndpoints.codeParam
+  private val icaoParam =
+    path[String]("icao")
+      .description("3-letter ICAO airline code (e.g. IBE).")
+      .validate(Validator.minLength(3))
+      .validate(Validator.maxLength(3))
+      .validate(Validator.pattern("[a-zA-Z]{3}"))
+
   val findAll: PublicEndpoint[(Int, Int), (StatusCode, HttpErrorResponse), List[AirlineDto], Any] =
     base.get
       .summary("List airlines")
@@ -26,7 +34,7 @@ object AirlineEndpoints {
       .summary("Find airline by ICAO code")
       .description("Returns a single airline identified by its 3-letter ICAO code.")
       .tag("Airlines")
-      .in(path[String]("icao").description("3-letter ICAO airline code (e.g. IBE)."))
+      .in(icaoParam)
       .out(jsonBody[AirlineDto].description("The requested airline."))
       .errorOut(
         oneOf[(StatusCode, HttpErrorResponse)](
