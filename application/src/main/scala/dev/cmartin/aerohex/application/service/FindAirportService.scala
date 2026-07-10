@@ -1,5 +1,6 @@
 package dev.cmartin.aerohex.application.service
 
+import dev.cmartin.aerohex.application.aspect.ServiceAspect
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.error.DomainError.AirportNotFound
 import dev.cmartin.aerohex.domain.model.{Airport, IataCode}
@@ -14,13 +15,13 @@ final class FindAirportService(repo: AirportRepository) extends FindAirportUseCa
     repo.findByIata(IataCode(iata)).flatMap {
       case Some(airport) => ZIO.succeed(airport)
       case None          => ZIO.fail(AirportNotFound(iata))
-    }
+    } @@ ServiceAspect.logged(s"FindAirportService.findByIata($iata)")
 
   override def findAll(pagination: Pagination): IO[DomainError, List[Airport]] =
-    repo.findAll(pagination)
+    repo.findAll(pagination) @@ ServiceAspect.logged("FindAirportService.findAll")
 
   override def searchByName(query: String): IO[DomainError, List[Airport]] =
-    repo.searchByName(query)
+    repo.searchByName(query) @@ ServiceAspect.logged(s"FindAirportService.searchByName($query)")
 }
 
 object FindAirportService {

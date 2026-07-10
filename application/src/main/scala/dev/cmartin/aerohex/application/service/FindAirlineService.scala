@@ -1,5 +1,6 @@
 package dev.cmartin.aerohex.application.service
 
+import dev.cmartin.aerohex.application.aspect.ServiceAspect
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.error.DomainError.AirlineNotFound
 import dev.cmartin.aerohex.domain.model.{Airline, IcaoCode}
@@ -14,10 +15,10 @@ final class FindAirlineService(repo: AirlineRepository) extends FindAirlineUseCa
     repo.findByIcao(IcaoCode(icao)).flatMap {
       case Some(airline) => ZIO.succeed(airline)
       case None          => ZIO.fail(AirlineNotFound(icao))
-    }
+    } @@ ServiceAspect.logged(s"FindAirlineService.findByIcao($icao)")
 
   override def findAll(pagination: Pagination): IO[DomainError, List[Airline]] =
-    repo.findAll(pagination)
+    repo.findAll(pagination) @@ ServiceAspect.logged("FindAirlineService.findAll")
 }
 
 object FindAirlineService {

@@ -1,5 +1,6 @@
 package dev.cmartin.aerohex.application.service
 
+import dev.cmartin.aerohex.application.aspect.ServiceAspect
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.model.{Airport, CountryCode}
 import dev.cmartin.aerohex.domain.port.in.FindAirportsByCountryUseCase
@@ -14,7 +15,7 @@ final class FindAirportsByCountryService(countryRepository: CountryRepository, a
     countryRepository.findByCode(code).flatMap {
       case None    => ZIO.fail(DomainError.CountryNotFound(code.value))
       case Some(_) => airportRepository.findByCountry(code, pagination)
-    }
+    } @@ ServiceAspect.logged(s"FindAirportsByCountryService.findByCountry(${code.value})")
 }
 
 object FindAirportsByCountryService {
