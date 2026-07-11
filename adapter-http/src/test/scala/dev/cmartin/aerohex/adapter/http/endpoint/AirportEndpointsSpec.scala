@@ -98,6 +98,21 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
                           .get(uri"https://test.com/api/v1/airports")
                           .send(makeBackend(find = notFoundFind))
           yield assertTrue(response.code == StatusCode.NotFound)
+        },
+        test("returns 400 when pageSize is 0") {
+          for
+            response <- basicRequest.get(uri"https://test.com/api/v1/airports?pageSize=0").send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        },
+        test("returns 400 when pageSize is over 100") {
+          for
+            response <- basicRequest.get(uri"https://test.com/api/v1/airports?pageSize=101").send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        },
+        test("returns 400 when page is 0") {
+          for
+            response <- basicRequest.get(uri"https://test.com/api/v1/airports?page=0").send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
         }
       ),
       suite("GET /api/v1/airports/search")(
@@ -151,6 +166,16 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
         test("returns 400 when the iata code is not exactly 3 letters") {
           for
             response <- basicRequest.get(uri"https://test.com/api/v1/airports/MA").send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        },
+        test("returns 400 when the iata code is longer than 3 letters") {
+          for
+            response <- basicRequest.get(uri"https://test.com/api/v1/airports/MADX").send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        },
+        test("returns 400 when the iata code contains non-alpha characters") {
+          for
+            response <- basicRequest.get(uri"https://test.com/api/v1/airports/123").send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         }
       ),
@@ -261,6 +286,28 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
                 .contentType("application/json")
                 .send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
+        },
+        test("returns 400 when name is empty") {
+          for
+            response <-
+              basicRequest
+                .post(uri"https://test.com/api/v1/airports")
+                .body("""{"iata":"MAD","icaoCode":"LEMD","name":"","city":"Madrid","countryCode":"ES"}""")
+                .contentType("application/json")
+                .send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        },
+        test("returns 400 when city is empty") {
+          for
+            response <-
+              basicRequest
+                .post(uri"https://test.com/api/v1/airports")
+                .body(
+                  """{"iata":"MAD","icaoCode":"LEMD","name":"Adolfo Suárez Madrid-Barajas","city":"","countryCode":"ES"}"""
+                )
+                .contentType("application/json")
+                .send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
         }
       ),
       suite("GET /api/v1/countries/{code}/airports")(
@@ -286,6 +333,33 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
         test("returns 400 when the code is shorter than 2 characters") {
           for
             response <- basicRequest.get(uri"https://test.com/api/v1/countries/X/airports").send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        },
+        test("returns 400 when the code is longer than 2 characters") {
+          for
+            response <- basicRequest.get(uri"https://test.com/api/v1/countries/ESP/airports").send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        },
+        test("returns 400 when the code contains non-alpha characters") {
+          for
+            response <- basicRequest.get(uri"https://test.com/api/v1/countries/12/airports").send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        },
+        test("returns 400 when pageSize is 0") {
+          for
+            response <-
+              basicRequest.get(uri"https://test.com/api/v1/countries/ES/airports?pageSize=0").send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        },
+        test("returns 400 when pageSize is over 100") {
+          for
+            response <-
+              basicRequest.get(uri"https://test.com/api/v1/countries/ES/airports?pageSize=101").send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        },
+        test("returns 400 when page is 0") {
+          for
+            response <- basicRequest.get(uri"https://test.com/api/v1/countries/ES/airports?page=0").send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         }
       ),

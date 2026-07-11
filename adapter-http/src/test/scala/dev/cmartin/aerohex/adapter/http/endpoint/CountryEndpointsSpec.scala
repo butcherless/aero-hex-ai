@@ -112,6 +112,27 @@ object CountryEndpointsSpec extends ZIOSpecDefault:
                           .get(uri"https://test.com/api/v1/countries?name=ab")
                           .send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
+        },
+        test("returns 400 when pageSize is 0") {
+          for
+            response <- basicRequest
+                          .get(uri"https://test.com/api/v1/countries?pageSize=0")
+                          .send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        },
+        test("returns 400 when pageSize is over 100") {
+          for
+            response <- basicRequest
+                          .get(uri"https://test.com/api/v1/countries?pageSize=101")
+                          .send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        },
+        test("returns 400 when page is 0") {
+          for
+            response <- basicRequest
+                          .get(uri"https://test.com/api/v1/countries?page=0")
+                          .send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
         }
       ),
       suite("GET /api/v1/countries/{code}")(
@@ -137,6 +158,16 @@ object CountryEndpointsSpec extends ZIOSpecDefault:
         test("returns 400 when the code is shorter than 2 characters") {
           for
             response <- basicRequest.get(uri"https://test.com/api/v1/countries/X").send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        },
+        test("returns 400 when the code is longer than 2 characters") {
+          for
+            response <- basicRequest.get(uri"https://test.com/api/v1/countries/ESP").send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        },
+        test("returns 400 when the code contains non-alpha characters") {
+          for
+            response <- basicRequest.get(uri"https://test.com/api/v1/countries/12").send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         }
       ),
@@ -167,6 +198,15 @@ object CountryEndpointsSpec extends ZIOSpecDefault:
             response <- basicRequest
                           .post(uri"https://test.com/api/v1/countries")
                           .body("""{"code":"E","name":"Spain"}""")
+                          .contentType("application/json")
+                          .send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        },
+        test("returns 400 when name is empty") {
+          for
+            response <- basicRequest
+                          .post(uri"https://test.com/api/v1/countries")
+                          .body("""{"code":"ES","name":""}""")
                           .contentType("application/json")
                           .send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
