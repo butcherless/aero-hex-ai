@@ -1,11 +1,27 @@
 package dev.cmartin.aerohex.domain.model
 
-opaque type IataCode = String
+import zio.prelude.Assertion.*
+import zio.prelude.{Assertion, Newtype}
 
-object IataCode {
-  def apply(value: String): IataCode        = value
-  extension (i: IataCode) def value: String = i
-}
+/** IATA-issued 3-letter airport code, e.g. `"MAD"`. A ZIO Prelude smart
+  * [[https://zio.dev/zio-prelude/newtypes/ Newtype]] — `assertion` enforces the
+  * 3-letter/alphabetic shape (BR-02) at construction.
+  *
+  *   - `IataCode("MAD")` — for compile-time-known literals; a malformed literal
+  *     fails to compile.
+  *   - `IataCode.make(raw)` — for runtime strings that need validating, bridged
+  *     to `IO[DomainError, _]` via `.toZIO` (see
+  *     `CreateAirportRequest.toCommand`, the only call site that needs runtime
+  *     validation).
+  *   - `IataCode.unsafeMake(raw)` — for already-trusted data (DB reads,
+  *     Tapir-already-validated path params, cross-entity reference fields such
+  *     as `Route.origin`/`Route.destination`).
+  */
+object IataCode extends Newtype[String]:
+  override inline def assertion: Assertion[String] = matches("^[a-zA-Z]{3}$".r)
+  extension (i: IataCode) def value: String        = unwrap(i)
+  def unsafeMake(value: String): IataCode          = wrap(value)
+type IataCode = IataCode.Type
 
 /** A complex of runways and buildings for the take-off, landing, and
   * maintenance of civil aircraft, with facilities for passengers. Belongs to
@@ -16,17 +32,17 @@ object IataCode {
   *
   * @param iataCode
   *   the airport's IATA code (e.g. `"MAD"`), exactly 3 letters (BR-02), and
-  *   natural key. No format validation in this type itself — no domain-level
-  *   smart constructor exists for `IataCode` at all; the shape is enforced only
-  *   at the HTTP boundary.
+  *   natural key. Shape is enforced by `IataCode`'s own smart constructor; see
+  *   its scaladoc.
   * @param icaoCode
   *   the airport's ICAO code (e.g. `"LEMD"`), exactly 4 letters (BR-03). Shares
-  *   the `IcaoCode` opaque type with `Airline`/`Route`/`Flight`/`Aircraft` —
-  *   one project-wide concept for an ICAO-issued code, the same way `IataCode`
-  *   is shared with `Route`. Note the two entities that use it directly
-  *   (`Airline`, `Airport`) have different code lengths per BR-03 (3 vs. 4
-  *   letters); the shared type itself enforces neither, since format validation
-  *   happens only at the HTTP boundary.
+  *   the `IcaoCode` Newtype with `Airline`/`Route`/`Flight` — one project-wide
+  *   concept for an ICAO-issued code, the same way `IataCode` is shared with
+  *   `Route`. Note the two entities that use it directly (`Airline`, `Airport`)
+  *   have different code lengths per BR-03 (3 vs. 4 letters); `IcaoCode`'s own
+  *   assertion enforces neither the length nor (yet) real validation for this
+  *   field — only `Airline`'s own `icao` field goes through `IcaoCode.make` at
+  *   the HTTP boundary today.
   * @param name
   *   the airport's full name (e.g. `"Adolfo Suárez Madrid–Barajas Airport"`).
   *   Must not be blank in practice (BR-14), enforced only at the HTTP write

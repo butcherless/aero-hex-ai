@@ -20,15 +20,18 @@ final class QuillCountryRepository(dataSource: DataSource) extends CountryReposi
   import ctx.*
 
   private def toCountry(row: CountryRow): Country =
-    Country(CountryCode(row.code), row.name)
+    Country(CountryCode.unsafeMake(row.code), row.name)
 
-  override def isValidCode(code: CountryCode): IO[DomainError, Boolean] =
+  override def validateCode(code: CountryCode): IO[DomainError, Unit] =
     ctx
       .run(quote {
         querySchema[CountryCodeRow]("country_codes").filter(_.code == lift(code.value))
       })
-      .map(_.nonEmpty)
       .orDie
+      .flatMap {
+        case Nil => ZIO.fail(DomainError.InvalidCountryCode(code.value))
+        case _   => ZIO.unit
+      }
 
   override def findByCode(code: CountryCode): IO[DomainError, Option[Country]] =
     ctx

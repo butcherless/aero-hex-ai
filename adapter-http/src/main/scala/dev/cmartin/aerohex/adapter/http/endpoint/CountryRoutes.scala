@@ -30,13 +30,14 @@ class CountryRoutes(
     },
     CountryEndpoints.findByCode.zServerLogic { code =>
       findSvc
-        .findByCode(CountryCode(code))
+        .findByCode(CountryCode.unsafeMake(code))
         .map(CountryDto.fromDomain)
         .mapError(ErrorMapper.toHttpError)
     },
     CountryEndpoints.create.zServerLogic { req =>
-      createSvc
-        .create(CreateCountryRequest.toCommand(req))
+      CreateCountryRequest
+        .toCommand(req)
+        .flatMap(createSvc.create)
         .map { country =>
           val dto = CountryDto.fromDomain(country)
           (dto, s"/api/v1/countries/${dto.code}")
@@ -51,7 +52,7 @@ class CountryRoutes(
     },
     CountryEndpoints.delete.zServerLogic { code =>
       deleteSvc
-        .delete(CountryCode(code))
+        .delete(CountryCode.unsafeMake(code))
         .mapError(ErrorMapper.toHttpError)
     }
   )

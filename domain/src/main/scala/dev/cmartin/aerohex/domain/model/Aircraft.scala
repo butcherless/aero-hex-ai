@@ -1,19 +1,30 @@
 package dev.cmartin.aerohex.domain.model
 
+import zio.prelude.Assertion.*
+import zio.prelude.{Assertion, Newtype}
+
 /** The international code identifying a specific physical aircraft (e.g.
   * `"EC-MIG"`) — formally the *Aircraft Registration Mark* per ICAO Annex 7,
-  * informally the *tail number*. Unlike `IataCode`/`IcaoCode`, real-world
-  * registrations vary in shape by country of registry (`"EC-MIG"` Spain,
-  * `"N12345"` US, `"G-ABCD"` UK), so no single fixed-length/alpha pattern
-  * applies across all of them — the HTTP boundary enforces only non-blank plus
-  * a maximum length, not a shape. `apply` performs no validation.
+  * informally the *tail number*. A ZIO Prelude smart
+  * [[https://zio.dev/zio-prelude/newtypes/ Newtype]] — unlike
+  * `CountryCode`/`IataCode`/`IcaoCode`, real-world registrations vary in shape
+  * by country of registry (`"EC-MIG"` Spain, `"N12345"` US, `"G-ABCD"` UK), so
+  * no single alphabetic/fixed-length pattern applies across all of them;
+  * `assertion` enforces only non-blank plus a maximum length of 10, the same
+  * bound the HTTP boundary validated before this type had a smart constructor.
+  *
+  *   - `Registration("EC-MIG")` — for compile-time-known literals.
+  *   - `Registration.make(raw)` — for runtime strings, bridged to
+  *     `IO[DomainError, _]` via `.toZIO` (see
+  *     `CreateAircraftRequest.toCommand`).
+  *   - `Registration.unsafeMake(raw)` — for already-trusted data (DB reads,
+  *     Tapir-already-validated path params).
   */
-opaque type Registration = String
-
-object Registration {
-  def apply(value: String): Registration        = value
-  extension (r: Registration) def value: String = r
-}
+object Registration extends Newtype[String]:
+  override inline def assertion: Assertion[String] = matches("^.{1,10}$".r)
+  extension (r: Registration) def value: String    = unwrap(r)
+  def unsafeMake(value: String): Registration      = wrap(value)
+type Registration = Registration.Type
 
 /** An airplane capable of flight to transport people and cargo. Belongs to one
   * [[Airline]], referenced directly by [[airlineIcao]] — unlike
@@ -22,7 +33,8 @@ object Registration {
   * `AircraftRepository.save`/`update`.
   *
   * @param registration
-  *   the aircraft's registration mark (e.g. `"EC-MIG"`) and natural key.
+  *   the aircraft's registration mark (e.g. `"EC-MIG"`) and natural key. Shape
+  *   is enforced by `Registration`'s own smart constructor; see its scaladoc.
   * @param typeCode
   *   the ICAO aircraft type designator (e.g. `"B788"` for a Boeing 787-8). No
   *   format validation anywhere.
@@ -33,7 +45,11 @@ object Registration {
   *   (`Validator.minLength(1)`), not by this type.
   * @param airlineIcao
   *   the ICAO code of the airline this aircraft belongs to. Shares the
-  *   `IcaoCode` opaque type with `Airline`/`Airport`/`Route`/`Flight`.
+  *   `IcaoCode` Newtype with `Airline`/`Airport`/`Route`/`Flight`; constructed
+  *   via `IcaoCode.unsafeMake` everywhere on this entity since it's a
+  *   cross-entity reference, not `Aircraft`'s own natural key — real format
+  *   validation for this field lives on `Airline`'s own `icao` construction,
+  *   not here (mirrors `Route.airlineIcao`).
   */
 case class Aircraft(
     registration: Registration,

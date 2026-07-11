@@ -33,8 +33,9 @@ class AircraftRoutes(
         .mapError(ErrorMapper.toHttpError)
     },
     AircraftEndpoints.create.zServerLogic { req =>
-      createSvc
-        .create(CreateAircraftRequest.toCommand(req))
+      CreateAircraftRequest
+        .toCommand(req)
+        .flatMap(createSvc.create)
         .map { aircraft =>
           val dto = AircraftDto.fromDomain(aircraft)
           (dto, s"/api/v1/aircraft/${dto.registration}")
@@ -49,7 +50,7 @@ class AircraftRoutes(
     },
     AircraftEndpoints.delete.zServerLogic { registration =>
       deleteSvc
-        .delete(Registration(registration))
+        .delete(Registration.unsafeMake(registration))
         .mapError(ErrorMapper.toHttpError)
     }
   )

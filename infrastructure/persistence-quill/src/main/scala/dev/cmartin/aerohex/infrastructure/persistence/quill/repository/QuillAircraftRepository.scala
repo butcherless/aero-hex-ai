@@ -25,7 +25,7 @@ final class QuillAircraftRepository(dataSource: DataSource) extends AircraftRepo
   import ctx.*
 
   private def toAircraft(row: AircraftRow, airlineIcao: String): Aircraft =
-    Aircraft(Registration(row.registration), row.typeCode, row.description, IcaoCode(airlineIcao))
+    Aircraft(Registration.unsafeMake(row.registration), row.typeCode, row.description, IcaoCode.unsafeMake(airlineIcao))
 
   override def findByRegistration(registration: Registration): IO[DomainError, Option[Aircraft]] =
     ctx

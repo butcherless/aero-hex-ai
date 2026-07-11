@@ -11,7 +11,7 @@ import zio.{IO, ZIO, URLayer, ZLayer}
 final class FindAircraftService(repo: AircraftRepository) extends FindAircraftUseCase {
 
   override def findByRegistration(registration: String): IO[DomainError, Aircraft] =
-    repo.findByRegistration(Registration(registration)).flatMap {
+    repo.findByRegistration(Registration.unsafeMake(registration)).flatMap {
       case Some(a) => ZIO.succeed(a)
       case None    => ZIO.fail(AircraftNotFound(registration))
     }

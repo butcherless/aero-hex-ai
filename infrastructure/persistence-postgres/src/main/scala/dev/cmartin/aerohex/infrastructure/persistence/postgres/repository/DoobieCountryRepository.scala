@@ -11,20 +11,23 @@ import zio.interop.catz.*
 
 final class DoobieCountryRepository(xa: Transactor[Task]) extends CountryRepository {
 
-  override def isValidCode(code: CountryCode): IO[DomainError, Boolean] =
+  override def validateCode(code: CountryCode): IO[DomainError, Unit] =
     sql"SELECT code FROM country_codes WHERE code = ${code.value}"
       .query[String]
       .option
       .transact(xa)
-      .map(_.isDefined)
       .orDie
+      .flatMap {
+        case None    => ZIO.fail(DomainError.InvalidCountryCode(code.value))
+        case Some(_) => ZIO.unit
+      }
 
   override def findByCode(code: CountryCode): IO[DomainError, Option[Country]] =
     sql"SELECT code, name FROM countries WHERE code = ${code.value}"
       .query[(String, String)]
       .option
       .transact(xa)
-      .map(_.map((c, n) => Country(CountryCode(c), n)))
+      .map(_.map((c, n) => Country(CountryCode.unsafeMake(c), n)))
       .orDie
 
   override def findAll(pagination: Pagination): UIO[List[Country]] =
@@ -32,7 +35,7 @@ final class DoobieCountryRepository(xa: Transactor[Task]) extends CountryReposit
       .query[(String, String)]
       .to[List]
       .transact(xa)
-      .map(_.map((c, n) => Country(CountryCode(c), n)))
+      .map(_.map((c, n) => Country(CountryCode.unsafeMake(c), n)))
       .orDie
 
   override def searchByName(query: String): UIO[List[Country]] =
@@ -40,7 +43,7 @@ final class DoobieCountryRepository(xa: Transactor[Task]) extends CountryReposit
       .query[(String, String)]
       .to[List]
       .transact(xa)
-      .map(_.map((c, n) => Country(CountryCode(c), n)))
+      .map(_.map((c, n) => Country(CountryCode.unsafeMake(c), n)))
       .orDie
 
   override def save(country: Country): IO[DomainError, Country] =

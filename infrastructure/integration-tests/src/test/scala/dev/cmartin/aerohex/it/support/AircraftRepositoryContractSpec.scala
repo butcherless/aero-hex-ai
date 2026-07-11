@@ -16,11 +16,11 @@ import java.time.LocalDate
 object AircraftRepositoryContractSpec:
 
   private def seedCountry(code: String, name: String): ZIO[CountryRepository, DomainError, Unit] =
-    ZIO.serviceWithZIO[CountryRepository](_.save(Country(CountryCode(code), name)).unit)
+    ZIO.serviceWithZIO[CountryRepository](_.save(Country(CountryCode.unsafeMake(code), name)).unit)
 
   private def seedAirline(icao: String, name: String, countryCode: String): ZIO[AirlineRepository, DomainError, Unit] =
     ZIO.serviceWithZIO[AirlineRepository](
-      _.save(Airline(IcaoCode(icao), name, LocalDate.of(2000, 1, 1)), CountryCode(countryCode)).unit
+      _.save(Airline(IcaoCode.unsafeMake(icao), name, LocalDate.of(2000, 1, 1)), CountryCode.unsafeMake(countryCode)).unit
     )
 
   def tests: List[Spec[AircraftRepository & AirlineRepository & CountryRepository, Any]] = List(

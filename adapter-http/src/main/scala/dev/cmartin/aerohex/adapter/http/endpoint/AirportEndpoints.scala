@@ -32,6 +32,7 @@ object AirportEndpoints {
     oneOf[(StatusCode, HttpErrorResponse)](
       EndpointErrors.conflictVariant("Airport already exists."),
       EndpointErrors.notFoundVariant("Referenced country not found."),
+      EndpointErrors.badRequestVariant("Invalid IATA or ICAO code."),
       EndpointErrors.unexpectedError
     )
 

@@ -62,8 +62,8 @@ private[service] object RepositoryStubs:
       ZIO.die(new NotImplementedError("delete"))
 
   val unimplementedCountryRepo: CountryRepository = new CountryRepository:
-    def isValidCode(code: CountryCode): IO[DomainError, Boolean]        =
-      ZIO.die(new NotImplementedError("isValidCode"))
+    def validateCode(code: CountryCode): IO[DomainError, Unit]          =
+      ZIO.die(new NotImplementedError("validateCode"))
     def findByCode(code: CountryCode): IO[DomainError, Option[Country]] =
       ZIO.die(new NotImplementedError("findByCode"))
     def findAll(p: Pagination): UIO[List[Country]]                      =
@@ -123,7 +123,7 @@ private[service] object RepositoryStubs:
     def delete(reg: Registration): IO[DomainError, Unit]                         = onDelete(reg)
 
   def stubCountryRepo(
-      onIsValidCode: CountryCode => IO[DomainError, Boolean] = unimplementedCountryRepo.isValidCode,
+      onValidateCode: CountryCode => IO[DomainError, Unit] = unimplementedCountryRepo.validateCode,
       onFindByCode: CountryCode => IO[DomainError, Option[Country]] = unimplementedCountryRepo.findByCode,
       onFindAll: Pagination => UIO[List[Country]] = unimplementedCountryRepo.findAll,
       onSearchByName: String => UIO[List[Country]] = unimplementedCountryRepo.searchByName,
@@ -131,7 +131,7 @@ private[service] object RepositoryStubs:
       onUpdate: Country => IO[DomainError, Country] = unimplementedCountryRepo.update,
       onDelete: CountryCode => IO[DomainError, Unit] = unimplementedCountryRepo.delete
   ): CountryRepository = new CountryRepository:
-    def isValidCode(code: CountryCode): IO[DomainError, Boolean]        = onIsValidCode(code)
+    def validateCode(code: CountryCode): IO[DomainError, Unit]          = onValidateCode(code)
     def findByCode(code: CountryCode): IO[DomainError, Option[Country]] = onFindByCode(code)
     def findAll(p: Pagination): UIO[List[Country]]                      = onFindAll(p)
     def searchByName(q: String): UIO[List[Country]]                     = onSearchByName(q)

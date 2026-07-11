@@ -24,6 +24,7 @@ object AirlineEndpoints {
     oneOf[(StatusCode, HttpErrorResponse)](
       EndpointErrors.conflictVariant("Airline already exists."),
       EndpointErrors.notFoundVariant("Referenced country not found."),
+      EndpointErrors.badRequestVariant("Invalid ICAO code."),
       EndpointErrors.unexpectedError
     )
 

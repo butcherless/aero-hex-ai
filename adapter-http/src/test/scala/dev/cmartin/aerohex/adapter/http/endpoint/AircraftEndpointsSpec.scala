@@ -194,6 +194,18 @@ object AircraftEndpointsSpec extends ZIOSpecDefault:
                 .send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         },
+        test("returns 400 when the registration in the create body is longer than 10 characters") {
+          for
+            response <-
+              basicRequest
+                .post(uri"https://test.com/api/v1/aircraft")
+                .body(
+                  """{"registration":"EXTREMELYLONGREG","typeCode":"B788","description":"Boeing 787-8","airlineIcao":"IBE"}"""
+                )
+                .contentType("application/json")
+                .send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        },
         test("returns 400 when description is empty") {
           for
             response <-

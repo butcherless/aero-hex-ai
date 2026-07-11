@@ -26,7 +26,7 @@ final class QuillAirlineRepository(dataSource: DataSource) extends AirlineReposi
   import ctx.*
 
   private def toAirline(a: AirlineRow): Airline =
-    Airline(IcaoCode(a.icaoCode), a.name, a.foundationDate)
+    Airline(IcaoCode.unsafeMake(a.icaoCode), a.name, a.foundationDate)
 
   override def findByIcao(icao: IcaoCode): IO[DomainError, Option[Airline]] =
     ctx

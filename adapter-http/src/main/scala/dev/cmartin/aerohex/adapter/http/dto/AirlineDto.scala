@@ -1,10 +1,12 @@
 package dev.cmartin.aerohex.adapter.http.dto
 
 import dev.cmartin.aerohex.adapter.http.CodePatterns
+import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.model.{Airline, CountryCode, IcaoCode}
 import dev.cmartin.aerohex.domain.port.in.{CreateAirlineCommand, UpdateAirlineCommand}
 import sttp.tapir.Schema
 import sttp.tapir.Validator
+import zio.IO
 
 import java.time.LocalDate
 
@@ -32,20 +34,25 @@ object AirlineDto {
 case class CreateAirlineRequest(icao: String, name: String, foundationDate: String, countryCode: String)
 
 object CreateAirlineRequest {
-  def toCommand(req: CreateAirlineRequest): CreateAirlineCommand =
-    CreateAirlineCommand(
-      icao = IcaoCode(req.icao),
-      name = req.name,
-      foundationDate = LocalDate.parse(req.foundationDate),
-      countryCode = CountryCode(req.countryCode)
-    )
+  def toCommand(req: CreateAirlineRequest): IO[DomainError, CreateAirlineCommand] =
+    IcaoCode
+      .make(req.icao)
+      .toZIO
+      .orElseFail(DomainError.InvalidIcaoCode(req.icao))
+      .map(icao =>
+        CreateAirlineCommand(
+          icao = icao,
+          name = req.name,
+          foundationDate = LocalDate.parse(req.foundationDate),
+          countryCode = CountryCode.unsafeMake(req.countryCode)
+        )
+      )
 
   given Schema[CreateAirlineRequest] = Schema.derived[CreateAirlineRequest]
     .modify(_.icao)(
       _.description("3-letter ICAO airline code.")
         .validate(Validator.minLength(3))
         .validate(Validator.maxLength(3))
-        .validate(Validator.pattern(CodePatterns.alpha3))
         .encodedExample("IBE")
     )
     .modify(_.name)(
@@ -68,10 +75,10 @@ case class UpdateAirlineRequest(name: String, foundationDate: String, countryCod
 object UpdateAirlineRequest {
   def toCommand(icao: String, req: UpdateAirlineRequest): UpdateAirlineCommand =
     UpdateAirlineCommand(
-      icao = IcaoCode(icao),
+      icao = IcaoCode.unsafeMake(icao),
       name = req.name,
       foundationDate = LocalDate.parse(req.foundationDate),
-      countryCode = CountryCode(req.countryCode)
+      countryCode = CountryCode.unsafeMake(req.countryCode)
     )
 
   given Schema[UpdateAirlineRequest] = Schema.derived[UpdateAirlineRequest]

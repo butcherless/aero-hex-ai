@@ -26,7 +26,7 @@ final class QuillAirportRepository(dataSource: DataSource) extends AirportReposi
   import ctx.*
 
   private def toAirport(a: AirportRow): Airport =
-    Airport(IataCode(a.iataCode), IcaoCode(a.icaoCode), a.name, a.city)
+    Airport(IataCode.unsafeMake(a.iataCode), IcaoCode.unsafeMake(a.icaoCode), a.name, a.city)
 
   override def findByIata(iata: IataCode): IO[DomainError, Option[Airport]] =
     ctx

@@ -27,7 +27,7 @@ final class DoobieAircraftRepository(protected val xa: Transactor[Task]) extends
       .query[(String, String, String, String)]
       .option
       .transact(xa)
-      .map(_.map((reg, tc, desc, icao) => Aircraft(Registration(reg), tc, desc, IcaoCode(icao))))
+      .map(_.map((reg, tc, desc, icao) => Aircraft(Registration.unsafeMake(reg), tc, desc, IcaoCode.unsafeMake(icao))))
       .orDie
 
   override def findAll(pagination: Pagination): IO[DomainError, List[Aircraft]] =
@@ -37,7 +37,7 @@ final class DoobieAircraftRepository(protected val xa: Transactor[Task]) extends
       .query[(String, String, String, String)]
       .to[List]
       .transact(xa)
-      .map(_.map((reg, tc, desc, icao) => Aircraft(Registration(reg), tc, desc, IcaoCode(icao))))
+      .map(_.map((reg, tc, desc, icao) => Aircraft(Registration.unsafeMake(reg), tc, desc, IcaoCode.unsafeMake(icao))))
       .orDie
 
   override def save(aircraft: Aircraft): IO[DomainError, Aircraft] =

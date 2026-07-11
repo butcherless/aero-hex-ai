@@ -21,7 +21,7 @@ final class CreateRouteService(
                        id = RouteId.generate,
                        origin = origin.iataCode,
                        destination = destination.iataCode,
-                       airlineIcao = IcaoCode(command.airlineIcao),
+                       airlineIcao = IcaoCode.unsafeMake(command.airlineIcao),
                        distanceKm = command.distanceKm
                      )
       saved       <- routeRepository.save(route)

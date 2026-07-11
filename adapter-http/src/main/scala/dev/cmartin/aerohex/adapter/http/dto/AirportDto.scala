@@ -1,10 +1,12 @@
 package dev.cmartin.aerohex.adapter.http.dto
 
 import dev.cmartin.aerohex.adapter.http.CodePatterns
+import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.model.{Airport, CountryCode, IataCode, IcaoCode}
 import dev.cmartin.aerohex.domain.port.in.{CreateAirportCommand, UpdateAirportCommand}
 import sttp.tapir.Schema
 import sttp.tapir.Validator
+import zio.IO
 
 case class AirportDto(iata: String, icaoCode: String, name: String, city: String)
 
@@ -37,13 +39,16 @@ object AirportDto {
 case class CreateAirportRequest(iata: String, icaoCode: String, name: String, city: String, countryCode: String)
 
 object CreateAirportRequest {
-  def toCommand(req: CreateAirportRequest): CreateAirportCommand =
-    CreateAirportCommand(
-      iataCode = IataCode(req.iata),
-      icaoCode = IcaoCode(req.icaoCode),
+  def toCommand(req: CreateAirportRequest): IO[DomainError, CreateAirportCommand] =
+    for
+      iataCode <- IataCode.make(req.iata).toZIO.orElseFail(DomainError.InvalidIataCode(req.iata))
+      icaoCode <- IcaoCode.make(req.icaoCode).toZIO.orElseFail(DomainError.InvalidIcaoCode(req.icaoCode))
+    yield CreateAirportCommand(
+      iataCode = iataCode,
+      icaoCode = icaoCode,
       name = req.name,
       city = req.city,
-      countryCode = CountryCode(req.countryCode)
+      countryCode = CountryCode.unsafeMake(req.countryCode)
     )
 
   given Schema[CreateAirportRequest] = Schema.derived[CreateAirportRequest]
@@ -51,14 +56,12 @@ object CreateAirportRequest {
       _.description("3-letter IATA airport code.")
         .validate(Validator.minLength(3))
         .validate(Validator.maxLength(3))
-        .validate(Validator.pattern(CodePatterns.alpha3))
         .encodedExample("MAD")
     )
     .modify(_.icaoCode)(
       _.description("4-letter ICAO airport code.")
         .validate(Validator.minLength(4))
         .validate(Validator.maxLength(4))
-        .validate(Validator.pattern(CodePatterns.alpha4))
         .encodedExample("LEMD")
     )
     .modify(_.name)(
@@ -83,11 +86,11 @@ case class UpdateAirportRequest(icaoCode: String, name: String, city: String, co
 object UpdateAirportRequest {
   def toCommand(iata: String, req: UpdateAirportRequest): UpdateAirportCommand =
     UpdateAirportCommand(
-      iataCode = IataCode(iata),
-      icaoCode = IcaoCode(req.icaoCode),
+      iataCode = IataCode.unsafeMake(iata),
+      icaoCode = IcaoCode.unsafeMake(req.icaoCode),
       name = req.name,
       city = req.city,
-      countryCode = CountryCode(req.countryCode)
+      countryCode = CountryCode.unsafeMake(req.countryCode)
     )
 
   given Schema[UpdateAirportRequest] = Schema.derived[UpdateAirportRequest]

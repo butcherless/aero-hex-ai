@@ -293,6 +293,26 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
                 .send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         },
+        test("returns 400 when iata is 3 chars but not alphabetic (real IataCode.make check, not a stub)") {
+          for
+            response <-
+              basicRequest
+                .post(uri"https://test.com/api/v1/airports")
+                .body("""{"iata":"123","icaoCode":"LEMD","name":"Nowhere","city":"Nowhere","countryCode":"ES"}""")
+                .contentType("application/json")
+                .send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        },
+        test("returns 400 when icaoCode is 4 chars but not alphabetic (real IcaoCode.make check, not a stub)") {
+          for
+            response <-
+              basicRequest
+                .post(uri"https://test.com/api/v1/airports")
+                .body("""{"iata":"MAD","icaoCode":"1234","name":"Nowhere","city":"Nowhere","countryCode":"ES"}""")
+                .contentType("application/json")
+                .send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        },
         test("returns 400 when name is empty") {
           for
             response <-

@@ -24,7 +24,7 @@ final class DoobieAirportRepository(protected val xa: Transactor[Task]) extends 
       .query[(String, String, String, String)]
       .option
       .transact(xa)
-      .map(_.map((i, icao, n, city) => Airport(IataCode(i), IcaoCode(icao), n, city)))
+      .map(_.map((i, icao, n, city) => Airport(IataCode.unsafeMake(i), IcaoCode.unsafeMake(icao), n, city)))
       .orDie
 
   override def findAll(pagination: Pagination): IO[DomainError, List[Airport]] =
@@ -33,7 +33,7 @@ final class DoobieAirportRepository(protected val xa: Transactor[Task]) extends 
       .query[(String, String, String, String)]
       .to[List]
       .transact(xa)
-      .map(_.map((i, icao, n, city) => Airport(IataCode(i), IcaoCode(icao), n, city)))
+      .map(_.map((i, icao, n, city) => Airport(IataCode.unsafeMake(i), IcaoCode.unsafeMake(icao), n, city)))
       .orDie
 
   override def searchByName(query: String): IO[DomainError, List[Airport]] = {
@@ -43,7 +43,7 @@ final class DoobieAirportRepository(protected val xa: Transactor[Task]) extends 
       .query[(String, String, String, String)]
       .to[List]
       .transact(xa)
-      .map(_.map((i, icao, n, city) => Airport(IataCode(i), IcaoCode(icao), n, city)))
+      .map(_.map((i, icao, n, city) => Airport(IataCode.unsafeMake(i), IcaoCode.unsafeMake(icao), n, city)))
       .orDie
   }
 
@@ -54,7 +54,7 @@ final class DoobieAirportRepository(protected val xa: Transactor[Task]) extends 
       .query[(String, String, String, String)]
       .to[List]
       .transact(xa)
-      .map(_.map((i, icao, n, city) => Airport(IataCode(i), IcaoCode(icao), n, city)))
+      .map(_.map((i, icao, n, city) => Airport(IataCode.unsafeMake(i), IcaoCode.unsafeMake(icao), n, city)))
       .orDie
 
   override def save(airport: Airport, countryCode: CountryCode): IO[DomainError, Airport] =

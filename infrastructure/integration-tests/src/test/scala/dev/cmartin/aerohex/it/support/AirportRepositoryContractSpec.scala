@@ -14,7 +14,7 @@ import zio.test.*
 object AirportRepositoryContractSpec:
 
   private def seedCountry(code: String, name: String): ZIO[CountryRepository, DomainError, Unit] =
-    ZIO.serviceWithZIO[CountryRepository](_.save(Country(CountryCode(code), name)).unit)
+    ZIO.serviceWithZIO[CountryRepository](_.save(Country(CountryCode.unsafeMake(code), name)).unit)
 
   def tests: List[Spec[AirportRepository & CountryRepository, Any]] = List(
     test("saves and finds an airport by iata code") {

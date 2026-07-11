@@ -12,7 +12,7 @@ import zio.{IO, ZIO, URLayer, ZLayer}
 final class FindAirportService(repo: AirportRepository) extends FindAirportUseCase {
 
   override def findByIata(iata: String): IO[DomainError, Airport] =
-    repo.findByIata(IataCode(iata)).flatMap {
+    repo.findByIata(IataCode.unsafeMake(iata)).flatMap {
       case Some(airport) => ZIO.succeed(airport)
       case None          => ZIO.fail(AirportNotFound(iata))
     } @@ ServiceAspect.logged(s"FindAirportService.findByIata($iata)")

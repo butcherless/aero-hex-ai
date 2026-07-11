@@ -64,7 +64,7 @@ lazy val domain = project
   .dependsOn(sharedKernel)
   .settings(
     name := "domain",
-    libraryDependencies ++= Seq(zio)
+    libraryDependencies ++= Seq(zio, zioPrelude)
   )
   .settings(coverageSettings*)
   .disablePlugins(AssemblyPlugin)

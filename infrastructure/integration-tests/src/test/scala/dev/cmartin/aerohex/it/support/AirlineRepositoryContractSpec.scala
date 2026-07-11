@@ -15,7 +15,7 @@ import java.time.LocalDate
 object AirlineRepositoryContractSpec:
 
   private def seedCountry(code: String, name: String): ZIO[CountryRepository, DomainError, Unit] =
-    ZIO.serviceWithZIO[CountryRepository](_.save(Country(CountryCode(code), name)).unit)
+    ZIO.serviceWithZIO[CountryRepository](_.save(Country(CountryCode.unsafeMake(code), name)).unit)
 
   def tests: List[Spec[AirlineRepository & CountryRepository, Any]] = List(
     test("saves and finds an airline by icao code") {

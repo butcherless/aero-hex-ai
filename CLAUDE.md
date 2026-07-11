@@ -38,8 +38,9 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 - **JDK** — Java 21 LTS required, locally and in CI (`java-version: '21'` in `.github/workflows/*.yml`). Never Java 25 or other
   non-LTS versions — Java 25 silently breaks ZIO 2.1.26's test framework (tests report "Failed" with zero SBT test events,
   no pass/fail per test). ZIO is only certified for Java 17/21.
-- **Direct deps** — stable GA by default. Only named exception: Doobie 1.x (no GA release yet) —
-  don't chase a newer RC/M/SNAPSHOT for it without a deliberate reason (a GA release or a needed capability).
+- **Direct deps** — stable GA by default. Named exceptions: Doobie 1.x and ZIO Prelude 1.x (neither
+  has a GA release yet) — don't chase a newer RC/M/SNAPSHOT for either without a deliberate reason
+  (a GA release or a needed capability).
 - **Transitive deps** — let SBT resolve via eviction; only force an override for a known vulnerability or binary-incompatibility.
 - **Updates** — run `sbt xdup` before each feature cycle. Patch/minor updates are free; major bumps need migration-guide review and passing compile + tests.
 
@@ -51,6 +52,7 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 | Language | Scala 3 LTS | 3.3.8 |
 | Build | SBT | 2.0.1 |
 | Effect | ZIO | 2.1.26 |
+| Smart constructors (`CountryCode`/`IataCode`/`IcaoCode`/`Registration`) | ZIO Prelude | 1.0.0-RC47 |
 | HTTP server | ZIO HTTP | 3.11.3 |
 | HTTP endpoints | Tapir | 1.13.26 |
 | Persistence (wired default) | Quill | 4.8.6 |
@@ -110,13 +112,14 @@ Tapir stub server. It is deliberately **not** in `root`'s `.aggregate(...)`, so 
 sbt integrationTests/test   # or: sbt integrationTest (alias)
 ```
 
-Coverage so far: `FlywayMigrationItSpec` (migrations reach `V11`), Country (`DoobieCountryRepositoryItSpec`
-+ `QuillCountryRepositoryItSpec`), Airport (`DoobieAirportRepositoryItSpec` +
+Coverage so far: `FlywayMigrationItSpec` (migrations reach `V12`), Country (`DoobieCountryRepositoryItSpec`
++ `QuillCountryRepositoryItSpec`, incl. `validateCode` success/failure against the `country_codes`
+master table), Airport (`DoobieAirportRepositoryItSpec` +
 `QuillAirportRepositoryItSpec`), Airline (`DoobieAirlineRepositoryItSpec` +
 `QuillAirlineRepositoryItSpec`), Aircraft (`DoobieAircraftRepositoryItSpec` +
 `QuillAircraftRepositoryItSpec`, seeding a `Country` then an `Airline` first since `aircraft.airline_id`
 FKs to `airlines.id`) — each seeding its own `Country` row first since `airports.country_id`/
-`airlines.country_id` FK to `countries.id` — 74 tests total, all green. Route is not implemented yet.
+`airlines.country_id` FK to `countries.id` — 78 tests total, all green. Route is not implemented yet.
 See `plans/add-persistence-integration-tests.md` for the full scope table and design rationale (why a
 plain subproject instead of sbt's deprecated `IntegrationTest` config, why one module instead of
 three, why fresh-container-per-suite).
@@ -136,9 +139,31 @@ Two gotchas baked into the setup, both documented with why in the plan doc:
 
 **Opaque types** — use `.value` to unwrap:
 ```scala
-IataCode("MAD")           // construct
-airport.iataCode.value    // unwrap to String
+FlightCode("UX9117")      // construct
+flight.code.value         // unwrap to String
 ```
+Remaining plain opaque types: `FlightCode`, `RouteId`, `FlightInstanceId`,
+`OutboxEventId`, `NonEmptyString` (shared-kernel) — none has a real smart
+constructor.
+
+`CountryCode`, `IataCode`, `IcaoCode`, and `Registration` are ZIO Prelude
+`Newtype[String]`s instead, each with a real, enforced `assertion` (see
+`docs/analysis/validation-analysis-hexagonal.md` §2/§6 for why). Same
+`.value` unwrap convention either way; construct via `CountryCode("ES")` /
+`IataCode("MAD")` / `IcaoCode("IBE")` / `Registration("EC-MIG")` for
+compile-time-known literals (a malformed literal fails to compile),
+`.make(raw).toZIO` for runtime strings that need validating, `.unsafeMake(raw)`
+for already-trusted data (DB reads, Tapir-already-validated path params,
+cross-entity reference fields). Real validation is wired into each type's
+*owning* entity's create path only (`CreateCountryRequest`/`CreateAirportRequest`/
+`CreateAirlineRequest`/`CreateAircraftRequest`.toCommand) — a reference field on
+another entity (e.g. `Route.airlineIcao`, `Aircraft.airlineIcao`, `Route.origin`)
+always uses `unsafeMake`, never `.make`. `IataCode`'s assertion enforces both
+shape and its fixed 3-letter length; `IcaoCode`'s enforces shape only (alphabetic,
+any length) since `Airline`'s own code is 3 letters and `Airport`'s is 4 — the
+per-entity length stays an HTTP-layer `Validator`. `Registration`'s assertion
+(non-blank, ≤10 chars) is bound-for-bound identical to its HTTP `Validator`,
+since real-world registrations have no fixed shape to check.
 
 **ZLayer wiring** — every infrastructure class exposes a companion `val layer`:
 ```scala

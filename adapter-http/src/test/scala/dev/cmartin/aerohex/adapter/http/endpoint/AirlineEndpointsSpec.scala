@@ -196,6 +196,16 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
                 .send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         },
+        test("returns 400 when icao is 3 chars but not alphabetic (real IcaoCode.make check, not a stub)") {
+          for
+            response <-
+              basicRequest
+                .post(uri"https://test.com/api/v1/airlines")
+                .body("""{"icao":"123","name":"Nowhere","foundationDate":"1927-06-28","countryCode":"ES"}""")
+                .contentType("application/json")
+                .send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        },
         test("returns 400 when name is empty") {
           for
             response <-

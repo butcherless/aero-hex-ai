@@ -41,8 +41,9 @@ class AirportRoutes(
         .mapError(ErrorMapper.toHttpError)
     },
     AirportEndpoints.create.zServerLogic { req =>
-      createSvc
-        .create(CreateAirportRequest.toCommand(req))
+      CreateAirportRequest
+        .toCommand(req)
+        .flatMap(createSvc.create)
         .map { airport =>
           val dto = AirportDto.fromDomain(airport)
           (dto, s"/api/v1/airports/${dto.iata}")
@@ -51,7 +52,7 @@ class AirportRoutes(
     },
     AirportEndpoints.findByCountry.zServerLogic { (code, page, pageSize) =>
       findByCountrySvc
-        .findByCountry(CountryCode(code), Pagination(page, pageSize))
+        .findByCountry(CountryCode.unsafeMake(code), Pagination(page, pageSize))
         .map(_.map(AirportDto.fromDomain))
         .mapError(ErrorMapper.toHttpError)
     },
@@ -63,7 +64,7 @@ class AirportRoutes(
     },
     AirportEndpoints.delete.zServerLogic { iata =>
       deleteSvc
-        .delete(IataCode(iata))
+        .delete(IataCode.unsafeMake(iata))
         .mapError(ErrorMapper.toHttpError)
     }
   )

@@ -27,7 +27,7 @@ final class DoobieAirlineRepository(protected val xa: Transactor[Task]) extends 
       .query[(String, String, LocalDate)]
       .option
       .transact(xa)
-      .map(_.map((i, n, fd) => Airline(IcaoCode(i), n, fd)))
+      .map(_.map((i, n, fd) => Airline(IcaoCode.unsafeMake(i), n, fd)))
       .orDie
 
   override def findAll(pagination: Pagination): IO[DomainError, List[Airline]] =
@@ -36,7 +36,7 @@ final class DoobieAirlineRepository(protected val xa: Transactor[Task]) extends 
       .query[(String, String, LocalDate)]
       .to[List]
       .transact(xa)
-      .map(_.map((i, n, fd) => Airline(IcaoCode(i), n, fd)))
+      .map(_.map((i, n, fd) => Airline(IcaoCode.unsafeMake(i), n, fd)))
       .orDie
 
   override def save(airline: Airline, countryCode: CountryCode): IO[DomainError, Airline] =

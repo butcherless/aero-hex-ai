@@ -23,6 +23,7 @@ object AircraftEndpoints {
     oneOf[(StatusCode, HttpErrorResponse)](
       EndpointErrors.conflictVariant("Aircraft already exists."),
       EndpointErrors.notFoundVariant("Referenced airline not found."),
+      EndpointErrors.badRequestVariant("Invalid registration."),
       EndpointErrors.unexpectedError
     )
 

@@ -5,7 +5,18 @@
 > syntactically valid (2 letters) and referentially valid (must exist in the
 > `countries` table)
 > **Decision:** split validation across `domain/model` (syntax) and
-> `domain/service` + `port.out` (existence). See §2.
+> `domain/port/out` (existence). See §2.
+> **Outcome (shipped):** `CountryCode`'s syntax check is real — implemented
+> as a ZIO Prelude `Newtype`, not the plain opaque type + `Option`-returning
+> `from` this doc originally sketched in §2.2. §6 compares the two; §6.6's
+> own recommendation was to *not* do this — the actual decision overrode it.
+> See §2.2/§2.4a for what's live today. The same `Newtype` pattern was later
+> extended from `CountryCode` to `IataCode`, `IcaoCode`, and `Registration` —
+> each entity's own natural-key field gets the same real, enforced syntax
+> check on its create path; see §4's table for exactly what shipped per type.
+> None of the three gained an existence check (§2.3/§2.4's "B2"/"B3") —
+> only `CountryCode` has one, via the different, standalone mechanism in
+> §2.4a.
 
 ---
 
@@ -30,23 +41,23 @@ sit behind a `port.out`, not inside `CountryCode.apply`.
 
 ## 2. The approach — Value Object (pure) + Domain Service backed by a Port
 
-### 2.1 Current state in aero-hex-ai (starting point)
+### 2.1 Current state in aero-hex-ai
 
-Neither half of this split is actually wired up today:
-
-- **Syntax**: `domain/model/Country.scala` already has
-  `CountryCode.from(value: String): Option[CountryCode]`, which implements
-  exactly the 2-letter/alphabetic check — but it's dead code, never called.
-  Every call site uses `CountryCode.apply`, which performs no validation at
-  all. The only place the 2-letter/alpha shape is actually enforced today is
-  the HTTP boundary (`Validator.pattern(CodePatterns.alpha2)` in
-  `adapter-http/.../endpoint/CountryEndpoints.scala`, `AirportEndpoints.scala`
-  for `countryCodeParam`) — this is BR-01 in
-  `docs/analysis/01-domain-model.md`.
-- **Existence**: for Airport/Airline/Aircraft (whose parent — Country or
-  Airline — must already exist, BR-04), the check is not a dedicated
-  `domain/service` at all. It's embedded directly inside the **persistence
-  adapter**: `QuillCountryIdResolver.resolveCountryId`
+- **Syntax (BR-01, `Country.code` itself)**: `[SHIPPED]` — see §2.2. `CountryCode`
+  is a ZIO Prelude `Newtype[String]` whose `assertion` is the 2-letter/alpha
+  check; `CreateCountryRequest.toCommand` (`adapter-http/.../dto/CountryDto.scala`)
+  calls `CountryCode.make(req.code).toZIO`, failing fast with
+  `DomainError.InvalidCountryCode` before `CreateCountryService` is ever
+  reached. The Tapir `Validator.pattern` that used to do this at the HTTP
+  boundary was removed once this landed — domain is now the one source of
+  truth for the shape, not a second copy of it.
+- **Existence, `Country`'s own code (BR-16, is this a *real* ISO code)**:
+  `[SHIPPED]` — see §2.4a. `CountryRepository.validateCode`, backed by a
+  standalone `country_codes` reference table.
+- **Existence, a *referenced* parent (BR-04 — an Airport's/Airline's Country,
+  or an Aircraft's Airline, must already exist)**: still **not** a dedicated
+  `domain/service`. It's embedded inside the **persistence adapter**:
+  `QuillCountryIdResolver.resolveCountryId`
   (`infrastructure/persistence-quill/.../QuillCountryIdResolver.scala`) and
   `DoobieIdResolver.resolveId`
   (`infrastructure/persistence-postgres/.../DoobieIdResolver.scala`) run the
@@ -57,41 +68,49 @@ Neither half of this split is actually wired up today:
   services (e.g. `CreateAirportService`) never call an explicit
   existence-check step themselves; they only pre-check the entity's *own*
   uniqueness (`repo.findByIata` before `save`) and delegate everything about
-  the parent to the repository.
+  the parent to the repository. §2.3/§2.4/§3's `domain/service` blueprint for
+  *this* case remains unimplemented — see §2.4a's closing note.
 
-Adopting the split below means: activating `CountryCode.from` as the real
-constructor, and pulling the existence check out of the persistence adapter
-into an explicit `domain/service` step that application services call
-**before** `save`/`update` — so a missing parent fails fast, before ever
-reaching the database.
+### 2.2 B1 (as shipped) — `CountryCode`: Value Object, syntactic only, ZIO Prelude smart constructor
 
-### 2.2 B1 — `CountryCode`: Value Object, syntactic only, pure smart constructor
+This section originally sketched activating the opaque type's unused
+`Option`-returning `from` method. What actually shipped instead — see §6 for
+the full comparison against that original plan:
 
 ```scala
 // domain/src/main/scala/dev/cmartin/aerohex/domain/model/Country.scala
 package dev.cmartin.aerohex.domain.model
 
-opaque type CountryCode = String
+import zio.prelude.Newtype
+import zio.prelude.Assertion.*
 
-object CountryCode:
-  def from(value: String): Option[CountryCode] =
-    Option.when(value.length == 2 && value.forall(_.isLetter))(value)
-  extension (c: CountryCode) def value: String = c
+object CountryCode extends Newtype[String]:
+  override inline def assertion = matches("^[a-zA-Z]{2}$".r)
+  extension (c: CountryCode) def value: String = unwrap(c)
+  def unsafeMake(value: String): CountryCode = wrap(value)
+type CountryCode = CountryCode.Type
 ```
 
-This already exists — `from` just needs to become the constructor every call
-site uses, replacing the current no-op `apply`. Pure, total, zero I/O,
-trivially unit-testable. Answers only: *"is this string shaped like a
-country code?"* Application/HTTP call sites become:
+Pure, total, zero I/O, trivially unit-testable — same properties the
+original `from` plan aimed for. Answers only: *"is this string shaped like a
+country code?"* The one call site that needs runtime validation:
 
 ```scala
-ZIO.fromOption(CountryCode.from(rawCode))
-  .orElseFail(DomainError.InvalidCountryCode(rawCode))
+// adapter-http/src/main/scala/dev/cmartin/aerohex/adapter/http/dto/CountryDto.scala
+def toCommand(req: CreateCountryRequest): IO[DomainError, CreateCountryCommand] =
+  CountryCode.make(req.code).toZIO
+    .orElseFail(DomainError.InvalidCountryCode(req.code))
+    .map(CreateCountryCommand(_, req.name))
 ```
 
-`InvalidCountryCode` doesn't exist in `domain/error/DomainError.scala` yet —
-it would need to be added, following the one existing precedent for a
-validation-shaped error, `InvalidRoute(reason: String)`.
+Every other construction site in the codebase (DB reads, HTTP path params
+already Tapir-validated, `Update`/`Delete` flows) uses `CountryCode.unsafeMake`
+instead — deliberately unvalidated, because the string is already trusted by
+the time it gets there. `InvalidCountryCode(code: String)` was added to
+`domain/error/DomainError.scala`, following the one precedent that existed
+for a validation-shaped error, `InvalidRoute(reason: String)` — and is now
+shared by *both* this check and §2.4a's membership check, since both mean
+the same thing to a caller ("this isn't a valid country code").
 
 ### 2.3 B2 — Existence check: domain service backed by the existing `port.out`
 
@@ -139,13 +158,19 @@ regardless of whether this app has ever created a row for it. That's
 `V12__create_country_codes.sql`: a standalone 249-row table, deliberately
 **not** FK'd to `countries`, existing purely for this lookup. The
 implementation is simpler than B2/B3's blueprint — one new method directly
-on `CountryRepository` (`isValidCode`), called inline from
-`CreateCountryService.create`, no separate `domain/service` class:
+on `CountryRepository` (`validateCode`), called inline from
+`CreateCountryService.create`, no separate `domain/service` class. The
+method returns `IO[DomainError, Unit]`, not a `Boolean` — an earlier draft of
+this method (`isValidCode: IO[DomainError, Boolean]`) made every caller
+pattern-match and construct `InvalidCountryCode` itself; `validateCode`
+constructs it once, in the one place that actually knows what "invalid"
+means for this table, matching how `save`/`update`/`delete` on this same
+class already own constructing `CountryAlreadyExists`/`CountryNotFound`:
 
 ```scala
 // domain/src/main/scala/dev/cmartin/aerohex/domain/port/out/CountryRepository.scala
 trait CountryRepository {
-  def isValidCode(code: CountryCode): IO[DomainError, Boolean]
+  def validateCode(code: CountryCode): IO[DomainError, Unit]
   // ...
 }
 ```
@@ -154,24 +179,22 @@ trait CountryRepository {
 // application/src/main/scala/dev/cmartin/aerohex/application/service/CreateCountryService.scala
 override def create(command: CreateCountryCommand): IO[DomainError, Country] =
   val effect =
-    repo.isValidCode(command.code).flatMap:
-      case false => ZIO.fail(DomainError.InvalidCountryCode(command.code.value))
-      case true  =>
-        repo.findByCode(command.code).flatMap:
-          case Some(_) => ZIO.fail(DomainError.CountryAlreadyExists(command.code.value))
-          case None    => repo.save(Country(command.code, command.name))
+    repo.validateCode(command.code) *>
+      repo.findByCode(command.code).flatMap:
+        case Some(_) => ZIO.fail(DomainError.CountryAlreadyExists(command.code.value))
+        case None    => repo.save(Country(command.code, command.name))
   effect @@ ServiceAspect.logged(s"CreateCountryService.create(${command.code.value})")
 ```
 
-§2.2's `CountryCode.from` is still dead code — this shipped instead of it,
-not on top of it. The two aren't redundant: `from`'s 2-letter/alphabetic
-check would still reject `"123"` or `"E"` before ever reaching the database;
-`isValidCode` only rejects *real-shaped* codes that aren't *real* codes
-(`"ZZ"`, `"XX"`). Today only the latter is enforced (via HTTP `Validator`s
-for shape, `isValidCode` for membership) — `from` activating BR-01 at the
-domain layer remains exactly the open item §2.2 describes.
+This and §2.2's shape check are **not** redundant, and — unlike the original
+draft of this section — both are now actually live simultaneously, checking
+different things: `CountryCode.make`'s assertion rejects `"123"` or `"E"`
+before a `CreateCountryCommand` can even be constructed; `validateCode` only
+rejects *real-shaped* codes that aren't *real* codes (`"ZZ"`, `"XX"`). Both
+funnel into the same `DomainError.InvalidCountryCode` → 400, so a caller sees
+one consistent error shape regardless of which check actually fired.
 
-§2.2–2.4's original subject — an Airport/Airline/Aircraft validating that
+§2.3/§2.4/§3's original subject — an Airport/Airline/Aircraft validating that
 its *referenced* parent exists — is still unimplemented as a `domain/service`.
 That check lives where it always has: reactively, inside the persistence
 adapters (`QuillCountryIdResolver.resolveCountryId`,
@@ -236,9 +259,9 @@ adapter-http/     → HTTP-shape validation only: JSON has a "code" field of
                      here today, via CountryEndpoints.scala's codeParam) —
                      that check moves to domain/model under this plan.
 
-domain/model/      → CountryCode.from: 2-letter format, uppercase
-                     normalization (pure, total, no I/O)
-                     — this is BR-01: "country code format"
+domain/model/      → CountryCode's Newtype assertion: 2-letter/alpha format
+                     (pure, total, no I/O) — this is BR-01: "country code
+                     format". [SHIPPED] — see §2.2/§6.
 
 domain/port/out/   → CountryRepository.findByCode — already exists,
                      unchanged signature, reused for existence checks
@@ -272,10 +295,10 @@ a syntactic shape and a referential existence check:
 
 | Value Object | File | Syntactic check (domain/model) | Existence check (domain/service + port.out) |
 |---|---|---|---|
-| `CountryCode` | `domain/model/Country.scala` | 2 letters, alphabetic (BR-01) | exists in `countries` (BR-04, via `CountryRepository.findByCode`) |
-| `IataCode` | `domain/model/Airport.scala` | 3 letters, alphabetic (BR-02) | exists in `airports` (via `AirportRepository.findByIata`) |
-| `IcaoCode` | `domain/model/Airline.scala` (shared with `Airport`/`Route`/`Flight`/`Aircraft`) | 4 letters for Airport, 3 letters for Airline (BR-03) | exists in `airlines` (BR-04, via `AirlineRepository.findByIcao`) |
-| `Registration` | `domain/model/Aircraft.scala` | non-blank, ≤ 10 chars, deliberately no shape pattern (BR-15 — real-world registrations vary by country) | exists in `aircraft` (via `AircraftRepository.findByRegistration`) |
+| `CountryCode` | `domain/model/Country.scala` | `[SHIPPED]` 2 letters, alphabetic (BR-01), real `Newtype` assertion, wired into `CreateCountryRequest.toCommand` | exists in `countries` — **not this pattern**; see §2.4a (`CountryRepository.validateCode` against a standalone `country_codes` table is a different, ISO-*membership* check, BR-16, not "does a row already exist") |
+| `IataCode` | `domain/model/Airport.scala` | `[SHIPPED]` 3 letters, alphabetic (BR-02), real `Newtype` assertion, wired into `CreateAirportRequest.toCommand` (Airport's own `iataCode` field only — `Route.origin`/`destination` still `unsafeMake`) | not implemented — `Route`'s referenced airports are validated via `FindAirportUseCase.findByIata` in `CreateRouteService` (BR-09), not a dedicated `domain/service` |
+| `IcaoCode` | `domain/model/Airline.scala` (shared with `Airport`/`Route`/`Flight`/`Aircraft`) | `[SHIPPED, partial]` alphabetic only, deliberately **no length** in the `Newtype` itself (Airport's own `icaoCode` is 4 letters, Airline's own `icao` is 3 — the two owning entities disagree, so length stays an HTTP-layer `Validator`, BR-03). Real `Newtype` assertion wired into both `CreateAirportRequest.toCommand` and `CreateAirlineRequest.toCommand`; every cross-entity reference field (`Route`/`Flight`/`Aircraft`'s `airlineIcao`) still `unsafeMake` | not implemented — no referential check exists anywhere `IcaoCode` is used as a reference (`Aircraft`'s `airlineIcao` only gets DB-level FK enforcement, not a domain-layer check) |
+| `Registration` | `domain/model/Aircraft.scala` | `[SHIPPED]` non-blank, ≤ 10 chars, deliberately no shape pattern (BR-15 — real-world registrations vary by country), real `Newtype` assertion wired into `CreateAircraftRequest.toCommand` — bound-for-bound identical to the HTTP `Validator` already there, so there's no input the domain check rejects that Tapir doesn't already reject | n/a — `Registration` is never used as a reference field elsewhere |
 
 Cross-entity invariants that are **not** simple existence checks — e.g.
 BR-07 "a route's origin airport must differ from its destination airport" —
@@ -304,7 +327,7 @@ object RouteValidator {
 
 | Validation kind | Belongs in | Requires I/O | Example |
 |---|---|---|---|
-| Format/shape | `domain/model` (smart constructor) | No | `CountryCode.from` must be 2 letters (BR-01) |
+| Format/shape | `domain/model` (smart constructor) | No | `CountryCode`'s `Newtype` assertion, 2 letters (BR-01) |
 | Cross-field invariant (values already in hand) | `domain/service` (pure) | No | Route origin ≠ destination (BR-07), `RouteValidator` |
 | Referential/existence | `domain/service` + `port.out` (existing repository interface) | Yes | Country code must exist in `countries` (BR-04) |
 | HTTP payload shape | `adapter-http` | No | JSON field present, correct type |
@@ -322,7 +345,7 @@ project should actually use. API confirmed against ZIO Prelude's official
 docs (`docs/newtypes/index.md`) via Context7, per `CLAUDE.md`'s
 "Documentation sources" policy; current stable release is `1.0.0-RC47`.
 
-### 6.1 "scala 3 opaque type" — current implementation
+### 6.1 "scala 3 opaque type" — the implementation before this decision
 
 ```scala
 // domain/src/main/scala/dev/cmartin/aerohex/domain/model/Country.scala
@@ -342,7 +365,7 @@ object toward a validating constructor, which is exactly how `CountryCode.from`
 ended up dead code while `apply` (no validation) is what every call site
 actually uses.
 
-### 6.2 "zio prelude newtype type" — same check, ZIO Prelude's `Newtype`
+### 6.2 "zio prelude newtype type" — `[SHIPPED]`, what's actually live now
 
 ```scala
 // domain/src/main/scala/dev/cmartin/aerohex/domain/model/Country.scala
@@ -387,14 +410,15 @@ becomes a one-line `assertion` override.
   class as Doobie under `CLAUDE.md`'s "stable GA by default" rule, so
   adopting it means explicitly carving out a second named exception.
 - **Return type mismatch**: `CountryCode.make` returns
-  `Validation[String, CountryCode]`, not this project's `IO[DomainError, X]`
-  or `Option[CountryCode]`. Every call site needs a bridge, e.g.:
+  `Validation[String, CountryCode]`, not this project's `IO[DomainError, X]`.
+  The one real call site (`CreateCountryRequest.toCommand`) bridges it with
+  `Validation`'s own `.toZIO: IO[E, A]` — simpler than the `.toEither` bridge
+  this section originally guessed at, and doesn't need a `NonEmptyChunk`
+  unwrap:
   ```scala
-  ZIO.fromEither(CountryCode.make(rawCode).toEither)
-    .mapError(errors => DomainError.InvalidCountryCode(errors.head))
+  CountryCode.make(req.code).toZIO
+    .orElseFail(DomainError.InvalidCountryCode(req.code))
   ```
-  This bridge doesn't exist anywhere in the codebase today — `Validation`
-  isn't currently used by any module.
 - **ZIO version compatibility**: ZIO Prelude tracks the ZIO 2.x line; no
   conflict expected against this project's `zio = "2.1.26"`, but it's an
   extra artifact to keep in sync on every ZIO bump going forward.
@@ -411,16 +435,33 @@ becomes a one-line `assertion` override.
 | **scala 3 opaque type** | Zero dependency; zero runtime cost; already the codebase's established idiom (all 4 value objects); full control over the validation function's return type (could return `IO[DomainError, _]` directly, no bridge needed) | No shared smart-constructor convention — every type reinvents `from`, and nothing stops a second `apply` from bypassing it entirely (the exact bug this doc exists to fix); no compile-time literal checking; no built-in error accumulation across multiple fields |
 | **zio prelude newtype type** | Standardized `make`/`makeAll`/`unsafeMake` API across every value object — no bespoke `from` per type; compile-time rejection of invalid *literals* (`CountryCode("E")` fails to compile, not just to validate); `Validation` composes to accumulate errors across multiple fields in one request (e.g. reporting bad `code` *and* bad `name` together) — no equivalent exists today | New pre-GA dependency; `Validation` → `IO[DomainError, _]` bridge needed at every call site, adding a translation layer that doesn't exist elsewhere; mixes idioms with the other 3 value objects unless the whole domain module migrates; the *validation logic itself* (a 2-letter regex) isn't any more expressive than `Option.when(...)` — the win is entirely in the surrounding machinery, not the check |
 
-### 6.6 Recommendation
+### 6.6 Recommendation (original) and outcome (actual)
 
-Stay with the **scala 3 opaque type** for `CountryCode` (and `IataCode`/
-`IcaoCode`/`Registration`) for now: this project already has zero
-dependencies for value objects, `CLAUDE.md`'s versioning policy already
-grants exactly one pre-GA exception (Doobie) and a second one isn't
-justified by a single 2-letter regex check, and §2's actual gap — `from`
-being dead code — is a *call-site* problem (nothing routes through it), not
-a *capability* problem that `Newtype` would fix on its own. Revisit ZIO
-Prelude if a real need for cross-field accumulated validation shows up
-(e.g. a `CreateCountryRequest` that should report every invalid field at
-once instead of failing on the first one) — that's the one capability the
-opaque-type approach cannot cheaply replicate.
+**Original recommendation:** stay with the **scala 3 opaque type** for
+`CountryCode` (and `IataCode`/`IcaoCode`/`Registration`) for now: this
+project already has zero dependencies for value objects, `CLAUDE.md`'s
+versioning policy already grants exactly one pre-GA exception (Doobie) and a
+second one isn't justified by a single 2-letter regex check, and §2's actual
+gap — `from` being dead code — is a *call-site* problem (nothing routes
+through it), not a *capability* problem that `Newtype` would fix on its own.
+
+**`[OVERRIDDEN]` — what actually shipped:** `CountryCode` was rewritten as a
+ZIO Prelude `Newtype` anyway, as an explicit decision, not a re-derivation of
+this recommendation — this section's own tradeoffs (§6.4's integration cost,
+§6.5's cons column) still hold and were accepted knowingly:
+
+- `project/Versions.scala` now carries a second pre-GA exception
+  (`zioPrelude = "1.0.0-RC47"`), alongside Doobie, under `CLAUDE.md`'s
+  versioning policy.
+- `IataCode`/`IcaoCode`/`Registration` were **not** migrated — `CountryCode`
+  is the only `Newtype` in the domain module, so the "uniformity" con in
+  §6.4/§6.5 is real and current, not hypothetical. Whether that's temporary
+  (a migration in progress) or permanent (a deliberate single exception) is
+  unresolved — flagged here rather than in a new Open Question, since it's a
+  direct continuation of this section's own analysis.
+- The cross-field accumulated-validation capability this section named as
+  the one thing worth revisiting for (§6.6 original) is **still unused** —
+  `CreateCountryRequest.toCommand` only validates `code`, still fails fast
+  on the first problem rather than accumulating `code` and `name` errors
+  together. Adopting `Newtype` didn't happen because that need showed up; it
+  didn't yet.

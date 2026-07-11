@@ -37,7 +37,9 @@ final class DoobieRouteRepository(protected val xa: Transactor[Task]) extends Ro
       .query[(UUID, String, String, String, Int)]
       .option
       .transact(xa)
-      .map(_.map((i, o, d, a, dist) => Route(RouteId(i), IataCode(o), IataCode(d), IcaoCode(a), dist)))
+      .map(_.map((i, o, d, a, dist) =>
+        Route(RouteId(i), IataCode.unsafeMake(o), IataCode.unsafeMake(d), IcaoCode.unsafeMake(a), dist)
+      ))
       .orDie
 
   override def findAll(pagination: Pagination): IO[DomainError, List[Route]] =
@@ -50,7 +52,9 @@ final class DoobieRouteRepository(protected val xa: Transactor[Task]) extends Ro
       .query[(UUID, String, String, String, Int)]
       .to[List]
       .transact(xa)
-      .map(_.map((i, o, d, a, dist) => Route(RouteId(i), IataCode(o), IataCode(d), IcaoCode(a), dist)))
+      .map(_.map((i, o, d, a, dist) =>
+        Route(RouteId(i), IataCode.unsafeMake(o), IataCode.unsafeMake(d), IcaoCode.unsafeMake(a), dist)
+      ))
       .orDie
 
   override def save(route: Route): IO[DomainError, Route] =

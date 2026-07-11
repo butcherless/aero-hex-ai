@@ -4,6 +4,7 @@ object Dependencies:
 
   // ZIO
   val zio            = "dev.zio" %% "zio"              % Versions.zio
+  val zioPrelude     = "dev.zio" %% "zio-prelude"      % Versions.zioPrelude
   val zioStreams     = "dev.zio" %% "zio-streams"      % Versions.zio
   val zioTest        = "dev.zio" %% "zio-test"         % Versions.zio % Test
   val zioTestSbt     = "dev.zio" %% "zio-test-sbt"     % Versions.zio % Test

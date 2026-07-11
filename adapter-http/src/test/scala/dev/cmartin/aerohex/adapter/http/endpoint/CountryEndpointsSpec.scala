@@ -214,6 +214,15 @@ object CountryEndpointsSpec extends ZIOSpecDefault:
                           .send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         },
+        test("returns 400 when the code is 2 chars but not alphabetic (real CountryCode.make check, not a stub)") {
+          for
+            response <- basicRequest
+                          .post(uri"https://test.com/api/v1/countries")
+                          .body("""{"code":"12","name":"Nowhere"}""")
+                          .contentType("application/json")
+                          .send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        },
         test("returns 400 when name is empty") {
           for
             response <- basicRequest

@@ -1,9 +1,11 @@
 package dev.cmartin.aerohex.adapter.http.dto
 
+import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.model.{Aircraft, IcaoCode, Registration}
 import dev.cmartin.aerohex.domain.port.in.{CreateAircraftCommand, UpdateAircraftCommand}
 import sttp.tapir.Schema
 import sttp.tapir.Validator
+import zio.IO
 
 case class AircraftDto(registration: String, typeCode: String, description: String, airlineIcao: String)
 
@@ -33,13 +35,19 @@ object AircraftDto {
 case class CreateAircraftRequest(registration: String, typeCode: String, description: String, airlineIcao: String)
 
 object CreateAircraftRequest {
-  def toCommand(req: CreateAircraftRequest): CreateAircraftCommand =
-    CreateAircraftCommand(
-      registration = Registration(req.registration),
-      typeCode = req.typeCode,
-      description = req.description,
-      airlineIcao = IcaoCode(req.airlineIcao)
-    )
+  def toCommand(req: CreateAircraftRequest): IO[DomainError, CreateAircraftCommand] =
+    Registration
+      .make(req.registration)
+      .toZIO
+      .orElseFail(DomainError.InvalidRegistration(req.registration))
+      .map(registration =>
+        CreateAircraftCommand(
+          registration = registration,
+          typeCode = req.typeCode,
+          description = req.description,
+          airlineIcao = IcaoCode.unsafeMake(req.airlineIcao)
+        )
+      )
 
   given Schema[CreateAircraftRequest] = Schema.derived[CreateAircraftRequest]
     .modify(_.registration)(
@@ -69,10 +77,10 @@ case class UpdateAircraftRequest(typeCode: String, description: String, airlineI
 object UpdateAircraftRequest {
   def toCommand(registration: String, req: UpdateAircraftRequest): UpdateAircraftCommand =
     UpdateAircraftCommand(
-      registration = Registration(registration),
+      registration = Registration.unsafeMake(registration),
       typeCode = req.typeCode,
       description = req.description,
-      airlineIcao = IcaoCode(req.airlineIcao)
+      airlineIcao = IcaoCode.unsafeMake(req.airlineIcao)
     )
 
   given Schema[UpdateAircraftRequest] = Schema.derived[UpdateAircraftRequest]

@@ -33,8 +33,9 @@ class AirlineRoutes(
         .mapError(ErrorMapper.toHttpError)
     },
     AirlineEndpoints.create.zServerLogic { req =>
-      createSvc
-        .create(CreateAirlineRequest.toCommand(req))
+      CreateAirlineRequest
+        .toCommand(req)
+        .flatMap(createSvc.create)
         .map { airline =>
           val dto = AirlineDto.fromDomain(airline)
           (dto, s"/api/v1/airlines/${dto.icao}")
@@ -49,7 +50,7 @@ class AirlineRoutes(
     },
     AirlineEndpoints.delete.zServerLogic { icao =>
       deleteSvc
-        .delete(IcaoCode(icao))
+        .delete(IcaoCode.unsafeMake(icao))
         .mapError(ErrorMapper.toHttpError)
     }
   )
