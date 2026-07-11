@@ -2,9 +2,10 @@ package dev.cmartin.aerohex.adapter.http.endpoint
 
 import dev.cmartin.aerohex.adapter.http.dto.{AirportDto, CreateAirportRequest, UpdateAirportRequest}
 import dev.cmartin.aerohex.adapter.http.error.ErrorMapper
-import dev.cmartin.aerohex.domain.model.CountryCode
+import dev.cmartin.aerohex.domain.model.{CountryCode, IataCode}
 import dev.cmartin.aerohex.domain.port.in.{
   CreateAirportUseCase,
+  DeleteAirportUseCase,
   FindAirportUseCase,
   FindAirportsByCountryUseCase,
   UpdateAirportUseCase
@@ -17,7 +18,8 @@ class AirportRoutes(
     useCase: FindAirportUseCase,
     createSvc: CreateAirportUseCase,
     findByCountrySvc: FindAirportsByCountryUseCase,
-    updateSvc: UpdateAirportUseCase
+    updateSvc: UpdateAirportUseCase,
+    deleteSvc: DeleteAirportUseCase
 ):
   val serverEndpoints: List[ZServerEndpoint[Any, Any]] = List(
     AirportEndpoints.findAll.zServerLogic { (page, pageSize) =>
@@ -58,12 +60,18 @@ class AirportRoutes(
         .update(UpdateAirportRequest.toCommand(iata, req))
         .map(AirportDto.fromDomain)
         .mapError(ErrorMapper.toHttpError)
+    },
+    AirportEndpoints.delete.zServerLogic { iata =>
+      deleteSvc
+        .delete(IataCode(iata))
+        .mapError(ErrorMapper.toHttpError)
     }
   )
 
 object AirportRoutes:
   val layer: URLayer[
-    FindAirportUseCase & CreateAirportUseCase & FindAirportsByCountryUseCase & UpdateAirportUseCase,
+    FindAirportUseCase & CreateAirportUseCase & FindAirportsByCountryUseCase & UpdateAirportUseCase &
+      DeleteAirportUseCase,
     AirportRoutes
   ] =
-    ZLayer.fromFunction(new AirportRoutes(_, _, _, _))
+    ZLayer.fromFunction(new AirportRoutes(_, _, _, _, _))

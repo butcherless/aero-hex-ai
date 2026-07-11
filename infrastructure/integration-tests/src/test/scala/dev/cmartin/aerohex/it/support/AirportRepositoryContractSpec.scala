@@ -98,5 +98,11 @@ object AirportRepositoryContractSpec:
         _     <- repo.delete(IataCode("ZRH"))
         found <- repo.findByIata(IataCode("ZRH"))
       yield assertTrue(found.isEmpty)
+    },
+    test("delete fails with AirportNotFound for an unknown iata code") {
+      for
+        repo  <- ZIO.service[AirportRepository]
+        error <- repo.delete(IataCode("ZZZ")).flip
+      yield assertTrue(error == DomainError.AirportNotFound("ZZZ"))
     }
   )

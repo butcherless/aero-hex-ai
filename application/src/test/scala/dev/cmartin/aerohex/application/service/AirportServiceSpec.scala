@@ -5,6 +5,7 @@ import dev.cmartin.aerohex.domain.model.{Airport, Country, CountryCode, IataCode
 import dev.cmartin.aerohex.domain.port.in.{
   CreateAirportCommand,
   CreateAirportUseCase,
+  DeleteAirportUseCase,
   FindAirportUseCase,
   FindAirportsByCountryUseCase,
   UpdateAirportCommand,
@@ -114,6 +115,18 @@ object AirportServiceSpec extends ZIOSpecDefault:
           yield assertTrue(error == DomainError.AirportNotFound("XXX"))
         }
       ),
+      suite("DeleteAirportService")(
+        test("delegates to the repository and succeeds") {
+          val repo = stubAirportRepo(onDelete = _ => ZIO.unit)
+          for result <- new DeleteAirportService(repo).delete(IataCode("MAD")).exit
+          yield assertTrue(result.isSuccess)
+        },
+        test("propagates AirportNotFound from the repository") {
+          val repo = stubAirportRepo(onDelete = _ => ZIO.fail(DomainError.AirportNotFound("XXX")))
+          for error <- new DeleteAirportService(repo).delete(IataCode("XXX")).flip
+          yield assertTrue(error == DomainError.AirportNotFound("XXX"))
+        }
+      ),
       suite("Airport service layers")(
         test("CreateAirportService.layer constructs a usable instance") {
           for _ <- ZIO
@@ -141,6 +154,12 @@ object AirportServiceSpec extends ZIOSpecDefault:
                        ZLayer.succeed(unimplementedAirportRepo),
                        FindAirportsByCountryService.layer
                      )
+          yield assertCompletes
+        },
+        test("DeleteAirportService.layer constructs a usable instance") {
+          for _ <- ZIO
+                     .service[DeleteAirportUseCase]
+                     .provide(ZLayer.succeed(unimplementedAirportRepo), DeleteAirportService.layer)
           yield assertCompletes
         }
       )

@@ -98,8 +98,11 @@ final class DoobieAirportRepository(protected val xa: Transactor[Task]) extends 
     sql"DELETE FROM airports WHERE iata_code = ${iata.value}"
       .update.run
       .transact(xa)
-      .unit
       .orDie
+      .flatMap {
+        case 0 => ZIO.fail(DomainError.AirportNotFound(iata.value))
+        case _ => ZIO.unit
+      }
 }
 
 object DoobieAirportRepository {

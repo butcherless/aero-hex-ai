@@ -40,6 +40,7 @@ object ApiSpec:
     AirportEndpoints.findByIata,
     AirportEndpoints.create,
     AirportEndpoints.update,
+    AirportEndpoints.delete,
     AirportEndpoints.findByCountry,
     AirlineEndpoints.findAll,
     AirlineEndpoints.findByIcao,

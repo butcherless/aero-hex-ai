@@ -138,4 +138,18 @@ object AirportEndpoints {
       .in(jsonBody[UpdateAirportRequest])
       .out(jsonBody[AirportDto].description("The updated airport."))
       .errorOut(updateErrorOut)
+
+  val delete: PublicEndpoint[String, (StatusCode, HttpErrorResponse), Unit, Any] =
+    base.delete
+      .summary("Delete airport")
+      .description("Deletes an airport by its 3-letter IATA code.")
+      .tag("Airports")
+      .in(iataParam)
+      .out(statusCode(StatusCode.NoContent))
+      .errorOut(
+        oneOf[(StatusCode, HttpErrorResponse)](
+          EndpointErrors.notFoundVariant("Airport not found."),
+          EndpointErrors.unexpectedError
+        )
+      )
 }

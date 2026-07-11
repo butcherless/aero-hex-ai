@@ -122,8 +122,11 @@ final class QuillAirportRepository(dataSource: DataSource) extends AirportReposi
       .run(quote {
         querySchema[AirportRow]("airports").filter(_.iataCode == lift(iata.value)).delete
       })
-      .unit
       .orDie
+      .flatMap {
+        case 0L => ZIO.fail(DomainError.AirportNotFound(iata.value))
+        case _  => ZIO.unit
+      }
 }
 
 object QuillAirportRepository {

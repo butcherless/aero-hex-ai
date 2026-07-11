@@ -56,16 +56,22 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
   private val countryNotFoundUpdate: UpdateAirportUseCase =
     (cmd: UpdateAirportCommand) => ZIO.fail(DomainError.CountryNotFound(cmd.countryCode.value))
 
+  private val defaultDelete: DeleteAirportUseCase = (_: IataCode) => ZIO.unit
+
+  private val notFoundDelete: DeleteAirportUseCase =
+    (iata: IataCode) => ZIO.fail(DomainError.AirportNotFound(iata.value))
+
   // ── Backend factory ────────────────────────────────────────────────────────
 
   private def makeBackend(
       find: FindAirportUseCase = defaultFind,
       create: CreateAirportUseCase = defaultCreate,
       findByCountry: FindAirportsByCountryUseCase = defaultFindByCountry,
-      update: UpdateAirportUseCase = defaultUpdate
+      update: UpdateAirportUseCase = defaultUpdate,
+      delete: DeleteAirportUseCase = defaultDelete
   ): Backend[Task] =
     TapirStubInterpreter(BackendStub(new RIOMonadAsyncError[Any]))
-      .whenServerEndpointsRunLogic(new AirportRoutes(find, create, findByCountry, update).serverEndpoints)
+      .whenServerEndpointsRunLogic(new AirportRoutes(find, create, findByCountry, update, delete).serverEndpoints)
       .backend()
 
   // ── Spec ──────────────────────────────────────────────────────────────────
@@ -363,8 +369,27 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
           yield assertTrue(response.code == StatusCode.BadRequest)
         }
       ),
+      suite("DELETE /api/v1/airports/{iata}")(
+        test("returns 204 on successful deletion") {
+          for
+            response <- basicRequest.delete(uri"https://test.com/api/v1/airports/MAD").send(makeBackend())
+          yield assertTrue(response.code == StatusCode.NoContent)
+        },
+        test("returns 404 when the airport does not exist") {
+          for
+            response <- basicRequest
+                          .delete(uri"https://test.com/api/v1/airports/XXX")
+                          .send(makeBackend(delete = notFoundDelete))
+          yield assertTrue(response.code == StatusCode.NotFound)
+        },
+        test("returns 400 when the iata code is not exactly 3 letters") {
+          for
+            response <- basicRequest.delete(uri"https://test.com/api/v1/airports/MA").send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        }
+      ),
       suite("AirportRoutes.layer")(
-        test("wires all four use cases into the route list") {
+        test("wires all five use cases into the route list") {
           for
             endpointCount <- ZIO
                                .serviceWith[AirportRoutes](_.serverEndpoints.size)
@@ -373,9 +398,10 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
                                  ZLayer.succeed(defaultCreate),
                                  ZLayer.succeed(defaultFindByCountry),
                                  ZLayer.succeed(defaultUpdate),
+                                 ZLayer.succeed(defaultDelete),
                                  AirportRoutes.layer
                                )
-          yield assertTrue(endpointCount == 6)
+          yield assertTrue(endpointCount == 7)
         }
       )
     )
