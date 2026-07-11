@@ -1,5 +1,6 @@
 package dev.cmartin.aerohex.adapter.http.dto
 
+import dev.cmartin.aerohex.adapter.http.CodePatterns
 import dev.cmartin.aerohex.domain.model.{Country, CountryCode}
 import dev.cmartin.aerohex.domain.port.in.{CreateCountryCommand, UpdateCountryCommand}
 import sttp.tapir.{Schema, Validator}
@@ -26,7 +27,7 @@ object CreateCountryRequest {
       _.description("ISO 3166-1 alpha-2 country code.")
         .validate(Validator.minLength(2))
         .validate(Validator.maxLength(2))
-        .validate(Validator.pattern("[a-zA-Z]{2}"))
+        .validate(Validator.pattern(CodePatterns.alpha2))
         .encodedExample("ES")
     )
     .modify(_.name)(_.description("Full country name.").validate(Validator.minLength(1)).encodedExample("Spain"))

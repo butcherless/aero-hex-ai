@@ -16,8 +16,8 @@ object FlightEndpoints {
       .summary("List flights")
       .description("Returns a paginated list of all scheduled flights.")
       .tag("Flights")
-      .in(query[Int]("page").description("Page number (1-based).").default(1))
-      .in(query[Int]("pageSize").description("Number of results per page.").default(20))
+      .in(PaginationParams.page)
+      .in(PaginationParams.pageSize)
       .out(jsonBody[List[FlightDto]].description("List of flights."))
       .errorOut(oneOf[(StatusCode, HttpErrorResponse)](EndpointErrors.unexpectedError))
 

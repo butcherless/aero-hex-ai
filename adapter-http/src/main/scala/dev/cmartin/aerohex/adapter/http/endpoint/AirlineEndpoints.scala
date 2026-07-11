@@ -1,5 +1,6 @@
 package dev.cmartin.aerohex.adapter.http.endpoint
 
+import dev.cmartin.aerohex.adapter.http.CodePatterns
 import dev.cmartin.aerohex.adapter.http.dto.AirlineDto
 import dev.cmartin.aerohex.adapter.http.error.{EndpointErrors, HttpErrorResponse}
 import sttp.model.StatusCode
@@ -17,15 +18,15 @@ object AirlineEndpoints {
       .description("3-letter ICAO airline code (e.g. IBE).")
       .validate(Validator.minLength(3))
       .validate(Validator.maxLength(3))
-      .validate(Validator.pattern("[a-zA-Z]{3}"))
+      .validate(Validator.pattern(CodePatterns.alpha3))
 
   val findAll: PublicEndpoint[(Int, Int), (StatusCode, HttpErrorResponse), List[AirlineDto], Any] =
     base.get
       .summary("List airlines")
       .description("Returns a paginated list of all airlines.")
       .tag("Airlines")
-      .in(query[Int]("page").description("Page number (1-based).").default(1))
-      .in(query[Int]("pageSize").description("Number of results per page.").default(20))
+      .in(PaginationParams.page)
+      .in(PaginationParams.pageSize)
       .out(jsonBody[List[AirlineDto]].description("List of airlines."))
       .errorOut(oneOf[(StatusCode, HttpErrorResponse)](EndpointErrors.unexpectedError))
 

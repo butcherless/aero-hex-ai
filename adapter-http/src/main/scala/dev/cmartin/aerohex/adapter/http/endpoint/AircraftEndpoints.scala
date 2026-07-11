@@ -16,8 +16,8 @@ object AircraftEndpoints {
       .summary("List aircraft")
       .description("Returns a paginated list of all aircraft.")
       .tag("Aircraft")
-      .in(query[Int]("page").description("Page number (1-based).").default(1))
-      .in(query[Int]("pageSize").description("Number of results per page.").default(20))
+      .in(PaginationParams.page)
+      .in(PaginationParams.pageSize)
       .out(jsonBody[List[AircraftDto]].description("List of aircraft."))
       .errorOut(oneOf[(StatusCode, HttpErrorResponse)](EndpointErrors.unexpectedError))
 

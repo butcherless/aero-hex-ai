@@ -1,5 +1,6 @@
 package dev.cmartin.aerohex.adapter.http.endpoint
 
+import dev.cmartin.aerohex.adapter.http.CodePatterns
 import dev.cmartin.aerohex.adapter.http.dto.{CountryDto, CreateCountryRequest, UpdateCountryRequest}
 import dev.cmartin.aerohex.adapter.http.error.{EndpointErrors, HttpErrorResponse}
 import io.circe.generic.auto.*
@@ -17,7 +18,7 @@ object CountryEndpoints {
       .description("ISO 3166-1 alpha-2 country code (e.g. ES).")
       .validate(Validator.minLength(2))
       .validate(Validator.maxLength(2))
-      .validate(Validator.pattern("[a-zA-Z]{2}"))
+      .validate(Validator.pattern(CodePatterns.alpha2))
 
   private val notFoundErrorOut: EndpointOutput[(StatusCode, HttpErrorResponse)] =
     oneOf[(StatusCode, HttpErrorResponse)](
@@ -49,14 +50,8 @@ object CountryEndpoints {
           .validateOption(Validator.minLength(3))
           .example(Some("rep"))
       )
-      .in(query[Int]("page").description("Page number (1-based).").default(1).validate(Validator.min(1)))
-      .in(
-        query[Int]("pageSize")
-          .description("Number of results per page (1–100).")
-          .default(20)
-          .validate(Validator.min(1))
-          .validate(Validator.max(100))
-      )
+      .in(PaginationParams.page)
+      .in(PaginationParams.pageSize)
       .out(
         jsonBody[List[CountryDto]]
           .description("List of countries.")

@@ -77,6 +77,21 @@ object FlightEndpointsSpec extends ZIOSpecDefault:
                           .get(uri"https://test.com/api/v1/flights")
                           .send(makeBackend(find = notFoundFind))
           yield assertTrue(response.code == StatusCode.NotFound)
+        },
+        test("returns 400 when pageSize is 0") {
+          for
+            response <- basicRequest.get(uri"https://test.com/api/v1/flights?pageSize=0").send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        },
+        test("returns 400 when pageSize is over 100") {
+          for
+            response <- basicRequest.get(uri"https://test.com/api/v1/flights?pageSize=101").send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        },
+        test("returns 400 when page is 0") {
+          for
+            response <- basicRequest.get(uri"https://test.com/api/v1/flights?page=0").send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
         }
       ),
       suite("GET /api/v1/flights/{code}")(

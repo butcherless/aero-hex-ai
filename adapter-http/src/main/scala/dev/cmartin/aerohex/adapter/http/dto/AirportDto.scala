@@ -1,5 +1,6 @@
 package dev.cmartin.aerohex.adapter.http.dto
 
+import dev.cmartin.aerohex.adapter.http.CodePatterns
 import dev.cmartin.aerohex.domain.model.{Airport, CountryCode, IataCode, IcaoCode}
 import dev.cmartin.aerohex.domain.port.in.{CreateAirportCommand, UpdateAirportCommand}
 import sttp.tapir.Schema
@@ -50,14 +51,14 @@ object CreateAirportRequest {
       _.description("3-letter IATA airport code.")
         .validate(Validator.minLength(3))
         .validate(Validator.maxLength(3))
-        .validate(Validator.pattern("[a-zA-Z]{3}"))
+        .validate(Validator.pattern(CodePatterns.alpha3))
         .encodedExample("MAD")
     )
     .modify(_.icaoCode)(
       _.description("4-letter ICAO airport code.")
         .validate(Validator.minLength(4))
         .validate(Validator.maxLength(4))
-        .validate(Validator.pattern("[a-zA-Z]{4}"))
+        .validate(Validator.pattern(CodePatterns.alpha4))
         .encodedExample("LEMD")
     )
     .modify(_.name)(
@@ -72,7 +73,7 @@ object CreateAirportRequest {
       _.description("ISO 3166-1 alpha-2 country code.")
         .validate(Validator.minLength(2))
         .validate(Validator.maxLength(2))
-        .validate(Validator.pattern("[a-zA-Z]{2}"))
+        .validate(Validator.pattern(CodePatterns.alpha2))
         .encodedExample("ES")
     )
 }
@@ -94,7 +95,7 @@ object UpdateAirportRequest {
       _.description("4-letter ICAO airport code.")
         .validate(Validator.minLength(4))
         .validate(Validator.maxLength(4))
-        .validate(Validator.pattern("[a-zA-Z]{4}"))
+        .validate(Validator.pattern(CodePatterns.alpha4))
         .encodedExample("LEMD")
     )
     .modify(_.name)(
@@ -109,7 +110,7 @@ object UpdateAirportRequest {
       _.description("ISO 3166-1 alpha-2 country code.")
         .validate(Validator.minLength(2))
         .validate(Validator.maxLength(2))
-        .validate(Validator.pattern("[a-zA-Z]{2}"))
+        .validate(Validator.pattern(CodePatterns.alpha2))
         .encodedExample("ES")
     )
 }
