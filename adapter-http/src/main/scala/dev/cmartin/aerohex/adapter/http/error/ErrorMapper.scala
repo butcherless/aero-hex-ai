@@ -20,6 +20,7 @@ object ErrorMapper {
     case AirlineAlreadyExists(icao) => ApiError(StatusCode.Conflict, s"Airline already exists: $icao")
     case RouteNotFound(id)          => ApiError(StatusCode.NotFound, s"Route not found: $id")
     case AircraftNotFound(reg)      => ApiError(StatusCode.NotFound, s"Aircraft not found: $reg")
+    case AircraftAlreadyExists(reg) => ApiError(StatusCode.Conflict, s"Aircraft already exists: $reg")
     case FlightNotFound(code)       => ApiError(StatusCode.NotFound, s"Flight not found: $code")
     case FlightInstanceNotFound(id) => ApiError(StatusCode.NotFound, s"Flight instance not found: $id")
     case RouteAlreadyExists(o, d)   => ApiError(StatusCode.Conflict, s"Route already exists: $o -> $d")

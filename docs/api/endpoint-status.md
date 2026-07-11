@@ -27,8 +27,11 @@ Swagger UI: `http://localhost:8080/docs`
 | Airlines | POST | `/api/v1/airlines` | ✓ implemented |
 | Airlines | PUT | `/api/v1/airlines/{icao}` | ✓ implemented |
 | Airlines | DELETE | `/api/v1/airlines/{icao}` | ✓ implemented |
-| Aircraft | GET | `/api/v1/aircraft` | stub |
-| Aircraft | GET | `/api/v1/aircraft/{registration}` | stub |
+| Aircraft | GET | `/api/v1/aircraft` | ✓ implemented |
+| Aircraft | GET | `/api/v1/aircraft/{registration}` | ✓ implemented |
+| Aircraft | POST | `/api/v1/aircraft` | ✓ implemented |
+| Aircraft | PUT | `/api/v1/aircraft/{registration}` | ✓ implemented |
+| Aircraft | DELETE | `/api/v1/aircraft/{registration}` | ✓ implemented |
 | Flights | GET | `/api/v1/flights` | stub |
 | Flights | GET | `/api/v1/flights/{code}` | stub |
 | Flight Instances | GET | `/api/v1/flight-instances` | stub |

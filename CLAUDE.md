@@ -1,7 +1,7 @@
 # Aviation Hexagonal — CLAUDE.md
 
 Scala 3 multi-module project demonstrating Hexagonal Architecture with ZIO.
-Domain concepts: **Country → Airport → Airline → Route**, plus **Aircraft → Flight → FlightInstance**
+Domain concepts: **Country → Airport → Airline → Aircraft → Route**, plus **Flight → FlightInstance**
 (models + stub endpoints only), with an outbox pattern for Kafka events.
 
 ## Git workflow
@@ -71,7 +71,7 @@ shared-kernel
     └── domain
             ├── application
             ├── persistence-postgres   (infrastructure — unwired; Doobie repos kept schema-consistent)
-            ├── persistence-quill      (infrastructure — wired into bootstrap; Country + Airport + Airline)
+            ├── persistence-quill      (infrastructure — wired into bootstrap; Country + Airport + Airline + Aircraft)
             ├── messaging-kafka        (infrastructure — not wired into bootstrap)
             └── adapter-http
                         └── bootstrap  (composition root: domain + application + adapter-http + persistence-quill + persistence-postgres + migration)
@@ -90,8 +90,8 @@ Rule: inner modules never depend on outer ones. `domain` has zero framework depe
   - `port/in/` — driving ports / use-case interfaces
   - `port/out/` — driven ports / repository + publisher interfaces
 - **`application/`** — orchestrates ports, implements `port/in`. Each service has a companion `ZLayer`.
-- **`persistence-postgres/`** — Doobie implementations of `port/out` (`DoobieCountryRepository`, `DoobieAirportRepository`, `DoobieAirlineRepository`, `DoobieRouteRepository`, `DoobieOutboxRepository`). Unwired but kept schema-consistent, in case Doobie is chosen again.
-- **`persistence-quill/`** — Quill implementations of `CountryRepository`/`AirportRepository`/`AirlineRepository`; all three wired via `WiringModule`, sharing one `QuillDataSourceLayer.live` `DataSource`. The only resources backed by real persistence — everything else is an in-memory stub.
+- **`persistence-postgres/`** — Doobie implementations of `port/out` (`DoobieCountryRepository`, `DoobieAirportRepository`, `DoobieAirlineRepository`, `DoobieAircraftRepository`, `DoobieRouteRepository`, `DoobieOutboxRepository`). Unwired but kept schema-consistent, in case Doobie is chosen again.
+- **`persistence-quill/`** — Quill implementations of `CountryRepository`/`AirportRepository`/`AirlineRepository`/`AircraftRepository`; all four wired via `WiringModule`, sharing one `QuillDataSourceLayer.live` `DataSource`. The only resources backed by real persistence — Route/Flight/FlightInstance are still an in-memory stub.
 - **Persistence policy:** all wired repositories must use the same implementation — switching is all-or-nothing across every entity, in one commit (see the header comment in `WiringModule.scala`).
 - **`messaging-kafka/`** — ZIO Kafka producer and outbox relay. Not wired into bootstrap.
 - **`migration/`** — Flyway SQL migrations; no domain dependency. `Main` runs `FlywayMigration.migrateFromEnv` at startup (see the `bootstrap` bullet).
@@ -110,11 +110,13 @@ Tapir stub server. It is deliberately **not** in `root`'s `.aggregate(...)`, so 
 sbt integrationTests/test   # or: sbt integrationTest (alias)
 ```
 
-Coverage so far: `FlywayMigrationItSpec` (migrations reach `V10`), Country (`DoobieCountryRepositoryItSpec`
+Coverage so far: `FlywayMigrationItSpec` (migrations reach `V11`), Country (`DoobieCountryRepositoryItSpec`
 + `QuillCountryRepositoryItSpec`), Airport (`DoobieAirportRepositoryItSpec` +
 `QuillAirportRepositoryItSpec`), Airline (`DoobieAirlineRepositoryItSpec` +
-`QuillAirlineRepositoryItSpec`) — each seeding its own `Country` row first since `airports.country_id`/
-`airlines.country_id` FK to `countries.id` — 56 tests total, all green. Route is not implemented yet.
+`QuillAirlineRepositoryItSpec`), Aircraft (`DoobieAircraftRepositoryItSpec` +
+`QuillAircraftRepositoryItSpec`, seeding a `Country` then an `Airline` first since `aircraft.airline_id`
+FKs to `airlines.id`) — each seeding its own `Country` row first since `airports.country_id`/
+`airlines.country_id` FK to `countries.id` — 74 tests total, all green. Route is not implemented yet.
 See `plans/add-persistence-integration-tests.md` for the full scope table and design rationale (why a
 plain subproject instead of sbt's deprecated `IntegrationTest` config, why one module instead of
 three, why fresh-container-per-suite).
@@ -159,7 +161,7 @@ object QuillAirportRepository:
 |---|---|
 | `RouteEventCodec.routeCreatedSerde` | `???` — needs ZIO Kafka 3.x `Serde` with Circe JSON |
 | `RouteEventProducer.publish` | compiles, but only logs the event — doesn't call `Producer.produce` |
-| `WiringModule.appLayer` | wires Quill `CountryRepository`, Quill `AirportRepository`, Quill `AirlineRepository`, and in-memory stubs for everything else |
+| `WiringModule.appLayer` | wires Quill `CountryRepository`, Quill `AirportRepository`, Quill `AirlineRepository`, Quill `AircraftRepository`, and in-memory stubs for everything else |
 
 ## Database schema
 
@@ -184,10 +186,15 @@ V7 — countries/airports/airlines: PK → surrogate `id BIGINT GENERATED ALWAYS
      `plans/surrogate-long-keys-country-airport.md`.
 V8 — airports      adds `idx_airports_icao_code` — previously unindexed.
 V9 — airlines      adds `foundation_date DATE NOT NULL` — the domain model's `Airline.foundationDate`
-     always required this column, but no earlier migration created it; only latent because
-     `AirlineRepository` has never been wired to real persistence.
+     always required this column, but no earlier migration created it; only latent because Airline
+     was find-only at the time (no write path existed to insert a row missing the column).
 V10 — airlines     adds `idx_airlines_name_trgm` — same ILIKE-search index pattern as V7 gave
       countries/airports, added even though no `searchByName` endpoint exists for Airline yet.
+V11 — aircraft     new table (PK: surrogate `id BIGINT GENERATED ALWAYS AS IDENTITY`, natural key
+      `registration VARCHAR(10)` UNIQUE NOT NULL, `type_code`/`description VARCHAR`, FK →
+      `airlines.id`). Designed with a surrogate id from creation (unlike V1-V3, which needed V7 to
+      retrofit one) since the surrogate-key convention was already established by the time this
+      table was added.
 ```
 
 **Flyway runs at application startup**: `Main` executes `FlywayMigration.migrateFromEnv` before
@@ -206,10 +213,14 @@ database predates this).
 Environment variables (with fallbacks):
 ```
 POSTGRES_URL / POSTGRES_USER / POSTGRES_PASSWORD
-KAFKA_BOOTSTRAP_SERVERS / KAFKA_GROUP_ID
+KAFKA_BOOTSTRAP_SERVERS
 HTTP_PORT  (default 8080)
 FLYWAY_MIGRATE_ON_START  (default true; "false" skips the startup migration)
 ```
+`bootstrap/src/main/resources/application.conf`'s `kafka.group-id` has no `${?KAFKA_GROUP_ID}`
+override (unlike every other setting in that file) — setting the env var has no effect on the
+running bootstrap app today. Harmless in practice since Kafka isn't wired into `Main` yet, but
+worth fixing (add the override line) before Kafka wiring lands, to avoid a silent no-op.
 
 ## REST API
 
