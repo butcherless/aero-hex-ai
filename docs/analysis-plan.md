@@ -33,14 +33,19 @@ The generic instructions above were written before inspecting this repo. Actual 
   Subpackages: `model/`, `port/in/`, `port/out/`, `service/`, `error/`.
 - **Domain entities/VOs found (8, not 4):** `Country`, `Airport`, `Airline`, `Route`, `Aircraft`, `Flight`,
   `FlightInstance`, `OutboxEvent` — all in `domain/model/`.
-- **`application/service/`** implements only some `port/in` use cases so far: Country (Create/Update/Delete/Find),
-  Airport (Create/Update/Find/FindByCountry), Route (Create), Aircraft/Airline/Flight/FlightInstance (Find only —
-  read stubs). Cross-reference against the REST API table in `CLAUDE.md` (`## REST API`), which marks Airlines,
-  Aircraft, Flights, Flight Instances, and Routes-POST as **stub** (not wired end-to-end at the HTTP layer even
-  where an application service exists).
-- **Persistence policy:** only `Country` and `Airport` are backed by real persistence (Quill, wired). Everything
-  else is an in-memory stub. This matters for Task 2's "Postconditions" — a use case's persistence may not be
-  durable yet, which should be called out rather than assumed.
+- **`application/service/`** implements only some `port/in` use cases so far (updated 2026-07-11 — see
+  `plans/entity-review-progress.md` for the authoritative, actively-maintained tracker; this bullet is a
+  point-in-time snapshot from when this plan was first drafted, corrected once here rather than kept in sync
+  going forward): Country (Create/Update/Delete/Find), Airport (Create/Update/Delete/Find/FindByCountry),
+  Airline (Create/Update/Delete/Find), Route (Create), Aircraft/Flight/FlightInstance (Find only — read
+  stubs). Cross-reference against `docs/api/endpoint-status.md` for exact per-endpoint status — note its
+  **stub** label tracks *persistence* backing (in-memory vs. real DB), not whether an application service
+  exists: Aircraft/Flights/Flight-Instances' GET endpoints are all wired to a real `FindXxxService` but still
+  read from an in-memory stub repository, so they're marked stub alongside Routes-POST.
+- **Persistence policy:** `Country`, `Airport`, and `Airline` are backed by real persistence (Quill, wired,
+  sharing one `DataSource`). Route/Aircraft/Flight/FlightInstance are in-memory stubs. This matters for
+  Task 2's "Postconditions" — a use case's persistence may not be durable yet, which should be called out
+  rather than assumed.
 - Root-level empty directories `aircraft/`, `airline/`, `country/`, `flight/`, `journey/`, `persistence/` are stray
   leftovers, not SBT modules — ignore them; the real module list is in `CLAUDE.md`'s dependency graph.
 
