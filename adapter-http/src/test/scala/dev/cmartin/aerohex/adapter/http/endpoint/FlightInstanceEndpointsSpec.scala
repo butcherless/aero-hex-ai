@@ -56,11 +56,11 @@ object FlightInstanceEndpointsSpec extends ZIOSpecDefault:
       suite("GET /api/v1/flight-instances")(
         test("returns 200 with the full flight instance list") {
           for
-            response  <- basicRequest
-                           .get(uri"https://test.com/api/v1/flight-instances")
-                           .response(asJson[List[FlightInstanceDto]])
-                           .send(makeBackend())
-            instances  = response.body.toOption.getOrElse(Nil)
+            response <- basicRequest
+                          .get(uri"https://test.com/api/v1/flight-instances")
+                          .response(asJson[List[FlightInstanceDto]])
+                          .send(makeBackend())
+            instances = response.body.toOption.getOrElse(Nil)
           yield assertTrue(
             response.code == StatusCode.Ok,
             instances.map(_.flightCode) == List("UX9117")

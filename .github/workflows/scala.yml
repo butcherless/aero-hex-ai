@@ -87,5 +87,7 @@ jobs:
             adapter-http/.coverage-data/scoverage-data \
             bootstrap/.coverage-data/scoverage-data
           sbt "testOnly *"
+      - name: Coverage report
+        run: sbt coverageAggregate
       - name: Assembly
         run: sbt "bootstrap/assembly"
