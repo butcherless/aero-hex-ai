@@ -10,9 +10,13 @@ import zio.{IO, URLayer, ZIO, ZLayer}
 final class CreateCountryService(repo: CountryRepository) extends CreateCountryUseCase:
 
   override def create(command: CreateCountryCommand): IO[DomainError, Country] =
-    val effect = repo.findByCode(command.code).flatMap:
-      case Some(_) => ZIO.fail(DomainError.CountryAlreadyExists(command.code.value))
-      case None    => repo.save(Country(command.code, command.name))
+    val effect =
+      repo.isValidCode(command.code).flatMap:
+        case false => ZIO.fail(DomainError.InvalidCountryCode(command.code.value))
+        case true  =>
+          repo.findByCode(command.code).flatMap:
+            case Some(_) => ZIO.fail(DomainError.CountryAlreadyExists(command.code.value))
+            case None    => repo.save(Country(command.code, command.name))
     effect @@ ServiceAspect.logged(s"CreateCountryService.create(${command.code.value})")
 
 object CreateCountryService:

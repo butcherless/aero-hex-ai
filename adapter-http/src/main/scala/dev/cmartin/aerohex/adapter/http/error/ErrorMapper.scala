@@ -14,6 +14,7 @@ object ErrorMapper {
   def toApiError(error: DomainError): ApiError = error match {
     case CountryNotFound(code)      => ApiError(StatusCode.NotFound, s"Country not found: $code")
     case CountryAlreadyExists(code) => ApiError(StatusCode.Conflict, s"Country already exists: $code")
+    case InvalidCountryCode(code)   => ApiError(StatusCode.BadRequest, s"Invalid country code: $code")
     case AirportNotFound(iata)      => ApiError(StatusCode.NotFound, s"Airport not found: $iata")
     case AirportAlreadyExists(iata) => ApiError(StatusCode.Conflict, s"Airport already exists: $iata")
     case AirlineNotFound(icao)      => ApiError(StatusCode.NotFound, s"Airline not found: $icao")

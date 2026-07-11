@@ -11,6 +11,14 @@ import zio.interop.catz.*
 
 final class DoobieCountryRepository(xa: Transactor[Task]) extends CountryRepository {
 
+  override def isValidCode(code: CountryCode): IO[DomainError, Boolean] =
+    sql"SELECT code FROM country_codes WHERE code = ${code.value}"
+      .query[String]
+      .option
+      .transact(xa)
+      .map(_.isDefined)
+      .orDie
+
   override def findByCode(code: CountryCode): IO[DomainError, Option[Country]] =
     sql"SELECT code, name FROM countries WHERE code = ${code.value}"
       .query[(String, String)]

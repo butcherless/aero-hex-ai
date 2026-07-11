@@ -26,9 +26,10 @@ object CountryEndpoints {
       EndpointErrors.unexpectedError
     )
 
-  private val conflictErrorOut: EndpointOutput[(StatusCode, HttpErrorResponse)] =
+  private val createErrorOut: EndpointOutput[(StatusCode, HttpErrorResponse)] =
     oneOf[(StatusCode, HttpErrorResponse)](
       EndpointErrors.conflictVariant("Country already exists."),
+      EndpointErrors.badRequestVariant("Not a real ISO 3166-1 alpha-2 country code."),
       EndpointErrors.unexpectedError
     )
 
@@ -91,7 +92,7 @@ object CountryEndpoints {
           .and(jsonBody[CountryDto].description("The created country."))
           .and(header[String]("Location"))
       )
-      .errorOut(conflictErrorOut)
+      .errorOut(createErrorOut)
 
   val update: PublicEndpoint[(String, UpdateCountryRequest), (StatusCode, HttpErrorResponse), CountryDto, Any] =
     base.put

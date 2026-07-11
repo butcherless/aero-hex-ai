@@ -27,6 +27,7 @@ object CountryServiceSpec extends ZIOSpecDefault:
           for
             savedRef <- Ref.make[Option[Country]](None)
             repo      = stubCountryRepo(
+                          onIsValidCode = _ => ZIO.succeed(true),
                           onFindByCode = _ => ZIO.none,
                           onSave = c => savedRef.set(Some(c)).as(c)
                         )
@@ -38,9 +39,15 @@ object CountryServiceSpec extends ZIOSpecDefault:
           )
         },
         test("fails with CountryAlreadyExists and never calls save when the country already exists") {
-          val repo = stubCountryRepo(onFindByCode = _ => ZIO.some(spain))
+          val repo = stubCountryRepo(onIsValidCode = _ => ZIO.succeed(true), onFindByCode = _ => ZIO.some(spain))
           for error <- new CreateCountryService(repo).create(CreateCountryCommand(CountryCode("ES"), "New Name")).flip
           yield assertTrue(error == DomainError.CountryAlreadyExists("ES"))
+        },
+        test("fails with InvalidCountryCode and never checks existence when the code isn't a real ISO code") {
+          val repo = stubCountryRepo(onIsValidCode = _ => ZIO.succeed(false))
+          for error <-
+              new CreateCountryService(repo).create(CreateCountryCommand(CountryCode("ZZ"), "Nowhere")).flip
+          yield assertTrue(error == DomainError.InvalidCountryCode("ZZ"))
         }
       ),
       suite("FindCountryService")(

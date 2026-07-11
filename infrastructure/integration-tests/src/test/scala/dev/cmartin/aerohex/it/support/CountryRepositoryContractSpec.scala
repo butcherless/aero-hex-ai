@@ -14,6 +14,18 @@ import zio.test.*
 object CountryRepositoryContractSpec:
 
   def tests: List[Spec[CountryRepository, Any]] = List(
+    test("isValidCode returns true for a real ISO 3166-1 alpha-2 code") {
+      for
+        repo  <- ZIO.service[CountryRepository]
+        valid <- repo.isValidCode(CountryCode("JP"))
+      yield assertTrue(valid)
+    },
+    test("isValidCode returns false for a code that is not a real ISO 3166-1 alpha-2 code") {
+      for
+        repo  <- ZIO.service[CountryRepository]
+        valid <- repo.isValidCode(CountryCode("ZZ"))
+      yield assertTrue(!valid)
+    },
     test("saves and finds a country by code") {
       for
         repo  <- ZIO.service[CountryRepository]

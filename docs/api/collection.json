@@ -7354,7 +7354,7 @@
             "description": "Inserts a unique country so search results are deterministic.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"code\": \"ZZ\",\n  \"name\": \"Zephyrland\"\n}",
+              "raw": "{\n  \"code\": \"TV\",\n  \"name\": \"Zephyrland\"\n}",
               "options": {
                 "raw": {
                   "headerFamily": "json",
@@ -7562,10 +7562,10 @@
               "query": [],
               "variable": []
             },
-            "description": "Creates the ZT — Zetland country that the airport in this flow belongs to.",
+            "description": "Creates the KI — Kiribati country that the airport in this flow belongs to.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"code\": \"ZT\",\n  \"name\": \"Zetland\"\n}",
+              "raw": "{\n  \"code\": \"KI\",\n  \"name\": \"Kiribati\"\n}",
               "options": {
                 "raw": {
                   "headerFamily": "json",
@@ -7586,7 +7586,7 @@
                   "    method: 'DELETE'",
                   "}, (err, res) => {",
                   "    pm.sendRequest({",
-                  "        url: pm.environment.get('baseUrl') + '/api/v1/countries/ZT',",
+                  "        url: pm.environment.get('baseUrl') + '/api/v1/countries/KI',",
                   "        method: 'DELETE'",
                   "    }, (err2, res2) => { /* 204 or 404 — both are fine */ });",
                   "});"
@@ -7600,7 +7600,7 @@
                 "exec": [
                   "pm.test('201 Created', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
-                  "pm.test('code is ZT', () => pm.expect(body.code).to.eql('ZT'));"
+                  "pm.test('code is KI', () => pm.expect(body.code).to.eql('KI'));"
                 ]
               }
             }
@@ -7634,10 +7634,10 @@
               "query": [],
               "variable": []
             },
-            "description": "Creates ZZT — Zetland Test Airport, belonging to ZT. Extracts iata and Location header for subsequent steps.",
+            "description": "Creates ZZT — Kiribati Test Airport, belonging to KI. Extracts iata and Location header for subsequent steps.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"iata\": \"ZZT\",\n  \"icaoCode\": \"ZZZT\",\n  \"name\": \"Zetland Test Airport\",\n  \"city\": \"Zetland City\",\n  \"countryCode\": \"ZT\"\n}",
+              "raw": "{\n  \"iata\": \"ZZT\",\n  \"icaoCode\": \"ZZZT\",\n  \"name\": \"Kiribati Test Airport\",\n  \"city\": \"Kiribati City\",\n  \"countryCode\": \"KI\"\n}",
               "options": {
                 "raw": {
                   "headerFamily": "json",
@@ -7655,7 +7655,7 @@
                   "pm.test('201 Created', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
                   "pm.test('iata is ZZT', () => pm.expect(body.iata).to.eql('ZZT'));",
-                  "pm.test('name matches', () => pm.expect(body.name).to.eql('Zetland Test Airport'));",
+                  "pm.test('name matches', () => pm.expect(body.name).to.eql('Kiribati Test Airport'));",
                   "pm.environment.set('airportIata', body.iata);",
                   "pm.environment.set('locationHeader', pm.response.headers.get('Location'));"
                 ]
@@ -7703,7 +7703,7 @@
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "const body = pm.response.json();",
                   "pm.test('iata matches', () => pm.expect(body.iata).to.eql(pm.environment.get('airportIata')));",
-                  "pm.test('city is Zetland City', () => pm.expect(body.city).to.eql('Zetland City'));"
+                  "pm.test('city is Kiribati City', () => pm.expect(body.city).to.eql('Kiribati City'));"
                 ]
               }
             }
@@ -7741,7 +7741,7 @@
             "description": "Updates the airport's name. Captures the new name for the next assertion step.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"icaoCode\": \"ZZZT\",\n  \"name\": \"Zetland Test Airport Updated\",\n  \"city\": \"Zetland City\",\n  \"countryCode\": \"ZT\"\n}",
+              "raw": "{\n  \"icaoCode\": \"ZZZT\",\n  \"name\": \"Kiribati Test Airport Updated\",\n  \"city\": \"Kiribati City\",\n  \"countryCode\": \"KI\"\n}",
               "options": {
                 "raw": {
                   "headerFamily": "json",
@@ -7758,7 +7758,7 @@
                 "exec": [
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "const body = pm.response.json();",
-                  "pm.test('name updated', () => pm.expect(body.name).to.eql('Zetland Test Airport Updated'));",
+                  "pm.test('name updated', () => pm.expect(body.name).to.eql('Kiribati Test Airport Updated'));",
                   "pm.environment.set('updatedAirportName', body.name);"
                 ]
               }
@@ -7919,12 +7919,12 @@
                 "api",
                 "v1",
                 "countries",
-                "ZT"
+                "KI"
               ],
               "query": [],
               "variable": []
             },
-            "description": "Deletes the ZT country now that the airport referencing it is gone."
+            "description": "Deletes the KI country now that the airport referencing it is gone."
           },
           "event": [
             {
@@ -7973,10 +7973,10 @@
               "query": [],
               "variable": []
             },
-            "description": "Creates the ZT — Zetland country that the airline in this flow belongs to.",
+            "description": "Creates the KI — Kiribati country that the airline in this flow belongs to.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"code\": \"ZT\",\n  \"name\": \"Zetland\"\n}",
+              "raw": "{\n  \"code\": \"KI\",\n  \"name\": \"Kiribati\"\n}",
               "options": {
                 "raw": {
                   "headerFamily": "json",
@@ -7997,7 +7997,7 @@
                   "    method: 'DELETE'",
                   "}, (err, res) => {",
                   "    pm.sendRequest({",
-                  "        url: pm.environment.get('baseUrl') + '/api/v1/countries/ZT',",
+                  "        url: pm.environment.get('baseUrl') + '/api/v1/countries/KI',",
                   "        method: 'DELETE'",
                   "    }, (err2, res2) => { /* 204 or 404 — both are fine */ });",
                   "});"
@@ -8011,7 +8011,7 @@
                 "exec": [
                   "pm.test('201 Created', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
-                  "pm.test('code is ZT', () => pm.expect(body.code).to.eql('ZT'));"
+                  "pm.test('code is KI', () => pm.expect(body.code).to.eql('KI'));"
                 ]
               }
             }
@@ -8045,10 +8045,10 @@
               "query": [],
               "variable": []
             },
-            "description": "Creates ZTA — Zetland Airways, belonging to ZT. Extracts icao and Location header for subsequent steps.",
+            "description": "Creates ZTA — Kiribati Airways, belonging to KI. Extracts icao and Location header for subsequent steps.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"icao\": \"ZTA\",\n  \"name\": \"Zetland Airways\",\n  \"foundationDate\": \"1927-06-28\",\n  \"countryCode\": \"ZT\"\n}",
+              "raw": "{\n  \"icao\": \"ZTA\",\n  \"name\": \"Kiribati Airways\",\n  \"foundationDate\": \"1927-06-28\",\n  \"countryCode\": \"KI\"\n}",
               "options": {
                 "raw": {
                   "headerFamily": "json",
@@ -8066,7 +8066,7 @@
                   "pm.test('201 Created', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
                   "pm.test('icao is ZTA', () => pm.expect(body.icao).to.eql('ZTA'));",
-                  "pm.test('name matches', () => pm.expect(body.name).to.eql('Zetland Airways'));",
+                  "pm.test('name matches', () => pm.expect(body.name).to.eql('Kiribati Airways'));",
                   "pm.environment.set('airlineIcao', body.icao);",
                   "pm.environment.set('locationHeader', pm.response.headers.get('Location'));"
                 ]
@@ -8152,7 +8152,7 @@
             "description": "Updates the airline's name. Captures the new name for the next assertion step.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Zetland Airways Ltd\",\n  \"foundationDate\": \"1927-06-28\",\n  \"countryCode\": \"ZT\"\n}",
+              "raw": "{\n  \"name\": \"Kiribati Airways Ltd\",\n  \"foundationDate\": \"1927-06-28\",\n  \"countryCode\": \"KI\"\n}",
               "options": {
                 "raw": {
                   "headerFamily": "json",
@@ -8169,7 +8169,7 @@
                 "exec": [
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "const body = pm.response.json();",
-                  "pm.test('name updated', () => pm.expect(body.name).to.eql('Zetland Airways Ltd'));",
+                  "pm.test('name updated', () => pm.expect(body.name).to.eql('Kiribati Airways Ltd'));",
                   "pm.environment.set('updatedAirlineName', body.name);"
                 ]
               }
@@ -8330,12 +8330,12 @@
                 "api",
                 "v1",
                 "countries",
-                "ZT"
+                "KI"
               ],
               "query": [],
               "variable": []
             },
-            "description": "Deletes the ZT country now that the airline referencing it is gone."
+            "description": "Deletes the KI country now that the airline referencing it is gone."
           },
           "event": [
             {
@@ -8384,10 +8384,10 @@
               "query": [],
               "variable": []
             },
-            "description": "Creates the ZT — Zetland country that the airline in this flow belongs to.",
+            "description": "Creates the KI — Kiribati country that the airline in this flow belongs to.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"code\": \"ZT\",\n  \"name\": \"Zetland\"\n}",
+              "raw": "{\n  \"code\": \"KI\",\n  \"name\": \"Kiribati\"\n}",
               "options": {
                 "raw": {
                   "headerFamily": "json",
@@ -8412,7 +8412,7 @@
                   "        method: 'DELETE'",
                   "    }, (err2, res2) => {",
                   "        pm.sendRequest({",
-                  "            url: pm.environment.get('baseUrl') + '/api/v1/countries/ZT',",
+                  "            url: pm.environment.get('baseUrl') + '/api/v1/countries/KI',",
                   "            method: 'DELETE'",
                   "        }, (err3, res3) => { /* 204 or 404 — both are fine */ });",
                   "    });",
@@ -8427,7 +8427,7 @@
                 "exec": [
                   "pm.test('201 Created', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
-                  "pm.test('code is ZT', () => pm.expect(body.code).to.eql('ZT'));"
+                  "pm.test('code is KI', () => pm.expect(body.code).to.eql('KI'));"
                 ]
               }
             }
@@ -8461,10 +8461,10 @@
               "query": [],
               "variable": []
             },
-            "description": "Creates ZTA — Zetland Airways, belonging to ZT, that the aircraft in this flow belongs to.",
+            "description": "Creates ZTA — Kiribati Airways, belonging to KI, that the aircraft in this flow belongs to.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"icao\": \"ZTA\",\n  \"name\": \"Zetland Airways\",\n  \"foundationDate\": \"1927-06-28\",\n  \"countryCode\": \"ZT\"\n}",
+              "raw": "{\n  \"icao\": \"ZTA\",\n  \"name\": \"Kiribati Airways\",\n  \"foundationDate\": \"1927-06-28\",\n  \"countryCode\": \"KI\"\n}",
               "options": {
                 "raw": {
                   "headerFamily": "json",
@@ -8843,12 +8843,12 @@
                 "api",
                 "v1",
                 "countries",
-                "ZT"
+                "KI"
               ],
               "query": [],
               "variable": []
             },
-            "description": "Deletes the ZT country now that the airline referencing it is gone."
+            "description": "Deletes the KI country now that the airline referencing it is gone."
           },
           "event": [
             {

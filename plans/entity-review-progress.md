@@ -8,11 +8,11 @@ in commit history or scattered plan docs.
 
 ## Status table
 
-Snapshot as of 2026-07-11 (updated: Aircraft full CRUD + persistence completed).
+Snapshot as of 2026-07-11 (updated: Country ISO-code validation added, BR-16).
 
 | Entity | Docs (`01-domain-model.md`) | Scaladoc | Layer consistency | Persistence wiring | HTTP layer | Unit tests | Integration tests (Quill+Doobie) | True endpoint→DB E2E | Migration/schema |
 |---|---|---|---|---|---|---|---|---|---|
-| **Country** | ✓ full, fresh citations | ✓ | ✓ refactored; minor gap: `CountryCode.from` validator is dead code | ✓ Quill wired | ✓ full CRUD, validated | ✓ both layers | ✓ both adapters | ✓ Postman "E2E — Country" folders | ✓ V1, V7 |
+| **Country** | ✓ full, fresh citations (new BR-16) | ✓ | ✓ refactored; minor gap: `CountryCode.from` validator (BR-01 shape) is still dead code — BR-16's new `isValidCode` (membership) is a *different*, now-live check, see `docs/analysis/validation-analysis-hexagonal.md` §2.4a | ✓ Quill wired | ✓ full CRUD, validated; create also rejects non-ISO codes via `isValidCode` → `InvalidCountryCode` (400) | ✓ both layers | ✓ both adapters, incl. `isValidCode` true/false cases | ✓ Postman "E2E — Country" folders | ✓ V1, V7, V12 (`country_codes` master table) |
 | **Airport** | ✓ full, fresh | ✓ | ✓ refactored; BR-12 pagination-validator gap closed | ✓ Quill wired | ✓ full CRUD, validated (DELETE added, fails on not-found for both Quill+Doobie) | ✓ both layers | ✓ both adapters, incl. delete-not-found case | ✓ Postman "E2E — Airport CRUD lifecycle" folder | ✓ V2/V6/V7/V8 |
 | **Airline** | ✓ full, fresh (BR-03/BR-14/Open Questions #6-7 resolved) | ✓ | ✓ shares `IcaoCode` with Airport, same relationship-only Country pattern | ✓ Quill wired, full CRUD | ✓ full CRUD, validated (CREATE/UPDATE/DELETE added; Doobie `save` fixed to fail on duplicate instead of silently upserting) | ✓ both layers | ✓ both adapters, incl. not-found/duplicate cases | ✓ Postman "E2E — Airline CRUD lifecycle" folder | ✓ V3/V9/V10 (V9 was a late fix) |
 | **Aircraft** | ✓ full, fresh (BR-04/05/14 extended, new BR-15, Open Question #5 split) | ✓ | ✓ FK embedded directly on the entity (`airlineIcao` field), unlike Airport/Airline's separate-parameter pattern | ✓ Quill wired, full CRUD (new — was in-memory stub) | ✓ full CRUD, validated (registration: non-blank + max 10 chars only, no shape pattern — deliberate, see BR-15) | ✓ both layers | ✓ both adapters, incl. not-found/duplicate/FK cases, two-level Country→Airline→Aircraft seeding | ✓ Postman "E2E — Aircraft CRUD lifecycle" folder | ✓ V11 (new table, surrogate id from creation) |

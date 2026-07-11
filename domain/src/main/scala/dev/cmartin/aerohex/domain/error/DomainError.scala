@@ -5,6 +5,7 @@ sealed trait DomainError
 object DomainError {
   case class CountryNotFound(code: String)                           extends DomainError
   case class CountryAlreadyExists(code: String)                      extends DomainError
+  case class InvalidCountryCode(code: String)                        extends DomainError
   case class AirportNotFound(iata: String)                           extends DomainError
   case class AirportAlreadyExists(iata: String)                      extends DomainError
   case class AirlineNotFound(icao: String)                           extends DomainError

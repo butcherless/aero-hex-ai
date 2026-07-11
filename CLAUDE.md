@@ -195,6 +195,11 @@ V11 — aircraft     new table (PK: surrogate `id BIGINT GENERATED ALWAYS AS IDE
       `airlines.id`). Designed with a surrogate id from creation (unlike V1-V3, which needed V7 to
       retrofit one) since the surrogate-key convention was already established by the time this
       table was added.
+V12 — country_codes new table (PK: `code VARCHAR(2)`, no other columns). A standalone master
+      reference of all 249 current ISO 3166-1 alpha-2 codes, populated in the same migration.
+      Deliberately **not** FK'd to `countries` — used only by `CountryRepository.isValidCode`
+      to validate a new `Country`'s code on creation (`CreateCountryService`); `countries`
+      itself still accepts whatever code a caller supplies at the schema level, same as before.
 ```
 
 **Flyway runs at application startup**: `Main` executes `FlywayMigration.migrateFromEnv` before

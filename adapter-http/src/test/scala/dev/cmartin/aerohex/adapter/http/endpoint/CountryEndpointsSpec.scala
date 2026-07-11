@@ -37,6 +37,9 @@ object CountryEndpointsSpec extends ZIOSpecDefault:
   private val conflictCreate: CreateCountryUseCase =
     (cmd: CreateCountryCommand) => ZIO.fail(DomainError.CountryAlreadyExists(cmd.code.value))
 
+  private val invalidCodeCreate: CreateCountryUseCase =
+    (cmd: CreateCountryCommand) => ZIO.fail(DomainError.InvalidCountryCode(cmd.code.value))
+
   private val defaultUpdate: UpdateCountryUseCase =
     (cmd: UpdateCountryCommand) => ZIO.succeed(spain.copy(name = cmd.name))
 
@@ -192,6 +195,15 @@ object CountryEndpointsSpec extends ZIOSpecDefault:
                           .contentType("application/json")
                           .send(makeBackend(create = conflictCreate))
           yield assertTrue(response.code == StatusCode.Conflict)
+        },
+        test("returns 400 when the code is not a real ISO 3166-1 alpha-2 country code") {
+          for
+            response <- basicRequest
+                          .post(uri"https://test.com/api/v1/countries")
+                          .body("""{"code":"ZZ","name":"Nowhere"}""")
+                          .contentType("application/json")
+                          .send(makeBackend(create = invalidCodeCreate))
+          yield assertTrue(response.code == StatusCode.BadRequest)
         },
         test("returns 400 when the request body is invalid") {
           for

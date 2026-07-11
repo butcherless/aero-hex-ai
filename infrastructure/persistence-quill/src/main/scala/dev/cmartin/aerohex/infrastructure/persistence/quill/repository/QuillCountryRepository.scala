@@ -13,6 +13,7 @@ import javax.sql.DataSource
 final class QuillCountryRepository(dataSource: DataSource) extends CountryRepository {
 
   private case class CountryRow(id: Long, code: String, name: String)
+  private case class CountryCodeRow(code: String)
 
   private val ctx = new Quill.Postgres(SnakeCase, dataSource)
 
@@ -20,6 +21,14 @@ final class QuillCountryRepository(dataSource: DataSource) extends CountryReposi
 
   private def toCountry(row: CountryRow): Country =
     Country(CountryCode(row.code), row.name)
+
+  override def isValidCode(code: CountryCode): IO[DomainError, Boolean] =
+    ctx
+      .run(quote {
+        querySchema[CountryCodeRow]("country_codes").filter(_.code == lift(code.value))
+      })
+      .map(_.nonEmpty)
+      .orDie
 
   override def findByCode(code: CountryCode): IO[DomainError, Option[Country]] =
     ctx

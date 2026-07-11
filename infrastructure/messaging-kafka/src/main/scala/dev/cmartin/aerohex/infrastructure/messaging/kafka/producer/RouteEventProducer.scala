@@ -7,7 +7,11 @@ import dev.cmartin.aerohex.infrastructure.messaging.kafka.config.KafkaConfig
 import zio.{IO, ZIO, ZLayer, URLayer, TaskLayer}
 import zio.kafka.producer.{Producer, ProducerSettings}
 
-final class RouteEventProducer(producer: Producer) extends EventPublisher {
+import scala.annotation.unused
+
+// `producer` is unused until publish() is implemented for real (see CLAUDE.md's
+// Pending implementations table) — @unused silences -Wunused until then.
+final class RouteEventProducer(@unused producer: Producer) extends EventPublisher {
 
   override def publish(event: OutboxEvent): IO[DomainError, Unit] =
     // TODO: implement per event type using ZIO Kafka 3.x API
