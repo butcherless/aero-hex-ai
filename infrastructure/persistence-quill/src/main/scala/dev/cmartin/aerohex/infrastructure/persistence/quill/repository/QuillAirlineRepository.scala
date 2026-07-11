@@ -6,7 +6,7 @@ import dev.cmartin.aerohex.domain.port.out.AirlineRepository
 import dev.cmartin.aerohex.shared.Pagination
 import io.getquill.*
 import io.getquill.jdbczio.Quill
-import zio.{IO, URLayer, ZLayer}
+import zio.{IO, URLayer, ZIO, ZLayer}
 
 import java.time.LocalDate
 import javax.sql.DataSource
@@ -66,13 +66,35 @@ final class QuillAirlineRepository(dataSource: DataSource) extends AirlineReposi
       )(DomainError.AirlineAlreadyExists(airline.icao.value))
     }
 
+  override def update(airline: Airline, countryCode: CountryCode): IO[DomainError, Airline] =
+    resolveCountryId(countryCode).flatMap { countryId =>
+      ctx
+        .run(quote {
+          querySchema[AirlineRow]("airlines")
+            .filter(_.icaoCode == lift(airline.icao.value))
+            .update(
+              _.name           -> lift(airline.name),
+              _.foundationDate -> lift(airline.foundationDate),
+              _.countryId      -> lift(countryId)
+            )
+        })
+        .orDie
+        .flatMap {
+          case 0L => ZIO.fail(DomainError.AirlineNotFound(airline.icao.value))
+          case _  => ZIO.succeed(airline)
+        }
+    }
+
   override def delete(icao: IcaoCode): IO[DomainError, Unit] =
     ctx
       .run(quote {
         querySchema[AirlineRow]("airlines").filter(_.icaoCode == lift(icao.value)).delete
       })
-      .unit
       .orDie
+      .flatMap {
+        case 0L => ZIO.fail(DomainError.AirlineNotFound(icao.value))
+        case _  => ZIO.unit
+      }
 }
 
 object QuillAirlineRepository {

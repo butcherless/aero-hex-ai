@@ -1,8 +1,12 @@
 package dev.cmartin.aerohex.adapter.http.dto
 
-import dev.cmartin.aerohex.domain.model.Airline
+import dev.cmartin.aerohex.adapter.http.CodePatterns
+import dev.cmartin.aerohex.domain.model.{Airline, CountryCode, IcaoCode}
+import dev.cmartin.aerohex.domain.port.in.{CreateAirlineCommand, UpdateAirlineCommand}
 import sttp.tapir.Schema
 import sttp.tapir.Validator
+
+import java.time.LocalDate
 
 case class AirlineDto(icao: String, name: String, foundationDate: String)
 
@@ -23,4 +27,65 @@ object AirlineDto {
     )
     .modify(_.name)(_.description("Full airline name.").encodedExample("Iberia"))
     .modify(_.foundationDate)(_.description("Date the airline was founded (ISO 8601).").encodedExample("1927-06-28"))
+}
+
+case class CreateAirlineRequest(icao: String, name: String, foundationDate: String, countryCode: String)
+
+object CreateAirlineRequest {
+  def toCommand(req: CreateAirlineRequest): CreateAirlineCommand =
+    CreateAirlineCommand(
+      icao = IcaoCode(req.icao),
+      name = req.name,
+      foundationDate = LocalDate.parse(req.foundationDate),
+      countryCode = CountryCode(req.countryCode)
+    )
+
+  given Schema[CreateAirlineRequest] = Schema.derived[CreateAirlineRequest]
+    .modify(_.icao)(
+      _.description("3-letter ICAO airline code.")
+        .validate(Validator.minLength(3))
+        .validate(Validator.maxLength(3))
+        .validate(Validator.pattern(CodePatterns.alpha3))
+        .encodedExample("IBE")
+    )
+    .modify(_.name)(
+      _.description("Full airline name.").validate(Validator.minLength(1)).encodedExample("Iberia")
+    )
+    .modify(_.foundationDate)(
+      _.description("Date the airline was founded (ISO 8601).").encodedExample("1927-06-28")
+    )
+    .modify(_.countryCode)(
+      _.description("ISO 3166-1 alpha-2 country code.")
+        .validate(Validator.minLength(2))
+        .validate(Validator.maxLength(2))
+        .validate(Validator.pattern(CodePatterns.alpha2))
+        .encodedExample("ES")
+    )
+}
+
+case class UpdateAirlineRequest(name: String, foundationDate: String, countryCode: String)
+
+object UpdateAirlineRequest {
+  def toCommand(icao: String, req: UpdateAirlineRequest): UpdateAirlineCommand =
+    UpdateAirlineCommand(
+      icao = IcaoCode(icao),
+      name = req.name,
+      foundationDate = LocalDate.parse(req.foundationDate),
+      countryCode = CountryCode(req.countryCode)
+    )
+
+  given Schema[UpdateAirlineRequest] = Schema.derived[UpdateAirlineRequest]
+    .modify(_.name)(
+      _.description("Full airline name.").validate(Validator.minLength(1)).encodedExample("Iberia")
+    )
+    .modify(_.foundationDate)(
+      _.description("Date the airline was founded (ISO 8601).").encodedExample("1927-06-28")
+    )
+    .modify(_.countryCode)(
+      _.description("ISO 3166-1 alpha-2 country code.")
+        .validate(Validator.minLength(2))
+        .validate(Validator.maxLength(2))
+        .validate(Validator.pattern(CodePatterns.alpha2))
+        .encodedExample("ES")
+    )
 }

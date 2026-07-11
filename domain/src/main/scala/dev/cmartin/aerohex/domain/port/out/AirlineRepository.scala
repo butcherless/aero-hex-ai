@@ -9,5 +9,6 @@ trait AirlineRepository {
   def findByIcao(icao: IcaoCode): IO[DomainError, Option[Airline]]
   def findAll(pagination: Pagination): IO[DomainError, List[Airline]]
   def save(airline: Airline, countryCode: CountryCode): IO[DomainError, Airline]
+  def update(airline: Airline, countryCode: CountryCode): IO[DomainError, Airline]
   def delete(icao: IcaoCode): IO[DomainError, Unit]
 }

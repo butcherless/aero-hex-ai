@@ -112,9 +112,10 @@ sbt integrationTests/test   # or: sbt integrationTest (alias)
 
 Coverage so far: `FlywayMigrationItSpec` (migrations reach `V10`), Country (`DoobieCountryRepositoryItSpec`
 + `QuillCountryRepositoryItSpec`), Airport (`DoobieAirportRepositoryItSpec` +
-`QuillAirportRepositoryItSpec`, each seeding its own `Country` row first since `airports.country_id`
-FKs to `countries.id`) — 36 tests total, all green. Airline and Route are not implemented yet. See
-`plans/add-persistence-integration-tests.md` for the full scope table and design rationale (why a
+`QuillAirportRepositoryItSpec`), Airline (`DoobieAirlineRepositoryItSpec` +
+`QuillAirlineRepositoryItSpec`) — each seeding its own `Country` row first since `airports.country_id`/
+`airlines.country_id` FK to `countries.id` — 56 tests total, all green. Route is not implemented yet.
+See `plans/add-persistence-integration-tests.md` for the full scope table and design rationale (why a
 plain subproject instead of sbt's deprecated `IntegrationTest` config, why one module instead of
 three, why fresh-container-per-suite).
 

@@ -76,10 +76,15 @@ object WiringModule {
     (airportRepoLayer >>> DeleteAirportService.layer) ++
     ((airportRepoLayer ++ countryRepoLayer) >>> FindAirportsByCountryService.layer)
 
+  private val airlineUseCaseLayers = (airlineRepoLayer >>> FindAirlineService.layer) ++
+    (airlineRepoLayer >>> CreateAirlineService.layer) ++
+    (airlineRepoLayer >>> UpdateAirlineService.layer) ++
+    (airlineRepoLayer >>> DeleteAirlineService.layer)
+
   val appLayer: TaskLayer[HttpServer.AppRoutes] =
     (countryUseCaseLayers >>> CountryRoutes.layer) ++
       (airportUseCaseLayers >>> AirportRoutes.layer) ++
-      (airlineRepoLayer >>> FindAirlineService.layer >>> AirlineRoutes.layer) ++
+      (airlineUseCaseLayers >>> AirlineRoutes.layer) ++
       (((airportRepoLayer >>> FindAirportService.layer) ++ routeRepoLayer) >>> CreateRouteService.layer >>>
         RouteRoutes.layer) ++
       (aircraftRepoLayer >>> FindAircraftService.layer >>> AircraftRoutes.layer) ++

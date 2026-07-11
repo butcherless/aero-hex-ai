@@ -19,11 +19,11 @@ object AirportRepositoryContractSpec:
   def tests: List[Spec[AirportRepository & CountryRepository, Any]] = List(
     test("saves and finds an airport by iata code") {
       for
-        _      <- seedCountry("ES", "Spain")
-        repo   <- ZIO.service[AirportRepository]
-        madrid  = Airport(IataCode("MAD"), IcaoCode("LEMD"), "Adolfo Suarez Madrid-Barajas", "Madrid")
-        saved  <- repo.save(madrid, CountryCode("ES"))
-        found  <- repo.findByIata(IataCode("MAD"))
+        _     <- seedCountry("ES", "Spain")
+        repo  <- ZIO.service[AirportRepository]
+        madrid = Airport(IataCode("MAD"), IcaoCode("LEMD"), "Adolfo Suarez Madrid-Barajas", "Madrid")
+        saved <- repo.save(madrid, CountryCode("ES"))
+        found <- repo.findByIata(IataCode("MAD"))
       yield assertTrue(saved == madrid, found.contains(madrid))
     },
     test("findAll includes saved airports") {
@@ -39,7 +39,10 @@ object AirportRepositoryContractSpec:
         _       <- seedCountry("IT", "Italy")
         repo    <- ZIO.service[AirportRepository]
         _       <-
-          repo.save(Airport(IataCode("FCO"), IcaoCode("LIRF"), "Leonardo da Vinci-Fiumicino", "Rome"), CountryCode("IT"))
+          repo.save(
+            Airport(IataCode("FCO"), IcaoCode("LIRF"), "Leonardo da Vinci-Fiumicino", "Rome"),
+            CountryCode("IT")
+          )
         results <- repo.searchByName("fiumicino")
       yield assertTrue(results.exists(_.iataCode.value == "FCO"))
     },
@@ -53,12 +56,12 @@ object AirportRepositoryContractSpec:
     },
     test("update changes the name and city of an existing airport") {
       for
-        _       <- seedCountry("PT", "Portugal")
-        repo    <- ZIO.service[AirportRepository]
-        _       <- repo.save(Airport(IataCode("LIS"), IcaoCode("LPPT"), "Lisbon Portela", "Lisbon"), CountryCode("PT"))
-        updated  = Airport(IataCode("LIS"), IcaoCode("LPPT"), "Humberto Delgado", "Lisboa")
-        saved   <- repo.update(updated, CountryCode("PT"))
-        found   <- repo.findByIata(IataCode("LIS"))
+        _      <- seedCountry("PT", "Portugal")
+        repo   <- ZIO.service[AirportRepository]
+        _      <- repo.save(Airport(IataCode("LIS"), IcaoCode("LPPT"), "Lisbon Portela", "Lisbon"), CountryCode("PT"))
+        updated = Airport(IataCode("LIS"), IcaoCode("LPPT"), "Humberto Delgado", "Lisboa")
+        saved  <- repo.update(updated, CountryCode("PT"))
+        found  <- repo.findByIata(IataCode("LIS"))
       yield assertTrue(saved == updated, found.contains(updated))
     },
     test("update fails with AirportNotFound for an unknown iata code") {

@@ -8,13 +8,13 @@ in commit history or scattered plan docs.
 
 ## Status table
 
-Snapshot as of 2026-07-11 (updated: Airport DELETE completed).
+Snapshot as of 2026-07-11 (updated: Airline full CRUD completed).
 
 | Entity | Docs (`01-domain-model.md`) | Scaladoc | Layer consistency | Persistence wiring | HTTP layer | Unit tests | Integration tests (Quill+Doobie) | True endpoint→DB E2E | Migration/schema |
 |---|---|---|---|---|---|---|---|---|---|
 | **Country** | ✓ full, fresh citations | ✓ | ✓ refactored; minor gap: `CountryCode.from` validator is dead code | ✓ Quill wired | ✓ full CRUD, validated | ✓ both layers | ✓ both adapters | ✓ Postman "E2E — Country" folders | ✓ V1, V7 |
 | **Airport** | ✓ full, fresh | ✓ | ✓ refactored; BR-12 pagination-validator gap closed | ✓ Quill wired | ✓ full CRUD, validated (DELETE added, fails on not-found for both Quill+Doobie) | ✓ both layers | ✓ both adapters, incl. delete-not-found case | ✓ Postman "E2E — Airport CRUD lifecycle" folder | ✓ V2/V6/V7/V8 |
-| **Airline** | ✓ (rules mostly "unenforced", documented as such) | ✗ none | partial — shares `IcaoCode`, but no domain validation | ✓ Quill wired, find-only | find-only, validated | ✗ no service spec; ✓ endpoint spec | ✗ **none for either adapter** | ✗ none | ✓ V3/V9/V10 (V9 was a late fix) |
+| **Airline** | ✓ full, fresh (BR-03/BR-14/Open Questions #6-7 resolved) | ✓ | ✓ shares `IcaoCode` with Airport, same relationship-only Country pattern | ✓ Quill wired, full CRUD | ✓ full CRUD, validated (CREATE/UPDATE/DELETE added; Doobie `save` fixed to fail on duplicate instead of silently upserting) | ✓ both layers | ✓ both adapters, incl. not-found/duplicate cases | ✓ Postman "E2E — Airline CRUD lifecycle" folder | ✓ V3/V9/V10 (V9 was a late fix) |
 | **Route** | ✓ (BR-10 flagged `[MISSING]`) | ✗ none | ✗ none | ✗ **in-memory stub** | create-only, **no GET at all** | ✗ no service spec; ✓ endpoint spec | ✗ **none** (Doobie repo exists, untested) | ✗ none | ✓ V4/V7 |
 | **Aircraft** | ✓ (stub-only, noted) | ✗ none | ✗ none | ✗ in-memory stub | find-only, **path param has no Validator** | ✗ no service spec; ✓ endpoint spec | ✗ **no repo exists at all** | ✗ none | ✗ **no table — flagged `[MISSING]`** |
 | **Flight** | ✓ (redundant `airlineIcao` flagged, unresolved) | ✗ none | ✗ none | ✗ in-memory stub | find-only, **no Validator** | ✗ no service spec; ✓ endpoint spec | ✗ **no repo exists** | ✗ none | ✗ **no table — `[MISSING]`** |
@@ -24,15 +24,18 @@ Legend: ✓ done · ✗ not done · partial = started but incomplete.
 
 ## Summary judgment
 
-- **Fully hardened:** **Country** and **Airport** — both have real persistence, full CRUD,
-  scaladoc, both unit-test layers, both Quill+Doobie integration tests, and true HTTP-level
-  E2E scenarios. Airport's DELETE endpoint (application service, HTTP endpoint, routing,
-  `ApiSpec.allEndpoints` registration, repository not-found semantics for both Quill and
-  Doobie, unit tests, integration test, and a Postman E2E lifecycle folder) was completed
-  2026-07-11.
-- **Partially reviewed:** **Airline** (persisted and documented, but no scaladoc, no write
-  path, no integration tests) and **Route** (richly documented gaps, endpoint spec exists,
-  but persistence is a stub and it has zero integration tests despite a Doobie repo existing).
+- **Fully hardened:** **Country**, **Airport**, and **Airline** — all three have real
+  persistence, full CRUD, scaladoc, both unit-test layers, both Quill+Doobie integration
+  tests, and true HTTP-level E2E scenarios. Airport's DELETE endpoint was completed
+  2026-07-11. Airline's full CRUD (CreateAirlineUseCase/UpdateAirlineUseCase/
+  DeleteAirlineUseCase, HTTP endpoints, `ApiSpec.allEndpoints` registration, scaladoc on
+  `Airline`/`IcaoCode`, service+endpoint unit tests, an `AirlineRepositoryContractSpec`
+  integration suite for both adapters, and a Postman E2E lifecycle folder) was also
+  completed 2026-07-11 — this also fixed a real bug where `DoobieAirlineRepository.save`
+  silently upserted on a duplicate ICAO code instead of failing with
+  `AirlineAlreadyExists` like the wired Quill adapter.
+- **Partially reviewed:** **Route** (richly documented gaps, endpoint spec exists, but
+  persistence is a stub and it has zero integration tests despite a Doobie repo existing).
 - **Not yet reviewed:** **Aircraft, Flight, FlightInstance** — no scaladoc, no persistence
   repos of any kind (Quill or Doobie), no schema/migration, no service-level tests, and (for
   Aircraft/Flight) no HTTP path-param validation. Accurately self-described in `CLAUDE.md` as

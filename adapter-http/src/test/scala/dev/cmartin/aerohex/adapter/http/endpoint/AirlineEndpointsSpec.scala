@@ -1,9 +1,9 @@
 package dev.cmartin.aerohex.adapter.http.endpoint
 
-import dev.cmartin.aerohex.adapter.http.dto.AirlineDto
+import dev.cmartin.aerohex.adapter.http.dto.*
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.model.{Airline, IcaoCode}
-import dev.cmartin.aerohex.domain.port.in.FindAirlineUseCase
+import dev.cmartin.aerohex.domain.port.in.*
 import dev.cmartin.aerohex.shared.Pagination
 import io.circe.generic.auto.*
 import sttp.client4.*
@@ -32,11 +32,38 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
     def findByIcao(icao: String): IO[DomainError, Airline]     = ZIO.fail(DomainError.AirlineNotFound(icao))
     def findAll(p: Pagination): IO[DomainError, List[Airline]] = ZIO.fail(DomainError.AirlineNotFound("n/a"))
 
+  private val defaultCreate: CreateAirlineUseCase = (_: CreateAirlineCommand) => ZIO.succeed(iberia)
+
+  private val conflictCreate: CreateAirlineUseCase =
+    (cmd: CreateAirlineCommand) => ZIO.fail(DomainError.AirlineAlreadyExists(cmd.icao.value))
+
+  private val countryNotFoundCreate: CreateAirlineUseCase =
+    (cmd: CreateAirlineCommand) => ZIO.fail(DomainError.CountryNotFound(cmd.countryCode.value))
+
+  private val defaultUpdate: UpdateAirlineUseCase =
+    (cmd: UpdateAirlineCommand) => ZIO.succeed(iberia.copy(name = cmd.name))
+
+  private val notFoundUpdate: UpdateAirlineUseCase =
+    (cmd: UpdateAirlineCommand) => ZIO.fail(DomainError.AirlineNotFound(cmd.icao.value))
+
+  private val countryNotFoundUpdate: UpdateAirlineUseCase =
+    (cmd: UpdateAirlineCommand) => ZIO.fail(DomainError.CountryNotFound(cmd.countryCode.value))
+
+  private val defaultDelete: DeleteAirlineUseCase = (_: IcaoCode) => ZIO.unit
+
+  private val notFoundDelete: DeleteAirlineUseCase =
+    (icao: IcaoCode) => ZIO.fail(DomainError.AirlineNotFound(icao.value))
+
   // ── Backend factory ────────────────────────────────────────────────────────
 
-  private def makeBackend(find: FindAirlineUseCase = defaultFind): Backend[Task] =
+  private def makeBackend(
+      find: FindAirlineUseCase = defaultFind,
+      create: CreateAirlineUseCase = defaultCreate,
+      update: UpdateAirlineUseCase = defaultUpdate,
+      delete: DeleteAirlineUseCase = defaultDelete
+  ): Backend[Task] =
     TapirStubInterpreter(BackendStub(new RIOMonadAsyncError[Any]))
-      .whenServerEndpointsRunLogic(new AirlineRoutes(find).serverEndpoints)
+      .whenServerEndpointsRunLogic(new AirlineRoutes(find, create, update, delete).serverEndpoints)
       .backend()
 
   // ── Spec ──────────────────────────────────────────────────────────────────
@@ -122,13 +149,153 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
           yield assertTrue(response.code == StatusCode.BadRequest)
         }
       ),
+      suite("POST /api/v1/airlines")(
+        test("returns 201 with a Location header pointing to the new resource") {
+          for
+            response <-
+              basicRequest
+                .post(uri"https://test.com/api/v1/airlines")
+                .body("""{"icao":"IBE","name":"Iberia","foundationDate":"1927-06-28","countryCode":"ES"}""")
+                .contentType("application/json")
+                .response(asJson[AirlineDto])
+                .send(makeBackend())
+            airline   = response.body.toOption
+          yield assertTrue(
+            response.code == StatusCode.Created,
+            response.headers.exists(h => h.name.equalsIgnoreCase("Location") && h.value.contains("IBE")),
+            airline.exists(_.icao == "IBE")
+          )
+        },
+        test("returns 409 when the airline already exists") {
+          for
+            response <-
+              basicRequest
+                .post(uri"https://test.com/api/v1/airlines")
+                .body("""{"icao":"IBE","name":"Iberia","foundationDate":"1927-06-28","countryCode":"ES"}""")
+                .contentType("application/json")
+                .send(makeBackend(create = conflictCreate))
+          yield assertTrue(response.code == StatusCode.Conflict)
+        },
+        test("returns 404 when the referenced country does not exist") {
+          for
+            response <-
+              basicRequest
+                .post(uri"https://test.com/api/v1/airlines")
+                .body("""{"icao":"IBE","name":"Iberia","foundationDate":"1927-06-28","countryCode":"XX"}""")
+                .contentType("application/json")
+                .send(makeBackend(create = countryNotFoundCreate))
+          yield assertTrue(response.code == StatusCode.NotFound)
+        },
+        test("returns 400 when the icao code is not exactly 3 letters") {
+          for
+            response <-
+              basicRequest
+                .post(uri"https://test.com/api/v1/airlines")
+                .body("""{"icao":"I","name":"Iberia","foundationDate":"1927-06-28","countryCode":"ES"}""")
+                .contentType("application/json")
+                .send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        },
+        test("returns 400 when name is empty") {
+          for
+            response <-
+              basicRequest
+                .post(uri"https://test.com/api/v1/airlines")
+                .body("""{"icao":"IBE","name":"","foundationDate":"1927-06-28","countryCode":"ES"}""")
+                .contentType("application/json")
+                .send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        }
+      ),
+      suite("PUT /api/v1/airlines/{icao}")(
+        test("returns 200 with the updated airline") {
+          for
+            response <-
+              basicRequest
+                .put(uri"https://test.com/api/v1/airlines/IBE")
+                .body("""{"name":"Iberia Airlines","foundationDate":"1927-06-28","countryCode":"ES"}""")
+                .contentType("application/json")
+                .response(asJson[AirlineDto])
+                .send(makeBackend())
+            airline   = response.body.toOption
+          yield assertTrue(
+            response.code == StatusCode.Ok,
+            airline.exists(_.name == "Iberia Airlines")
+          )
+        },
+        test("returns 404 when the airline does not exist") {
+          for
+            response <-
+              basicRequest
+                .put(uri"https://test.com/api/v1/airlines/XXX")
+                .body("""{"name":"Nowhere","foundationDate":"1927-06-28","countryCode":"ES"}""")
+                .contentType("application/json")
+                .send(makeBackend(update = notFoundUpdate))
+          yield assertTrue(response.code == StatusCode.NotFound)
+        },
+        test("returns 404 when the referenced country does not exist") {
+          for
+            response <-
+              basicRequest
+                .put(uri"https://test.com/api/v1/airlines/IBE")
+                .body("""{"name":"Iberia","foundationDate":"1927-06-28","countryCode":"XX"}""")
+                .contentType("application/json")
+                .send(makeBackend(update = countryNotFoundUpdate))
+          yield assertTrue(response.code == StatusCode.NotFound)
+        },
+        test("returns 400 when the icao code is not exactly 3 letters") {
+          for
+            response <-
+              basicRequest
+                .put(uri"https://test.com/api/v1/airlines/IB")
+                .body("""{"name":"Iberia","foundationDate":"1927-06-28","countryCode":"ES"}""")
+                .contentType("application/json")
+                .send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        },
+        test("returns 400 when the request body is invalid") {
+          for
+            response <-
+              basicRequest
+                .put(uri"https://test.com/api/v1/airlines/IBE")
+                .body("""{"name":"","foundationDate":"1927-06-28","countryCode":"ES"}""")
+                .contentType("application/json")
+                .send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        }
+      ),
+      suite("DELETE /api/v1/airlines/{icao}")(
+        test("returns 204 on successful deletion") {
+          for
+            response <- basicRequest.delete(uri"https://test.com/api/v1/airlines/IBE").send(makeBackend())
+          yield assertTrue(response.code == StatusCode.NoContent)
+        },
+        test("returns 404 when the airline does not exist") {
+          for
+            response <- basicRequest
+                          .delete(uri"https://test.com/api/v1/airlines/XXX")
+                          .send(makeBackend(delete = notFoundDelete))
+          yield assertTrue(response.code == StatusCode.NotFound)
+        },
+        test("returns 400 when the icao code is not exactly 3 letters") {
+          for
+            response <- basicRequest.delete(uri"https://test.com/api/v1/airlines/IB").send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        }
+      ),
       suite("AirlineRoutes.layer")(
-        test("wires the use case into the route list") {
+        test("wires all four use cases into the route list") {
           for
             endpointCount <- ZIO
                                .serviceWith[AirlineRoutes](_.serverEndpoints.size)
-                               .provide(ZLayer.succeed(defaultFind), AirlineRoutes.layer)
-          yield assertTrue(endpointCount == 2)
+                               .provide(
+                                 ZLayer.succeed(defaultFind),
+                                 ZLayer.succeed(defaultCreate),
+                                 ZLayer.succeed(defaultUpdate),
+                                 ZLayer.succeed(defaultDelete),
+                                 AirlineRoutes.layer
+                               )
+          yield assertTrue(endpointCount == 5)
         }
       )
     )

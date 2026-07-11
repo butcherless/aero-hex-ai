@@ -1,13 +1,24 @@
 package dev.cmartin.aerohex.adapter.http.endpoint
 
-import dev.cmartin.aerohex.adapter.http.dto.AirlineDto
+import dev.cmartin.aerohex.adapter.http.dto.{AirlineDto, CreateAirlineRequest, UpdateAirlineRequest}
 import dev.cmartin.aerohex.adapter.http.error.ErrorMapper
-import dev.cmartin.aerohex.domain.port.in.FindAirlineUseCase
+import dev.cmartin.aerohex.domain.model.IcaoCode
+import dev.cmartin.aerohex.domain.port.in.{
+  CreateAirlineUseCase,
+  DeleteAirlineUseCase,
+  FindAirlineUseCase,
+  UpdateAirlineUseCase
+}
 import dev.cmartin.aerohex.shared.Pagination
 import sttp.tapir.ztapir.{RichZEndpoint, ZServerEndpoint}
 import zio.*
 
-class AirlineRoutes(useCase: FindAirlineUseCase):
+class AirlineRoutes(
+    useCase: FindAirlineUseCase,
+    createSvc: CreateAirlineUseCase,
+    updateSvc: UpdateAirlineUseCase,
+    deleteSvc: DeleteAirlineUseCase
+):
   val serverEndpoints: List[ZServerEndpoint[Any, Any]] = List(
     AirlineEndpoints.findAll.zServerLogic { (page, pageSize) =>
       useCase
@@ -20,9 +31,32 @@ class AirlineRoutes(useCase: FindAirlineUseCase):
         .findByIcao(icao)
         .map(AirlineDto.fromDomain)
         .mapError(ErrorMapper.toHttpError)
+    },
+    AirlineEndpoints.create.zServerLogic { req =>
+      createSvc
+        .create(CreateAirlineRequest.toCommand(req))
+        .map { airline =>
+          val dto = AirlineDto.fromDomain(airline)
+          (dto, s"/api/v1/airlines/${dto.icao}")
+        }
+        .mapError(ErrorMapper.toHttpError)
+    },
+    AirlineEndpoints.update.zServerLogic { (icao, req) =>
+      updateSvc
+        .update(UpdateAirlineRequest.toCommand(icao, req))
+        .map(AirlineDto.fromDomain)
+        .mapError(ErrorMapper.toHttpError)
+    },
+    AirlineEndpoints.delete.zServerLogic { icao =>
+      deleteSvc
+        .delete(IcaoCode(icao))
+        .mapError(ErrorMapper.toHttpError)
     }
   )
 
 object AirlineRoutes:
-  val layer: URLayer[FindAirlineUseCase, AirlineRoutes] =
-    ZLayer.fromFunction(new AirlineRoutes(_))
+  val layer: URLayer[
+    FindAirlineUseCase & CreateAirlineUseCase & UpdateAirlineUseCase & DeleteAirlineUseCase,
+    AirlineRoutes
+  ] =
+    ZLayer.fromFunction(new AirlineRoutes(_, _, _, _))

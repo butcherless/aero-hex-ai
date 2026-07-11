@@ -1,8 +1,8 @@
 package dev.cmartin.aerohex.application.service
 
 import dev.cmartin.aerohex.domain.error.DomainError
-import dev.cmartin.aerohex.domain.model.{Airport, Country, CountryCode, IataCode}
-import dev.cmartin.aerohex.domain.port.out.{AirportRepository, CountryRepository}
+import dev.cmartin.aerohex.domain.model.{Airline, Airport, Country, CountryCode, IataCode, IcaoCode}
+import dev.cmartin.aerohex.domain.port.out.{AirlineRepository, AirportRepository, CountryRepository}
 import dev.cmartin.aerohex.shared.Pagination
 import zio.{IO, UIO, ZIO}
 
@@ -26,6 +26,18 @@ private[service] object RepositoryStubs:
     def update(a: Airport, c: CountryCode): IO[DomainError, Airport]                 =
       ZIO.die(new NotImplementedError("update"))
     def delete(iata: IataCode): IO[DomainError, Unit]                                =
+      ZIO.die(new NotImplementedError("delete"))
+
+  val unimplementedAirlineRepo: AirlineRepository = new AirlineRepository:
+    def findByIcao(icao: IcaoCode): IO[DomainError, Option[Airline]] =
+      ZIO.die(new NotImplementedError("findByIcao"))
+    def findAll(p: Pagination): IO[DomainError, List[Airline]]       =
+      ZIO.die(new NotImplementedError("findAll"))
+    def save(a: Airline, c: CountryCode): IO[DomainError, Airline]   =
+      ZIO.die(new NotImplementedError("save"))
+    def update(a: Airline, c: CountryCode): IO[DomainError, Airline] =
+      ZIO.die(new NotImplementedError("update"))
+    def delete(icao: IcaoCode): IO[DomainError, Unit]                =
       ZIO.die(new NotImplementedError("delete"))
 
   val unimplementedCountryRepo: CountryRepository = new CountryRepository:
@@ -59,6 +71,19 @@ private[service] object RepositoryStubs:
     def save(a: Airport, c: CountryCode): IO[DomainError, Airport]                   = onSave(a, c)
     def update(a: Airport, c: CountryCode): IO[DomainError, Airport]                 = onUpdate(a, c)
     def delete(iata: IataCode): IO[DomainError, Unit]                                = onDelete(iata)
+
+  def stubAirlineRepo(
+      onFindByIcao: IcaoCode => IO[DomainError, Option[Airline]] = unimplementedAirlineRepo.findByIcao,
+      onFindAll: Pagination => IO[DomainError, List[Airline]] = unimplementedAirlineRepo.findAll,
+      onSave: (Airline, CountryCode) => IO[DomainError, Airline] = unimplementedAirlineRepo.save,
+      onUpdate: (Airline, CountryCode) => IO[DomainError, Airline] = unimplementedAirlineRepo.update,
+      onDelete: IcaoCode => IO[DomainError, Unit] = unimplementedAirlineRepo.delete
+  ): AirlineRepository = new AirlineRepository:
+    def findByIcao(icao: IcaoCode): IO[DomainError, Option[Airline]] = onFindByIcao(icao)
+    def findAll(p: Pagination): IO[DomainError, List[Airline]]       = onFindAll(p)
+    def save(a: Airline, c: CountryCode): IO[DomainError, Airline]   = onSave(a, c)
+    def update(a: Airline, c: CountryCode): IO[DomainError, Airline] = onUpdate(a, c)
+    def delete(icao: IcaoCode): IO[DomainError, Unit]                = onDelete(icao)
 
   def stubCountryRepo(
       onFindByCode: CountryCode => IO[DomainError, Option[Country]] = unimplementedCountryRepo.findByCode,

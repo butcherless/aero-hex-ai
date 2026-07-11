@@ -1,6 +1,8 @@
 package dev.cmartin.aerohex.it.postgres
 
-import dev.cmartin.aerohex.infrastructure.persistence.postgres.repository.{DoobieAirportRepository, DoobieCountryRepository}
+import dev.cmartin.aerohex.infrastructure.persistence.postgres.repository.{
+  DoobieAirportRepository, DoobieCountryRepository
+}
 import dev.cmartin.aerohex.it.support.{AirportRepositoryContractSpec, PostgresContainerSupport}
 import zio.*
 import zio.test.*
