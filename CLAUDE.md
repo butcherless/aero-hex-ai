@@ -260,7 +260,16 @@ sbt coverageAggregate
 # → target/out/jvm/scala-3.3.8/aero-hex-ai/scoverage-report/index.html
 ```
 
-**CAS caveat:** a cached `sbt compile` skips writing local `.coverage-data/` dirs, causing `ExceptionInInitializerError` at test runtime. Fix: `mkdir -p <module>/.coverage-data/scoverage-data` per module before `testOnly` (the CI workflow does this).
+**CAS caveat (missing dir):** a cached `sbt compile` skips writing local `.coverage-data/` dirs, causing `ExceptionInInitializerError` at test runtime. Fix: `mkdir -p <module>/.coverage-data/scoverage-data` per module before `testOnly` (the CI workflow does this). Never `rm -rf` an existing `.coverage-data/` dir to "reset" it — see below.
+
+**CAS caveat (stale/missing catalog):** sbt 2's thin-client build cache (CAS) can restore previously-compiled `.class` files without re-invoking `scalac` whenever source is unchanged — even after `sbt clean`, a fresh `sbt shutdown`, or `--no-share`. When that happens, scoverage's instrumentation catalog (`<module>/.coverage-data/scoverage-data/scoverage.coverage`) never gets rewritten, since it's a compiler-plugin side effect that only fires on a genuine compile. Symptoms: `coverageReport`/`coverageAggregate` report `0.00%`/`100.00%` (0/0, division-by-zero) or `[warn] No coverage data, skipping reports`. This is why the catalog lives outside `target/` in the first place — it's meant to *survive* `clean` and keep matching CAS-restored classes, since same source ⇒ same statement IDs. Deleting `.coverage-data/` yourself removes the one thing that should persist, and a CAS hit means it may never come back.
+
+Fix — force one genuine recompile by perturbing that module's own compiler flags (invalidates the CAS cache key; a project-wide `ThisBuild / scalacOptions` change does **not** propagate down and won't force it):
+```bash
+sbt 'set adapterHttp / Compile / scalacOptions += "-Xmigration"; adapterHttp/testOnly *'
+sbt adapterHttp/coverageReport
+```
+`-Xmigration` is a throwaway, harmless flag — any per-module scalacOptions tweak works. Run `coverageReport` as its own `sbt` invocation *after* the test run's invocation exits — chaining `testOnly *; coverageReport` in one command hits a measurement-data sync race (`Waiting for measurement data to sync...` → `No coverage data, skipping reports`). For an aggregate number, repeat the `testOnly` step (with the same scalacOptions bump) per module that has tests, then `sbt coverageAggregate`.
 
 ## Formatter
 
