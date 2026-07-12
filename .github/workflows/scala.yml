@@ -73,20 +73,7 @@ jobs:
       - name: Check formatting
         run: sbt scalafmtCheckAll
       - name: Compile and unit tests
-        run: |
-          sbt compile
-          # Scala 3 coverage Invoker needs scoverage-data/ per module; absent on a fresh checkout
-          mkdir -p \
-            shared-kernel/.coverage-data/scoverage-data \
-            domain/.coverage-data/scoverage-data \
-            application/.coverage-data/scoverage-data \
-            infrastructure/persistence-postgres/.coverage-data/scoverage-data \
-            infrastructure/persistence-quill/.coverage-data/scoverage-data \
-            infrastructure/messaging-kafka/.coverage-data/scoverage-data \
-            infrastructure/migration/.coverage-data/scoverage-data \
-            adapter-http/.coverage-data/scoverage-data \
-            bootstrap/.coverage-data/scoverage-data
-          sbt test
+        run: sbt test
       - name: Coverage report
         run: sbt coverageAggregate
       - name: Assembly
