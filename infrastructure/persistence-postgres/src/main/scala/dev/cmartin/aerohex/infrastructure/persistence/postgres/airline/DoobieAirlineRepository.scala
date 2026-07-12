@@ -40,6 +40,16 @@ final class DoobieAirlineRepository(protected val xa: Transactor[Task]) extends 
       .map(_.map((i, n, fd) => Airline(IcaoCode.unsafeMake(i), n, fd)))
       .orDie
 
+  override def findByCountry(code: CountryCode, pagination: Pagination): IO[DomainError, List[Airline]] =
+    sql"""SELECT a.icao_code, a.name, a.foundation_date
+          FROM airlines a JOIN countries c ON a.country_id = c.id
+          WHERE c.code = ${code.value} ORDER BY a.icao_code LIMIT ${pagination.pageSize} OFFSET ${pagination.offset}"""
+      .query[(String, String, LocalDate)]
+      .to[List]
+      .transact(xa)
+      .map(_.map((i, n, fd) => Airline(IcaoCode.unsafeMake(i), n, fd)))
+      .orDie
+
   override def save(airline: Airline, countryCode: CountryCode): IO[DomainError, Airline] =
     resolveCountryId(countryCode).flatMap { countryId =>
       sql"""

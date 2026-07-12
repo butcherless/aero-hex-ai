@@ -88,7 +88,8 @@ object WiringModule {
   private val airlineUseCaseLayers = (airlineRepoLayer >>> FindAirlineService.layer) ++
     (airlineRepoLayer >>> CreateAirlineService.layer) ++
     (airlineRepoLayer >>> UpdateAirlineService.layer) ++
-    (airlineRepoLayer >>> DeleteAirlineService.layer)
+    (airlineRepoLayer >>> DeleteAirlineService.layer) ++
+    ((airlineRepoLayer ++ countryRepoLayer) >>> FindAirlinesByCountryService.layer)
 
   private val aircraftUseCaseLayers = (aircraftRepoLayer >>> FindAircraftService.layer) ++
     (aircraftRepoLayer >>> CreateAircraftService.layer) ++

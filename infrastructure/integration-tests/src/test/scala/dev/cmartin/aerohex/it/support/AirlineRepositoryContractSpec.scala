@@ -35,6 +35,14 @@ object AirlineRepositoryContractSpec:
         all  <- repo.findAll(Pagination(page = 1, pageSize = 100))
       yield assertTrue(all.exists(_.icao.value == "AFR"))
     },
+    test("findByCountry returns airlines in that country") {
+      for
+        _    <- seedCountry("DE", "Germany")
+        repo <- ZIO.service[AirlineRepository]
+        _    <- repo.save(Airline(IcaoCode("DLH"), "Lufthansa", LocalDate.of(1953, 1, 6)), CountryCode("DE"))
+        list <- repo.findByCountry(CountryCode("DE"), Pagination(page = 1, pageSize = 100))
+      yield assertTrue(list.exists(_.icao.value == "DLH"))
+    },
     test("update changes the name and foundation date of an existing airline") {
       for
         _       <- seedCountry("PT", "Portugal")

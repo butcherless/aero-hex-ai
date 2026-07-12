@@ -13,26 +13,31 @@ import zio.{IO, ZIO}
 private[application] object AirlineRepositoryStub:
 
   val unimplementedAirlineRepo: AirlineRepository = new AirlineRepository:
-    def findByIcao(icao: IcaoCode): IO[DomainError, Option[Airline]] =
+    def findByIcao(icao: IcaoCode): IO[DomainError, Option[Airline]]              =
       ZIO.die(new NotImplementedError("findByIcao"))
-    def findAll(p: Pagination): IO[DomainError, List[Airline]]       =
+    def findAll(p: Pagination): IO[DomainError, List[Airline]]                    =
       ZIO.die(new NotImplementedError("findAll"))
-    def save(a: Airline, c: CountryCode): IO[DomainError, Airline]   =
+    def findByCountry(c: CountryCode, p: Pagination): IO[DomainError, List[Airline]] =
+      ZIO.die(new NotImplementedError("findByCountry"))
+    def save(a: Airline, c: CountryCode): IO[DomainError, Airline]                =
       ZIO.die(new NotImplementedError("save"))
-    def update(a: Airline, c: CountryCode): IO[DomainError, Airline] =
+    def update(a: Airline, c: CountryCode): IO[DomainError, Airline]              =
       ZIO.die(new NotImplementedError("update"))
-    def delete(icao: IcaoCode): IO[DomainError, Unit]                =
+    def delete(icao: IcaoCode): IO[DomainError, Unit]                            =
       ZIO.die(new NotImplementedError("delete"))
 
   def stubAirlineRepo(
       onFindByIcao: IcaoCode => IO[DomainError, Option[Airline]] = unimplementedAirlineRepo.findByIcao,
       onFindAll: Pagination => IO[DomainError, List[Airline]] = unimplementedAirlineRepo.findAll,
+      onFindByCountry: (CountryCode, Pagination) => IO[DomainError, List[Airline]] =
+        unimplementedAirlineRepo.findByCountry,
       onSave: (Airline, CountryCode) => IO[DomainError, Airline] = unimplementedAirlineRepo.save,
       onUpdate: (Airline, CountryCode) => IO[DomainError, Airline] = unimplementedAirlineRepo.update,
       onDelete: IcaoCode => IO[DomainError, Unit] = unimplementedAirlineRepo.delete
   ): AirlineRepository = new AirlineRepository:
-    def findByIcao(icao: IcaoCode): IO[DomainError, Option[Airline]] = onFindByIcao(icao)
-    def findAll(p: Pagination): IO[DomainError, List[Airline]]       = onFindAll(p)
-    def save(a: Airline, c: CountryCode): IO[DomainError, Airline]   = onSave(a, c)
-    def update(a: Airline, c: CountryCode): IO[DomainError, Airline] = onUpdate(a, c)
-    def delete(icao: IcaoCode): IO[DomainError, Unit]                = onDelete(icao)
+    def findByIcao(icao: IcaoCode): IO[DomainError, Option[Airline]]              = onFindByIcao(icao)
+    def findAll(p: Pagination): IO[DomainError, List[Airline]]                    = onFindAll(p)
+    def findByCountry(c: CountryCode, p: Pagination): IO[DomainError, List[Airline]] = onFindByCountry(c, p)
+    def save(a: Airline, c: CountryCode): IO[DomainError, Airline]                = onSave(a, c)
+    def update(a: Airline, c: CountryCode): IO[DomainError, Airline]              = onUpdate(a, c)
+    def delete(icao: IcaoCode): IO[DomainError, Unit]                            = onDelete(icao)

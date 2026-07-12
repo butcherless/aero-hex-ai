@@ -20,6 +20,14 @@ object AirlineEndpoints {
       .validate(Validator.maxLength(3))
       .validate(Validator.pattern(CodePatterns.alpha3))
 
+  // same validated shape as AirportEndpoints.countryCodeParam — kept local since that one is private
+  private val countryCodeParam =
+    path[String]("code")
+      .description("ISO 3166-1 alpha-2 country code (e.g. ES).")
+      .validate(Validator.minLength(2))
+      .validate(Validator.maxLength(2))
+      .validate(Validator.pattern(CodePatterns.alpha2))
+
   private val createErrorOut: EndpointOutput[(StatusCode, HttpErrorResponse)] =
     oneOf[(StatusCode, HttpErrorResponse)](
       EndpointErrors.conflictVariant("Airline already exists."),
@@ -54,6 +62,23 @@ object AirlineEndpoints {
       .errorOut(
         oneOf[(StatusCode, HttpErrorResponse)](
           EndpointErrors.notFoundVariant("Airline not found."),
+          EndpointErrors.unexpectedError
+        )
+      )
+
+  val findByCountry
+      : PublicEndpoint[(String, Int, Int), (StatusCode, HttpErrorResponse), List[AirlineDto], Any] =
+    endpoint.get
+      .in("api" / "v1" / "countries" / countryCodeParam / "airlines")
+      .summary("List airlines in a country")
+      .description("Returns a paginated list of airlines registered in the given country.")
+      .tag("Airlines")
+      .in(PaginationParams.page)
+      .in(PaginationParams.pageSize)
+      .out(jsonBody[List[AirlineDto]].description("Airlines registered in the given country."))
+      .errorOut(
+        oneOf[(StatusCode, HttpErrorResponse)](
+          EndpointErrors.notFoundVariant("Country not found."),
           EndpointErrors.unexpectedError
         )
       )

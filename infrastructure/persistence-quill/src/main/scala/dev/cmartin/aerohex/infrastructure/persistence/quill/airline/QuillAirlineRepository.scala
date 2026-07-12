@@ -52,6 +52,24 @@ final class QuillAirlineRepository(dataSource: DataSource) extends AirlineReposi
       .orDie
   }
 
+  override def findByCountry(code: CountryCode, pagination: Pagination): IO[DomainError, List[Airline]] = {
+    val offset = pagination.offset
+    val limit  = pagination.pageSize
+    ctx
+      .run(quote {
+        (for {
+          a <- querySchema[AirlineRow]("airlines")
+          c <- querySchema[CountryRef]("countries").join(c => c.id == a.countryId)
+          if c.code == lift(code.value)
+        } yield a)
+          .sortBy(_.icaoCode)
+          .drop(lift(offset))
+          .take(lift(limit))
+      })
+      .map(_.map(toAirline))
+      .orDie
+  }
+
   override def save(airline: Airline, countryCode: CountryCode): IO[DomainError, Airline] =
     resolveCountryId(countryCode).flatMap { countryId =>
       QuillSqlState.refineUniqueViolation(

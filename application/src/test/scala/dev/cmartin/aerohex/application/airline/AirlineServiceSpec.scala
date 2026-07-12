@@ -1,17 +1,19 @@
 package dev.cmartin.aerohex.application.airline
 
 import AirlineRepositoryStub.{stubAirlineRepo, unimplementedAirlineRepo}
+import dev.cmartin.aerohex.application.country.CountryRepositoryStub.{stubCountryRepo, unimplementedCountryRepo}
 import dev.cmartin.aerohex.domain.airline.{
   Airline,
   CreateAirlineCommand,
   CreateAirlineUseCase,
   DeleteAirlineUseCase,
   FindAirlineUseCase,
+  FindAirlinesByCountryUseCase,
   IcaoCode,
   UpdateAirlineCommand,
   UpdateAirlineUseCase
 }
-import dev.cmartin.aerohex.domain.country.CountryCode
+import dev.cmartin.aerohex.domain.country.{Country, CountryCode}
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.shared.Pagination
 import java.time.LocalDate
@@ -22,6 +24,7 @@ object AirlineServiceSpec extends ZIOSpecDefault:
 
   private val iberia  = Airline(IcaoCode("IBE"), "Iberia", LocalDate.of(1927, 6, 28))
   private val vueling = Airline(IcaoCode("VLG"), "Vueling", LocalDate.of(2004, 3, 1))
+  private val spain   = Country(CountryCode("ES"), "Spain")
 
   override def spec: Spec[TestEnvironment & Scope, Any] =
     suite("Airline application services")(
@@ -64,6 +67,22 @@ object AirlineServiceSpec extends ZIOSpecDefault:
           val repo = stubAirlineRepo(onFindAll = _ => ZIO.succeed(List(iberia, vueling)))
           for result <- new FindAirlineService(repo).findAll(Pagination(1, 20))
           yield assertTrue(result == List(iberia, vueling))
+        }
+      ),
+      suite("FindAirlinesByCountryService")(
+        test("returns the airlines in the country when the country exists") {
+          val countryRepo = stubCountryRepo(onFindByCode = _ => ZIO.some(spain))
+          val airlineRepo = stubAirlineRepo(onFindByCountry = (_, _) => ZIO.succeed(List(iberia)))
+          for result <- new FindAirlinesByCountryService(countryRepo, airlineRepo)
+                          .findByCountry(CountryCode("ES"), Pagination(1, 20))
+          yield assertTrue(result == List(iberia))
+        },
+        test("fails with CountryNotFound and never queries airlines when the country does not exist") {
+          val countryRepo = stubCountryRepo(onFindByCode = _ => ZIO.none)
+          for error <- new FindAirlinesByCountryService(countryRepo, unimplementedAirlineRepo)
+                         .findByCountry(CountryCode("XX"), Pagination(1, 20))
+                         .flip
+          yield assertTrue(error == DomainError.CountryNotFound("XX"))
         }
       ),
       suite("UpdateAirlineService")(
@@ -116,6 +135,16 @@ object AirlineServiceSpec extends ZIOSpecDefault:
           for _ <- ZIO
                      .service[UpdateAirlineUseCase]
                      .provide(ZLayer.succeed(unimplementedAirlineRepo), UpdateAirlineService.layer)
+          yield assertCompletes
+        },
+        test("FindAirlinesByCountryService.layer constructs a usable instance") {
+          for _ <- ZIO
+                     .service[FindAirlinesByCountryUseCase]
+                     .provide(
+                       ZLayer.succeed(unimplementedCountryRepo),
+                       ZLayer.succeed(unimplementedAirlineRepo),
+                       FindAirlinesByCountryService.layer
+                     )
           yield assertCompletes
         },
         test("DeleteAirlineService.layer constructs a usable instance") {

@@ -27,6 +27,7 @@ Swagger UI: `http://localhost:8080/docs`
 | Airlines | POST | `/api/v1/airlines` | ✓ implemented |
 | Airlines | PUT | `/api/v1/airlines/{icao}` | ✓ implemented |
 | Airlines | DELETE | `/api/v1/airlines/{icao}` | ✓ implemented |
+| Airlines | GET | `/api/v1/countries/{code}/airlines` | ✓ implemented |
 | Aircraft | GET | `/api/v1/aircraft` | ✓ implemented |
 | Aircraft | GET | `/api/v1/aircraft/{registration}` | ✓ implemented |
 | Aircraft | POST | `/api/v1/aircraft` | ✓ implemented |
