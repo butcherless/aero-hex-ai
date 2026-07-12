@@ -106,7 +106,7 @@ Rule: inner modules never depend on outer ones. `domain` has zero framework depe
 `infrastructure/integration-tests/` runs `FlywayMigration`, `DoobieXxxRepository`, and
 `QuillXxxRepository` against a real Postgres started via Testcontainers — no in-memory stubs, no
 Tapir stub server. It is deliberately **not** in `root`'s `.aggregate(...)`, so `sbt compile`,
-`sbt "testOnly *"`, and `sbt coverageAggregate` never touch it; invoke it explicitly:
+`sbt test`, and `sbt coverageAggregate` never touch it; invoke it explicitly:
 
 ```bash
 sbt integrationTests/test   # or: sbt integrationTest (alias)
@@ -278,7 +278,8 @@ one instead of duplicating it if a later change revises the same decision.
 - `docs/analysis-plan.md` — the task plan that drives the analysis docs (glossary → use cases → ADR).
 - `docs/api/collection.json` + `environment.json` — Postman collection kept in sync with the
   Tapir-generated OpenAPI spec via the `sync-postman-collection` skill; regenerate after any
-  endpoint change, never edit by hand.
+  endpoint change, never edit by hand. Its 5 `E2E — ...` folders are runnable against a live app
+  via the `run-e2e-tests` skill — see `## Validation` below.
 - `docs/api/endpoint-status.md` — per-endpoint implementation status table (see `## REST API`
   above); update whenever an endpoint's status changes.
 - `docs/todo/` — analysis for future work not yet implemented (e.g. `auth-jwt.md`, JWT auth with
@@ -318,13 +319,11 @@ what changed, not always all four:
    Redocly (OAS 3.1 schema conformance), an inline-schema-completeness check, and Spectral
    (best-practice lint). Reports an endpoint inventory table alongside pass/fail.
 3. **End-to-end** — `/run-e2e-tests` skill
-   (`bash .claude/skills/run-e2e-tests/scripts/run.sh`). Starts real Postgres and the real HTTP
-   server (**must** launch with `-cp <jar> dev.cmartin.aerohex.bootstrap.Main`, never
-   `java -jar` — the assembly jar's default main-class is `OpenApiGenerator`, the spec-dump tool
-   step 2 uses, not the server; `-jar` prints YAML and exits without ever binding a port), then
-   runs the Postman collection's 5 dedicated `E2E — ...` folders (`docs/api/collection.json`)
-   against it via Newman. This is the only workflow that drives the actual running server rather
-   than stubs or a throwaway Testcontainers database.
+   (`bash .claude/skills/run-e2e-tests/scripts/run.sh`). Starts real Postgres and the real app,
+   then runs the Postman collection's 5 dedicated `E2E — ...` folders (`docs/api/collection.json`)
+   against it via Newman — the only workflow that drives the actual running server rather than
+   stubs or a throwaway Testcontainers database. The skill doc has a load-bearing gotcha about
+   which main class to launch; read it there rather than assuming `java -jar` works.
 4. **CI** — no dedicated skill; check with `gh run list --workflow=scala.yml --limit 5` and
    `gh run view --log --job=<job-id>` after a push. Runs steps 1's `compile`/`test`/
    `coverageAggregate`/`assembly` (never `integrationTests`, deliberately excluded — see

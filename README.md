@@ -77,6 +77,10 @@ sbt integrationTests/test
 
 See [CLAUDE.md](./CLAUDE.md#integration-tests-opt-in-real-postgres) for coverage and setup details.
 
+A third, opt-in layer exercises the actual running app end to end: real Postgres, the real HTTP
+server, and the Postman collection's `E2E — ...` folders run against it via Newman. Use the
+`run-e2e-tests` skill (Claude Code) or see [CLAUDE.md](./CLAUDE.md#validation) for the manual steps.
+
 ## TODO
 
 - Create validation for domain using ZIO Prelude Validation, smart constructor, or validation layer.
