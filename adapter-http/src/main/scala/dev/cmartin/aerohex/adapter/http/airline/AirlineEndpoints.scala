@@ -12,21 +12,27 @@ object AirlineEndpoints {
 
   private val base = endpoint.in("api" / "v1" / "airlines")
 
-  // same validated shape as AirportEndpoints.iataParam / CountryEndpoints.codeParam
-  private val icaoParam =
-    path[String]("icao")
-      .description("3-letter ICAO airline code (e.g. IBE).")
-      .validate(Validator.minLength(3))
-      .validate(Validator.maxLength(3))
-      .validate(Validator.pattern(CodePatterns.alpha3))
+  // Same 4-validator shape needed by every alpha code path param in this file (and, per the
+  // AirportEndpoints/CountryEndpoints equivalents, in theirs too — kept local here rather than
+  // shared across files since each of those is private to its own endpoint object).
+  private def alphaCodeParam(name: String, description: String, length: Int, pattern: String) =
+    path[String](name)
+      .description(description)
+      .validate(Validator.minLength(length))
+      .validate(Validator.maxLength(length))
+      .validate(Validator.pattern(pattern))
 
-  // same validated shape as AirportEndpoints.countryCodeParam — kept local since that one is private
+  private val icaoParam =
+    alphaCodeParam("icao", "3-letter ICAO airline code (e.g. IBE).", 3, CodePatterns.alpha3)
+
   private val countryCodeParam =
-    path[String]("code")
-      .description("ISO 3166-1 alpha-2 country code (e.g. ES).")
-      .validate(Validator.minLength(2))
-      .validate(Validator.maxLength(2))
-      .validate(Validator.pattern(CodePatterns.alpha2))
+    alphaCodeParam("code", "ISO 3166-1 alpha-2 country code (e.g. ES).", 2, CodePatterns.alpha2)
+
+  private val notFoundErrorOut: EndpointOutput[(StatusCode, HttpErrorResponse)] =
+    oneOf[(StatusCode, HttpErrorResponse)](
+      EndpointErrors.notFoundVariant("Airline not found."),
+      EndpointErrors.unexpectedError
+    )
 
   private val createErrorOut: EndpointOutput[(StatusCode, HttpErrorResponse)] =
     oneOf[(StatusCode, HttpErrorResponse)](
@@ -59,12 +65,7 @@ object AirlineEndpoints {
       .tag("Airlines")
       .in(icaoParam)
       .out(jsonBody[AirlineDto].description("The requested airline."))
-      .errorOut(
-        oneOf[(StatusCode, HttpErrorResponse)](
-          EndpointErrors.notFoundVariant("Airline not found."),
-          EndpointErrors.unexpectedError
-        )
-      )
+      .errorOut(notFoundErrorOut)
 
   val findByCountry
       : PublicEndpoint[(String, Int, Int), (StatusCode, HttpErrorResponse), List[AirlineDto], Any] =
@@ -114,10 +115,5 @@ object AirlineEndpoints {
       .tag("Airlines")
       .in(icaoParam)
       .out(statusCode(StatusCode.NoContent))
-      .errorOut(
-        oneOf[(StatusCode, HttpErrorResponse)](
-          EndpointErrors.notFoundVariant("Airline not found."),
-          EndpointErrors.unexpectedError
-        )
-      )
+      .errorOut(notFoundErrorOut)
 }

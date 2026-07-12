@@ -1,6 +1,6 @@
 package dev.cmartin.aerohex.application.airline
 
-import dev.cmartin.aerohex.application.aspect.ServiceAspect
+import dev.cmartin.aerohex.application.common.CountryScopedFinder
 import dev.cmartin.aerohex.domain.airline.Airline
 import dev.cmartin.aerohex.domain.airline.AirlineRepository
 import dev.cmartin.aerohex.domain.airline.FindAirlinesByCountryUseCase
@@ -8,16 +8,15 @@ import dev.cmartin.aerohex.domain.country.CountryCode
 import dev.cmartin.aerohex.domain.country.CountryRepository
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.shared.Pagination
-import zio.{IO, URLayer, ZIO, ZLayer}
+import zio.{IO, URLayer, ZLayer}
 
-final class FindAirlinesByCountryService(countryRepository: CountryRepository, airlineRepository: AirlineRepository)
-    extends FindAirlinesByCountryUseCase {
+final class FindAirlinesByCountryService(
+    protected val countryRepository: CountryRepository,
+    airlineRepository: AirlineRepository
+) extends FindAirlinesByCountryUseCase with CountryScopedFinder {
 
   override def findByCountry(code: CountryCode, pagination: Pagination): IO[DomainError, List[Airline]] =
-    countryRepository.findByCode(code).flatMap {
-      case None    => ZIO.fail(DomainError.CountryNotFound(code.value))
-      case Some(_) => airlineRepository.findByCountry(code, pagination)
-    } @@ ServiceAspect.logged(s"FindAirlinesByCountryService.findByCountry(${code.value})")
+    findByCountryChecked(code, pagination, "FindAirlinesByCountryService")(airlineRepository.findByCountry)
 }
 
 object FindAirlinesByCountryService {
