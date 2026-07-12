@@ -1,7 +1,12 @@
 package dev.cmartin.aerohex.adapter.http.server
 
 import dev.cmartin.aerohex.adapter.http.ApiSpec
-import dev.cmartin.aerohex.adapter.http.endpoint.*
+import dev.cmartin.aerohex.adapter.http.aircraft.AircraftRoutes
+import dev.cmartin.aerohex.adapter.http.airline.AirlineRoutes
+import dev.cmartin.aerohex.adapter.http.airport.AirportRoutes
+import dev.cmartin.aerohex.adapter.http.country.CountryRoutes
+import dev.cmartin.aerohex.adapter.http.flight.{FlightInstanceRoutes, FlightRoutes}
+import dev.cmartin.aerohex.adapter.http.route.RouteRoutes
 import sttp.tapir.server.ziohttp.ZioHttpInterpreter
 import sttp.tapir.swagger.bundle.SwaggerInterpreter
 import zio.*

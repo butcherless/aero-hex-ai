@@ -1,6 +1,11 @@
 package dev.cmartin.aerohex.adapter.http
 
-import dev.cmartin.aerohex.adapter.http.endpoint.*
+import dev.cmartin.aerohex.adapter.http.aircraft.AircraftEndpoints
+import dev.cmartin.aerohex.adapter.http.airline.AirlineEndpoints
+import dev.cmartin.aerohex.adapter.http.airport.AirportEndpoints
+import dev.cmartin.aerohex.adapter.http.country.CountryEndpoints
+import dev.cmartin.aerohex.adapter.http.flight.{FlightEndpoints, FlightInstanceEndpoints}
+import dev.cmartin.aerohex.adapter.http.route.RouteEndpoints
 import sttp.apispec.Tag as ApiTag
 import sttp.apispec.openapi.{Contact, Info, License}
 import sttp.tapir.AnyEndpoint

@@ -1,18 +1,30 @@
 package dev.cmartin.aerohex.bootstrap
 
-import dev.cmartin.aerohex.adapter.http.endpoint.*
+import dev.cmartin.aerohex.adapter.http.aircraft.AircraftRoutes
+import dev.cmartin.aerohex.adapter.http.airline.AirlineRoutes
+import dev.cmartin.aerohex.adapter.http.airport.AirportRoutes
+import dev.cmartin.aerohex.adapter.http.country.CountryRoutes
+import dev.cmartin.aerohex.adapter.http.flight.{FlightInstanceRoutes, FlightRoutes}
+import dev.cmartin.aerohex.adapter.http.route.RouteRoutes
 import dev.cmartin.aerohex.adapter.http.server.HttpServer
-import dev.cmartin.aerohex.application.service.*
+import dev.cmartin.aerohex.application.aircraft.*
+import dev.cmartin.aerohex.application.airline.*
+import dev.cmartin.aerohex.application.airport.*
+import dev.cmartin.aerohex.application.country.*
+import dev.cmartin.aerohex.application.flight.*
+import dev.cmartin.aerohex.application.route.*
+import dev.cmartin.aerohex.domain.aircraft.*
+import dev.cmartin.aerohex.domain.airline.*
+import dev.cmartin.aerohex.domain.airport.*
+import dev.cmartin.aerohex.domain.country.*
 import dev.cmartin.aerohex.domain.error.DomainError
-import dev.cmartin.aerohex.domain.model.*
-import dev.cmartin.aerohex.domain.port.out.*
+import dev.cmartin.aerohex.domain.flight.*
+import dev.cmartin.aerohex.domain.route.*
+import dev.cmartin.aerohex.infrastructure.persistence.quill.aircraft.QuillAircraftRepository
+import dev.cmartin.aerohex.infrastructure.persistence.quill.airline.QuillAirlineRepository
+import dev.cmartin.aerohex.infrastructure.persistence.quill.airport.QuillAirportRepository
 import dev.cmartin.aerohex.infrastructure.persistence.quill.config.QuillDataSourceLayer
-import dev.cmartin.aerohex.infrastructure.persistence.quill.repository.{
-  QuillAircraftRepository,
-  QuillAirlineRepository,
-  QuillAirportRepository,
-  QuillCountryRepository
-}
+import dev.cmartin.aerohex.infrastructure.persistence.quill.country.QuillCountryRepository
 import dev.cmartin.aerohex.shared.Pagination
 import zio.*
 
