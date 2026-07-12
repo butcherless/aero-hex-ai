@@ -2,6 +2,7 @@ package dev.cmartin.aerohex.adapter.http.airport
 
 import dev.cmartin.aerohex.adapter.http.common.CodePatterns
 import dev.cmartin.aerohex.adapter.http.common.PaginationParams
+import dev.cmartin.aerohex.adapter.http.country.CountryDto
 import dev.cmartin.aerohex.adapter.http.error.{EndpointErrors, HttpErrorResponse}
 import io.circe.generic.auto.*
 import sttp.model.StatusCode
@@ -27,6 +28,14 @@ object AirportEndpoints {
       .validate(Validator.minLength(3))
       .validate(Validator.maxLength(3))
       .validate(Validator.pattern(CodePatterns.alpha3))
+
+  // Same shape as findByIata's/delete's errorOut below — extracted since a third occurrence
+  // (findCountry) would otherwise triplicate it.
+  private val notFoundErrorOut: EndpointOutput[(StatusCode, HttpErrorResponse)] =
+    oneOf[(StatusCode, HttpErrorResponse)](
+      EndpointErrors.notFoundVariant("Airport not found."),
+      EndpointErrors.unexpectedError
+    )
 
   private val createErrorOut: EndpointOutput[(StatusCode, HttpErrorResponse)] =
     oneOf[(StatusCode, HttpErrorResponse)](
@@ -81,12 +90,17 @@ object AirportEndpoints {
       .tag("Airports")
       .in(iataParam)
       .out(jsonBody[AirportDto].description("The requested airport."))
-      .errorOut(
-        oneOf[(StatusCode, HttpErrorResponse)](
-          EndpointErrors.notFoundVariant("Airport not found."),
-          EndpointErrors.unexpectedError
-        )
-      )
+      .errorOut(notFoundErrorOut)
+
+  val findCountry: PublicEndpoint[String, (StatusCode, HttpErrorResponse), CountryDto, Any] =
+    base.get
+      .summary("Find the country an airport belongs to")
+      .description("Returns the country of the airport identified by its 3-letter IATA code.")
+      .tag("Airports")
+      .in(iataParam)
+      .in("country")
+      .out(jsonBody[CountryDto].description("The airport's country."))
+      .errorOut(notFoundErrorOut)
 
   val findByCountry
       : PublicEndpoint[(String, Int, Int), (StatusCode, HttpErrorResponse), List[AirportDto], Any] =
@@ -136,10 +150,5 @@ object AirportEndpoints {
       .tag("Airports")
       .in(iataParam)
       .out(statusCode(StatusCode.NoContent))
-      .errorOut(
-        oneOf[(StatusCode, HttpErrorResponse)](
-          EndpointErrors.notFoundVariant("Airport not found."),
-          EndpointErrors.unexpectedError
-        )
-      )
+      .errorOut(notFoundErrorOut)
 }

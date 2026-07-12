@@ -79,11 +79,13 @@ object WiringModule {
     (countryRepoLayer >>> UpdateCountryService.layer) ++
     (countryRepoLayer >>> DeleteCountryService.layer)
 
-  private val airportUseCaseLayers = (airportRepoLayer >>> FindAirportService.layer) ++
-    (airportRepoLayer >>> CreateAirportService.layer) ++
-    (airportRepoLayer >>> UpdateAirportService.layer) ++
-    (airportRepoLayer >>> DeleteAirportService.layer) ++
-    ((airportRepoLayer ++ countryRepoLayer) >>> FindAirportsByCountryService.layer)
+  private val airportUseCaseLayers =
+    (airportRepoLayer >>> FindAirportService.layer) ++
+      (airportRepoLayer >>> CreateAirportService.layer) ++
+      (airportRepoLayer >>> UpdateAirportService.layer) ++
+      (airportRepoLayer >>> DeleteAirportService.layer) ++
+      ((airportRepoLayer ++ countryRepoLayer) >>> FindAirportsByCountryService.layer) ++
+      (airportRepoLayer >>> FindCountryForAirportService.layer)
 
   private val airlineUseCaseLayers = (airlineRepoLayer >>> FindAirlineService.layer) ++
     (airlineRepoLayer >>> CreateAirlineService.layer) ++

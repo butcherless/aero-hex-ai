@@ -1,6 +1,6 @@
 package dev.cmartin.aerohex.adapter.http.airport
 
-import dev.cmartin.aerohex.adapter.http.common.CodePatterns
+import dev.cmartin.aerohex.adapter.http.common.{CodePatterns, SchemaModifiers}
 import dev.cmartin.aerohex.domain.airline.IcaoCode
 import dev.cmartin.aerohex.domain.airport.{Airport, IataCode}
 import dev.cmartin.aerohex.domain.airport.{CreateAirportCommand, UpdateAirportCommand}
@@ -74,13 +74,7 @@ object CreateAirportRequest {
     .modify(_.city)(
       _.description("City served by the airport.").validate(Validator.minLength(1)).encodedExample("Madrid")
     )
-    .modify(_.countryCode)(
-      _.description("ISO 3166-1 alpha-2 country code.")
-        .validate(Validator.minLength(2))
-        .validate(Validator.maxLength(2))
-        .validate(Validator.pattern(CodePatterns.alpha2))
-        .encodedExample("ES")
-    )
+    .modify(_.countryCode)(SchemaModifiers.countryCode)
 }
 
 case class UpdateAirportRequest(icaoCode: String, name: String, city: String, countryCode: String)
@@ -111,11 +105,5 @@ object UpdateAirportRequest {
     .modify(_.city)(
       _.description("City served by the airport.").validate(Validator.minLength(1)).encodedExample("Madrid")
     )
-    .modify(_.countryCode)(
-      _.description("ISO 3166-1 alpha-2 country code.")
-        .validate(Validator.minLength(2))
-        .validate(Validator.maxLength(2))
-        .validate(Validator.pattern(CodePatterns.alpha2))
-        .encodedExample("ES")
-    )
+    .modify(_.countryCode)(SchemaModifiers.countryCode)
 }

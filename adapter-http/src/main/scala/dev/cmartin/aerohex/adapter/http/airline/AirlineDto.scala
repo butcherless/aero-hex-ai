@@ -1,6 +1,6 @@
 package dev.cmartin.aerohex.adapter.http.airline
 
-import dev.cmartin.aerohex.adapter.http.common.CodePatterns
+import dev.cmartin.aerohex.adapter.http.common.SchemaModifiers
 import dev.cmartin.aerohex.domain.airline.{Airline, IcaoCode}
 import dev.cmartin.aerohex.domain.airline.{CreateAirlineCommand, UpdateAirlineCommand}
 import dev.cmartin.aerohex.domain.country.CountryCode
@@ -61,13 +61,7 @@ object CreateAirlineRequest {
     .modify(_.foundationDate)(
       _.description("Date the airline was founded (ISO 8601).").encodedExample("1927-06-28")
     )
-    .modify(_.countryCode)(
-      _.description("ISO 3166-1 alpha-2 country code.")
-        .validate(Validator.minLength(2))
-        .validate(Validator.maxLength(2))
-        .validate(Validator.pattern(CodePatterns.alpha2))
-        .encodedExample("ES")
-    )
+    .modify(_.countryCode)(SchemaModifiers.countryCode)
 }
 
 case class UpdateAirlineRequest(name: String, foundationDate: String, countryCode: String)
@@ -88,11 +82,5 @@ object UpdateAirlineRequest {
     .modify(_.foundationDate)(
       _.description("Date the airline was founded (ISO 8601).").encodedExample("1927-06-28")
     )
-    .modify(_.countryCode)(
-      _.description("ISO 3166-1 alpha-2 country code.")
-        .validate(Validator.minLength(2))
-        .validate(Validator.maxLength(2))
-        .validate(Validator.pattern(CodePatterns.alpha2))
-        .encodedExample("ES")
-    )
+    .modify(_.countryCode)(SchemaModifiers.countryCode)
 }

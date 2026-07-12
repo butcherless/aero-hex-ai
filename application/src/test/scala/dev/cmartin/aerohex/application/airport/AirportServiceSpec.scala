@@ -10,6 +10,7 @@ import dev.cmartin.aerohex.domain.airport.{
   DeleteAirportUseCase,
   FindAirportUseCase,
   FindAirportsByCountryUseCase,
+  FindCountryForAirportUseCase,
   IataCode,
   UpdateAirportCommand,
   UpdateAirportUseCase
@@ -98,6 +99,18 @@ object AirportServiceSpec extends ZIOSpecDefault:
           yield assertTrue(error == DomainError.CountryNotFound("XX"))
         }
       ),
+      suite("FindCountryForAirportService")(
+        test("returns the airport's country when the airport exists") {
+          val repo = stubAirportRepo(onFindCountryByIata = _ => ZIO.some(spain))
+          for result <- new FindCountryForAirportService(repo).findCountry(IataCode("MAD"))
+          yield assertTrue(result == spain)
+        },
+        test("fails with AirportNotFound when the airport does not exist") {
+          val repo = stubAirportRepo(onFindCountryByIata = _ => ZIO.none)
+          for error <- new FindCountryForAirportService(repo).findCountry(IataCode("XXX")).flip
+          yield assertTrue(error == DomainError.AirportNotFound("XXX"))
+        }
+      ),
       suite("UpdateAirportService")(
         test("builds the updated airport from the command and returns the repository's result") {
           for
@@ -164,6 +177,12 @@ object AirportServiceSpec extends ZIOSpecDefault:
           for _ <- ZIO
                      .service[DeleteAirportUseCase]
                      .provide(ZLayer.succeed(unimplementedAirportRepo), DeleteAirportService.layer)
+          yield assertCompletes
+        },
+        test("FindCountryForAirportService.layer constructs a usable instance") {
+          for _ <- ZIO
+                     .service[FindCountryForAirportUseCase]
+                     .provide(ZLayer.succeed(unimplementedAirportRepo), FindCountryForAirportService.layer)
           yield assertCompletes
         }
       )

@@ -3,7 +3,7 @@ package dev.cmartin.aerohex.infrastructure.persistence.postgres.airport
 import dev.cmartin.aerohex.domain.airline.IcaoCode
 import dev.cmartin.aerohex.domain.airport.AirportRepository
 import dev.cmartin.aerohex.domain.airport.{Airport, IataCode}
-import dev.cmartin.aerohex.domain.country.CountryCode
+import dev.cmartin.aerohex.domain.country.{Country, CountryCode}
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.infrastructure.persistence.postgres.common.DoobieIdResolver
 import dev.cmartin.aerohex.shared.Pagination
@@ -58,6 +58,16 @@ final class DoobieAirportRepository(protected val xa: Transactor[Task]) extends 
       .to[List]
       .transact(xa)
       .map(_.map((i, icao, n, city) => Airport(IataCode.unsafeMake(i), IcaoCode.unsafeMake(icao), n, city)))
+      .orDie
+
+  override def findCountryByIata(iata: IataCode): IO[DomainError, Option[Country]] =
+    sql"""SELECT c.code, c.name
+          FROM airports a JOIN countries c ON a.country_id = c.id
+          WHERE a.iata_code = ${iata.value}"""
+      .query[(String, String)]
+      .option
+      .transact(xa)
+      .map(_.map((code, name) => Country(CountryCode.unsafeMake(code), name)))
       .orDie
 
   override def save(airport: Airport, countryCode: CountryCode): IO[DomainError, Airport] =

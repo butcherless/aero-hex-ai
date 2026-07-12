@@ -1,7 +1,7 @@
 package dev.cmartin.aerohex.application.airport
 
 import dev.cmartin.aerohex.domain.airport.{Airport, AirportRepository, IataCode}
-import dev.cmartin.aerohex.domain.country.CountryCode
+import dev.cmartin.aerohex.domain.country.{Country, CountryCode}
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.shared.Pagination
 import zio.{IO, ZIO}
@@ -21,6 +21,8 @@ private[application] object AirportRepositoryStub:
       ZIO.die(new NotImplementedError("searchByName"))
     def findByCountry(c: CountryCode, p: Pagination): IO[DomainError, List[Airport]] =
       ZIO.die(new NotImplementedError("findByCountry"))
+    def findCountryByIata(iata: IataCode): IO[DomainError, Option[Country]]          =
+      ZIO.die(new NotImplementedError("findCountryByIata"))
     def save(a: Airport, c: CountryCode): IO[DomainError, Airport]                   =
       ZIO.die(new NotImplementedError("save"))
     def update(a: Airport, c: CountryCode): IO[DomainError, Airport]                 =
@@ -34,6 +36,7 @@ private[application] object AirportRepositoryStub:
       onSearchByName: String => IO[DomainError, List[Airport]] = unimplementedAirportRepo.searchByName,
       onFindByCountry: (CountryCode, Pagination) => IO[DomainError, List[Airport]] =
         unimplementedAirportRepo.findByCountry,
+      onFindCountryByIata: IataCode => IO[DomainError, Option[Country]] = unimplementedAirportRepo.findCountryByIata,
       onSave: (Airport, CountryCode) => IO[DomainError, Airport] = unimplementedAirportRepo.save,
       onUpdate: (Airport, CountryCode) => IO[DomainError, Airport] = unimplementedAirportRepo.update,
       onDelete: IataCode => IO[DomainError, Unit] = unimplementedAirportRepo.delete
@@ -42,6 +45,7 @@ private[application] object AirportRepositoryStub:
     def findAll(p: Pagination): IO[DomainError, List[Airport]]                       = onFindAll(p)
     def searchByName(q: String): IO[DomainError, List[Airport]]                      = onSearchByName(q)
     def findByCountry(c: CountryCode, p: Pagination): IO[DomainError, List[Airport]] = onFindByCountry(c, p)
+    def findCountryByIata(iata: IataCode): IO[DomainError, Option[Country]]          = onFindCountryByIata(iata)
     def save(a: Airport, c: CountryCode): IO[DomainError, Airport]                   = onSave(a, c)
     def update(a: Airport, c: CountryCode): IO[DomainError, Airport]                 = onUpdate(a, c)
     def delete(iata: IataCode): IO[DomainError, Unit]                                = onDelete(iata)

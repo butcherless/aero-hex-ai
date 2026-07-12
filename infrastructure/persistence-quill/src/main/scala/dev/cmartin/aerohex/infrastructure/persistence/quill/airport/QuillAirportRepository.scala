@@ -3,7 +3,7 @@ package dev.cmartin.aerohex.infrastructure.persistence.quill.airport
 import dev.cmartin.aerohex.domain.airline.IcaoCode
 import dev.cmartin.aerohex.domain.airport.AirportRepository
 import dev.cmartin.aerohex.domain.airport.{Airport, IataCode}
-import dev.cmartin.aerohex.domain.country.CountryCode
+import dev.cmartin.aerohex.domain.country.{Country, CountryCode}
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.infrastructure.persistence.quill.common.QuillSqlState
 import dev.cmartin.aerohex.infrastructure.persistence.quill.country.QuillCountryIdResolver
@@ -23,6 +23,10 @@ final class QuillAirportRepository(dataSource: DataSource) extends AirportReposi
       city: String,
       countryId: Long
   )
+
+  // Full country row, not QuillCountryIdResolver's CountryRef (id/code only) — findCountryByIata
+  // needs to materialize a complete Country, including name.
+  private case class CountryRow(id: Long, code: String, name: String)
 
   protected val ctx = new Quill.Postgres(SnakeCase, dataSource)
 
@@ -82,6 +86,17 @@ final class QuillAirportRepository(dataSource: DataSource) extends AirportReposi
       .map(_.map(toAirport))
       .orDie
   }
+
+  override def findCountryByIata(iata: IataCode): IO[DomainError, Option[Country]] =
+    ctx
+      .run(quote {
+        for {
+          a <- querySchema[AirportRow]("airports").filter(_.iataCode == lift(iata.value))
+          c <- querySchema[CountryRow]("countries").join(c => c.id == a.countryId)
+        } yield c
+      })
+      .map(_.headOption.map(c => Country(CountryCode.unsafeMake(c.code), c.name)))
+      .orDie
 
   override def save(airport: Airport, countryCode: CountryCode): IO[DomainError, Airport] =
     resolveCountryId(countryCode).flatMap { countryId =>

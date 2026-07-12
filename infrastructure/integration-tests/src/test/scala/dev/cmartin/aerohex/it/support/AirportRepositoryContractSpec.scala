@@ -55,6 +55,20 @@ object AirportRepositoryContractSpec:
         list <- repo.findByCountry(CountryCode("DE"), Pagination(page = 1, pageSize = 100))
       yield assertTrue(list.exists(_.iataCode.value == "FRA"))
     },
+    test("findCountryByIata returns the country for that airport") {
+      for
+        _        <- seedCountry("JP", "Japan")
+        repo     <- ZIO.service[AirportRepository]
+        _        <- repo.save(Airport(IataCode("NRT"), IcaoCode("RJAA"), "Narita International", "Narita"), CountryCode("JP"))
+        country  <- repo.findCountryByIata(IataCode("NRT"))
+      yield assertTrue(country.contains(Country(CountryCode("JP"), "Japan")))
+    },
+    test("findCountryByIata returns None for an unknown iata code") {
+      for
+        repo    <- ZIO.service[AirportRepository]
+        country <- repo.findCountryByIata(IataCode("ZZZ"))
+      yield assertTrue(country.isEmpty)
+    },
     test("update changes the name and city of an existing airport") {
       for
         _      <- seedCountry("PT", "Portugal")

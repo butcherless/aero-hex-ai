@@ -1,8 +1,9 @@
 package dev.cmartin.aerohex.adapter.http.airport
 
+import dev.cmartin.aerohex.adapter.http.country.CountryDto
 import dev.cmartin.aerohex.domain.airline.IcaoCode
 import dev.cmartin.aerohex.domain.airport.*
-import dev.cmartin.aerohex.domain.country.CountryCode
+import dev.cmartin.aerohex.domain.country.{Country, CountryCode}
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.shared.Pagination
 import io.circe.generic.auto.*
@@ -47,6 +48,14 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
   private val countryNotFoundFindByCountry: FindAirportsByCountryUseCase =
     (code: CountryCode, _: Pagination) => ZIO.fail(DomainError.CountryNotFound(code.value))
 
+  private val spain = Country(CountryCode("ES"), "Spain")
+
+  private val defaultFindCountry: FindCountryForAirportUseCase =
+    (_: IataCode) => ZIO.succeed(spain)
+
+  private val notFoundFindCountry: FindCountryForAirportUseCase =
+    (iata: IataCode) => ZIO.fail(DomainError.AirportNotFound(iata.value))
+
   private val defaultUpdate: UpdateAirportUseCase =
     (cmd: UpdateAirportCommand) => ZIO.succeed(madrid.copy(name = cmd.name))
 
@@ -67,11 +76,14 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
       find: FindAirportUseCase = defaultFind,
       create: CreateAirportUseCase = defaultCreate,
       findByCountry: FindAirportsByCountryUseCase = defaultFindByCountry,
+      findCountry: FindCountryForAirportUseCase = defaultFindCountry,
       update: UpdateAirportUseCase = defaultUpdate,
       delete: DeleteAirportUseCase = defaultDelete
   ): Backend[Task] =
     TapirStubInterpreter(BackendStub(new RIOMonadAsyncError[Any]))
-      .whenServerEndpointsRunLogic(new AirportRoutes(find, create, findByCountry, update, delete).serverEndpoints)
+      .whenServerEndpointsRunLogic(
+        new AirportRoutes(find, create, findByCountry, findCountry, update, delete).serverEndpoints
+      )
       .backend()
 
   // ── Spec ──────────────────────────────────────────────────────────────────
@@ -182,6 +194,32 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
         test("returns 400 when the iata code contains non-alpha characters") {
           for
             response <- basicRequest.get(uri"https://test.com/api/v1/airports/123").send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        }
+      ),
+      suite("GET /api/v1/airports/{iata}/country")(
+        test("returns 200 with the airport's country") {
+          for
+            response <- basicRequest
+                          .get(uri"https://test.com/api/v1/airports/MAD/country")
+                          .response(asJson[CountryDto])
+                          .send(makeBackend())
+            country   = response.body.toOption
+          yield assertTrue(
+            response.code == StatusCode.Ok,
+            country.exists(_.code == "ES")
+          )
+        },
+        test("returns 404 when the airport does not exist") {
+          for
+            response <- basicRequest
+                          .get(uri"https://test.com/api/v1/airports/XXX/country")
+                          .send(makeBackend(findCountry = notFoundFindCountry))
+          yield assertTrue(response.code == StatusCode.NotFound)
+        },
+        test("returns 400 when the iata code is not exactly 3 letters") {
+          for
+            response <- basicRequest.get(uri"https://test.com/api/v1/airports/MA/country").send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         }
       ),
@@ -409,7 +447,7 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
         }
       ),
       suite("AirportRoutes.layer")(
-        test("wires all five use cases into the route list") {
+        test("wires all six use cases into the route list") {
           for
             endpointCount <- ZIO
                                .serviceWith[AirportRoutes](_.serverEndpoints.size)
@@ -417,11 +455,12 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
                                  ZLayer.succeed(defaultFind),
                                  ZLayer.succeed(defaultCreate),
                                  ZLayer.succeed(defaultFindByCountry),
+                                 ZLayer.succeed(defaultFindCountry),
                                  ZLayer.succeed(defaultUpdate),
                                  ZLayer.succeed(defaultDelete),
                                  AirportRoutes.layer
                                )
-          yield assertTrue(endpointCount == 7)
+          yield assertTrue(endpointCount == 8)
         }
       )
     )

@@ -43,6 +43,7 @@ object ApiSpec:
     AirportEndpoints.findAll,
     AirportEndpoints.searchByName,
     AirportEndpoints.findByIata,
+    AirportEndpoints.findCountry,
     AirportEndpoints.create,
     AirportEndpoints.update,
     AirportEndpoints.delete,
