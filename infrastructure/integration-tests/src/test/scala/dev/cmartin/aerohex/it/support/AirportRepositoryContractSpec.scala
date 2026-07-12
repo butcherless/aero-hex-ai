@@ -1,8 +1,9 @@
 package dev.cmartin.aerohex.it.support
 
 import dev.cmartin.aerohex.domain.error.DomainError
-import dev.cmartin.aerohex.domain.model.{Airport, Country, CountryCode, IataCode, IcaoCode}
-import dev.cmartin.aerohex.domain.port.out.{AirportRepository, CountryRepository}
+import dev.cmartin.aerohex.domain.airline.IcaoCode
+import dev.cmartin.aerohex.domain.airport.{Airport, AirportRepository, IataCode}
+import dev.cmartin.aerohex.domain.country.{Country, CountryCode, CountryRepository}
 import dev.cmartin.aerohex.shared.Pagination
 import zio.ZIO
 import zio.test.*

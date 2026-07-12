@@ -1,6 +1,7 @@
 package dev.cmartin.aerohex.it.quill
 
-import dev.cmartin.aerohex.infrastructure.persistence.quill.repository.{QuillAirportRepository, QuillCountryRepository}
+import dev.cmartin.aerohex.infrastructure.persistence.quill.airport.QuillAirportRepository
+import dev.cmartin.aerohex.infrastructure.persistence.quill.country.QuillCountryRepository
 import dev.cmartin.aerohex.it.support.{AirportRepositoryContractSpec, PostgresContainerSupport}
 import zio.*
 import zio.test.*

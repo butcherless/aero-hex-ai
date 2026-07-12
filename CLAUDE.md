@@ -15,7 +15,7 @@ user explicitly asks for CI status.
 
 ```bash
 sbt compile           # compile all modules
-sbt "testOnly *"      # run all tests (SBT 2.0: use testOnly *, not test)
+sbt test              # run all tests
 sbt scalafmtAll       # format all sources (run before committing new files)
 sbt scalafmtCheckAll  # check formatting (CI gate; requires git-tracked files)
 sbt bloopInstall      # regenerate .bloop/ after dependency changes
@@ -50,7 +50,7 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 |---|---|---|
 | Runtime | Java LTS | 21 |
 | Language | Scala 3 LTS | 3.3.8 |
-| Build | SBT | 2.0.1 |
+| Build | SBT | 1.12.13 |
 | Effect | ZIO | 2.1.26 |
 | Smart constructors (`CountryCode`/`IataCode`/`IcaoCode`/`Registration`) | ZIO Prelude | 1.0.0-RC47 |
 | HTTP server | ZIO HTTP | 3.11.3 |
@@ -290,30 +290,19 @@ one instead of duplicating it if a later change revises the same decision.
 
 **Per-module report:**
 ```bash
-sbt "adapterHttp/testOnly *"
+sbt adapterHttp/test
 sbt adapterHttp/coverageReport
 ```
 
 **Aggregate report:**
 ```bash
 sbt compile
-sbt "adapterHttp/testOnly *"   # repeat per module with tests
+sbt adapterHttp/test   # repeat per module with tests
 sbt coverageAggregate
-# → target/out/jvm/scala-3.3.8/aero-hex-ai/scoverage-report/index.html
+# → target/scala-3.3.8/scoverage-report/index.html
 ```
 
-**CAS caveat (missing dir):** a cached `sbt compile` skips writing local `.coverage-data/` dirs, causing `ExceptionInInitializerError` at test runtime. Fix: `mkdir -p <module>/.coverage-data/scoverage-data` per module before `testOnly` (the CI workflow does this). Never `rm -rf` an existing `.coverage-data/` dir to "reset" it — see below.
-
-**CAS caveat (stale/missing catalog):** sbt 2's thin-client build cache (CAS) can restore previously-compiled `.class` files without re-invoking `scalac` whenever source is unchanged — even after `sbt clean`, a fresh `sbt shutdown`, or `--no-share`. When that happens, scoverage's instrumentation catalog (`<module>/.coverage-data/scoverage-data/scoverage.coverage`) never gets rewritten, since it's a compiler-plugin side effect that only fires on a genuine compile. Symptoms: `coverageReport`/`coverageAggregate` report `0.00%`/`100.00%` (0/0, division-by-zero) or `[warn] No coverage data, skipping reports`. This is why the catalog lives outside `target/` in the first place — it's meant to *survive* `clean` and keep matching CAS-restored classes, since same source ⇒ same statement IDs. Deleting `.coverage-data/` yourself removes the one thing that should persist, and a CAS hit means it may never come back.
-
-Fix — force one genuine recompile by perturbing that module's own compiler flags (invalidates the CAS cache key; a project-wide `ThisBuild / scalacOptions` change does **not** propagate down and won't force it):
-```bash
-sbt 'set adapterHttp / Compile / scalacOptions += "-Xmigration"; adapterHttp/testOnly *'
-sbt adapterHttp/coverageReport
-```
-Run `coverageReport` as its own `sbt` invocation *after* the test run's invocation exits — chaining `testOnly *; coverageReport` in one command hits a measurement-data sync race (`Waiting for measurement data to sync...` → `No coverage data, skipping reports`). For an aggregate number, repeat the `testOnly` step (with the same scalacOptions bump) per module that has tests, then `sbt coverageAggregate`.
-
-**The flag value must be one scalac has never seen before, every single time** — not just harmless/throwaway. sbt 2's CAS persists compilation results to disk *across server restarts*, keyed in part on the effective scalacOptions: reusing the literal string `"-Xmigration"` a second time (even after `sbt shutdown`, even after deleting `.coverage-data/`) hits the same cache entry from the first use and silently skips recompiling — reproducing this exact bug, just now caused by the fix instead of by `compile`. Confirmed by direct testing: `-Xmigration` worked once, then failed on every later reuse in the same repo, until a never-used value (`-Xmigration2`, a timestamp, anything new) was substituted. Don't try to automate this with a computed value inside the `set` expression itself (e.g. `+= ("-Xmigration-" + System.nanoTime())`) — sbt's own `set`-command evaluator separately caches the *compiled wrapper* for a given expression's source text, and reusing that same source text a few times in one server session throws an unrelated internal error (`<error Not found: $Wrap...> is not a legal path`). Just hand-pick a new literal suffix each time you need this.
+**Missing-dir gotcha:** if a module's tests run without ever recompiling that module (nothing changed since the last compile), scoverage never writes its local `.coverage-data/` dir, and the instrumented run then fails with `ExceptionInInitializerError` at test runtime. Fix: `mkdir -p <module>/.coverage-data/scoverage-data` per module before running tests (the CI workflow does this). Never `rm -rf` an existing `.coverage-data/` dir to "reset" it — `coverageDataDir` lives outside `target/` specifically so `sbt clean` never touches the statement catalog; deleting it yourself just recreates the same gap.
 
 ## Formatter
 

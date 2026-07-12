@@ -1,4 +1,4 @@
-object Versions:
+object Versions {
   val scala3         = "3.3.8"
   val zio            = "2.1.26"
   val zioPrelude     = "1.0.0-RC47" // no GA release yet, same exception class as Doobie
@@ -16,3 +16,4 @@ object Versions:
   val sttpClient4    = "4.0.26"
   val protoQuill     = "4.8.6"
   val testcontainers = "1.21.3"
+}

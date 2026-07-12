@@ -1,6 +1,6 @@
-import sbt.*
+import sbt._
 
-object Dependencies:
+object Dependencies {
 
   // ZIO
   val zio            = "dev.zio" %% "zio"              % Versions.zio
@@ -56,3 +56,4 @@ object Dependencies:
   val testcontainersPostgres = "org.testcontainers" % "postgresql"     % Versions.testcontainers % Test
 
   val commonTest: Seq[ModuleID] = Seq(zioTest, zioTestSbt)
+}

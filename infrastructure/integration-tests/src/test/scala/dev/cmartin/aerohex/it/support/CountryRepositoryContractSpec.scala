@@ -1,8 +1,7 @@
 package dev.cmartin.aerohex.it.support
 
 import dev.cmartin.aerohex.domain.error.DomainError
-import dev.cmartin.aerohex.domain.model.{Country, CountryCode}
-import dev.cmartin.aerohex.domain.port.out.CountryRepository
+import dev.cmartin.aerohex.domain.country.{Country, CountryCode, CountryRepository}
 import dev.cmartin.aerohex.shared.Pagination
 import zio.ZIO
 import zio.test.*

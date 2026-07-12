@@ -7,11 +7,11 @@ addCommandAlias("integrationTest", "integrationTests/test")
 // Declare always-compatible so SBT silently selects the higher version.
 ThisBuild / libraryDependencySchemes += "dev.zio" %% "zio-json" % "always"
 
-organization  := "dev.cmartin.aerohex"
-scalaVersion  := Versions.scala3  // 3.3.8 LTS
-version       := "0.1.0-SNAPSHOT"
+ThisBuild / organization  := "dev.cmartin.aerohex"
+ThisBuild / scalaVersion  := Versions.scala3  // 3.3.8 LTS
+ThisBuild / version       := "0.1.0-SNAPSHOT"
 
-scalacOptions := Seq(
+ThisBuild / scalacOptions := Seq(
   "-encoding", "utf8",
   "-deprecation",
   "-feature",
@@ -21,8 +21,8 @@ scalacOptions := Seq(
   "-Wnonunit-statement"
 )
 
-testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
-libraryDependencies ++= commonTest
+ThisBuild / testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
+ThisBuild / libraryDependencies ++= commonTest
 
 // coverageDataDir outside target/ so sbt clean never deletes the statement catalog
 val coverageSettings: Seq[Setting[?]] = Seq(
@@ -56,7 +56,7 @@ lazy val coverageProjects: Seq[Project] = Seq(
   bootstrap
 )
 
-lazy val root = rootProject
+lazy val root = (project in file("."))
   .aggregate(coverageProjects.map(p => p: ProjectReference)*)
   .settings(
     name           := "aero-hex-ai",

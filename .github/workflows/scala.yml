@@ -75,7 +75,7 @@ jobs:
       - name: Compile and unit tests
         run: |
           sbt compile
-          # Scala 3 coverage Invoker needs scoverage-data/ per module; absent on CAS hits
+          # Scala 3 coverage Invoker needs scoverage-data/ per module; absent on a fresh checkout
           mkdir -p \
             shared-kernel/.coverage-data/scoverage-data \
             domain/.coverage-data/scoverage-data \
@@ -86,7 +86,7 @@ jobs:
             infrastructure/migration/.coverage-data/scoverage-data \
             adapter-http/.coverage-data/scoverage-data \
             bootstrap/.coverage-data/scoverage-data
-          sbt "testOnly *"
+          sbt test
       - name: Coverage report
         run: sbt coverageAggregate
       - name: Assembly

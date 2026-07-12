@@ -8,7 +8,7 @@ Airline → Route** — with a Kafka outbox pattern for domain events still bein
 
 ## Tech stack
 
-- **Scala 3** (LTS) + **SBT 2** multi-module build
+- **Scala 3** (LTS) + **SBT 1** multi-module build
 - **ZIO** for functional effects, **ZIO HTTP** for the server, **Tapir** for endpoint definitions
   and code-first OpenAPI generation
 - **Quill** over **PostgreSQL** persists `Country`, `Airport`, and `Airline` (the only repositories
@@ -67,7 +67,7 @@ against real Postgres; Flights, Flight Instances, and Route creation are stubbed
 See [CLAUDE.md](./CLAUDE.md#build-commands) for build/test/coverage commands, versioning
 policy, and architectural conventions.
 
-Unit tests (`sbt "testOnly *"`) run against in-memory stubs / a Tapir stub server and never touch a
+Unit tests (`sbt test`) run against in-memory stubs / a Tapir stub server and never touch a
 real database. A separate opt-in suite exercises the persistence layer against a real Postgres
 started via Testcontainers (requires Docker):
 
