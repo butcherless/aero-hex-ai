@@ -11,7 +11,7 @@ import dev.cmartin.aerohex.shared.Pagination
 import io.getquill.*
 import io.getquill.jdbczio.Quill
 import javax.sql.DataSource
-import zio.{IO, URLayer, ZIO, ZLayer}
+import zio.{IO, URLayer, ZLayer}
 
 final class QuillAirportRepository(dataSource: DataSource) extends AirportRepository with QuillCountryIdResolver {
 
@@ -117,8 +117,8 @@ final class QuillAirportRepository(dataSource: DataSource) extends AirportReposi
 
   override def update(airport: Airport, countryCode: CountryCode): IO[DomainError, Airport] =
     resolveCountryId(countryCode).flatMap { countryId =>
-      ctx
-        .run(quote {
+      QuillSqlState.refineZeroRows(
+        ctx.run(quote {
           querySchema[AirportRow]("airports")
             .filter(_.iataCode == lift(airport.iataCode.value))
             .update(
@@ -128,23 +128,15 @@ final class QuillAirportRepository(dataSource: DataSource) extends AirportReposi
               _.countryId -> lift(countryId)
             )
         })
-        .orDie
-        .flatMap {
-          case 0L => ZIO.fail(DomainError.AirportNotFound(airport.iataCode.value))
-          case _  => ZIO.succeed(airport)
-        }
+      )(DomainError.AirportNotFound(airport.iataCode.value), airport)
     }
 
   override def delete(iata: IataCode): IO[DomainError, Unit] =
-    ctx
-      .run(quote {
+    QuillSqlState.refineZeroRows(
+      ctx.run(quote {
         querySchema[AirportRow]("airports").filter(_.iataCode == lift(iata.value)).delete
       })
-      .orDie
-      .flatMap {
-        case 0L => ZIO.fail(DomainError.AirportNotFound(iata.value))
-        case _  => ZIO.unit
-      }
+    )(DomainError.AirportNotFound(iata.value), ())
 }
 
 object QuillAirportRepository {

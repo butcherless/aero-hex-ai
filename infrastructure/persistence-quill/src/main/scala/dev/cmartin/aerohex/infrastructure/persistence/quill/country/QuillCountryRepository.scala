@@ -80,26 +80,20 @@ final class QuillCountryRepository(dataSource: DataSource) extends CountryReposi
   }
 
   override def update(country: Country): IO[DomainError, Country] =
-    ctx
-      .run(quote {
+    QuillSqlState.refineZeroRows(
+      ctx.run(quote {
         querySchema[CountryRow]("countries")
           .filter(_.code == lift(country.code.value))
           .update(_.name -> lift(country.name))
       })
-      .orDie
-      .flatMap:
-        case 0L => ZIO.fail(DomainError.CountryNotFound(country.code.value))
-        case _  => ZIO.succeed(country)
+    )(DomainError.CountryNotFound(country.code.value), country)
 
   override def delete(code: CountryCode): IO[DomainError, Unit] =
-    ctx
-      .run(quote {
+    QuillSqlState.refineZeroRows(
+      ctx.run(quote {
         querySchema[CountryRow]("countries").filter(_.code == lift(code.value)).delete
       })
-      .orDie
-      .flatMap:
-        case 0L => ZIO.fail(DomainError.CountryNotFound(code.value))
-        case _  => ZIO.unit
+    )(DomainError.CountryNotFound(code.value), ())
 }
 
 object QuillCountryRepository {

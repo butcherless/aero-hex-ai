@@ -8,6 +8,14 @@ import sttp.tapir.Schema
 import sttp.tapir.Validator
 import zio.IO
 
+// Shared verbatim by AircraftDto/CreateAircraftRequest/UpdateAircraftRequest's airlineIcao field below.
+private val airlineIcaoSchema: Schema[String] => Schema[String] = _.description(
+  "3-letter ICAO code of the operating airline."
+)
+  .validate(Validator.minLength(3))
+  .validate(Validator.maxLength(3))
+  .encodedExample("IBE")
+
 case class AircraftDto(registration: String, typeCode: String, description: String, airlineIcao: String)
 
 object AircraftDto {
@@ -25,12 +33,7 @@ object AircraftDto {
     .modify(_.description)(
       _.description("Common/marketing name of the aircraft type.").encodedExample("Airbus A330-900")
     )
-    .modify(_.airlineIcao)(
-      _.description("3-letter ICAO code of the operating airline.")
-        .validate(Validator.minLength(3))
-        .validate(Validator.maxLength(3))
-        .encodedExample("IBE")
-    )
+    .modify(_.airlineIcao)(airlineIcaoSchema)
 }
 
 case class CreateAircraftRequest(registration: String, typeCode: String, description: String, airlineIcao: String)
@@ -65,12 +68,7 @@ object CreateAircraftRequest {
         .validate(Validator.minLength(1))
         .encodedExample("Airbus A330-900")
     )
-    .modify(_.airlineIcao)(
-      _.description("3-letter ICAO code of the operating airline.")
-        .validate(Validator.minLength(3))
-        .validate(Validator.maxLength(3))
-        .encodedExample("IBE")
-    )
+    .modify(_.airlineIcao)(airlineIcaoSchema)
 }
 
 case class UpdateAircraftRequest(typeCode: String, description: String, airlineIcao: String)
@@ -93,10 +91,5 @@ object UpdateAircraftRequest {
         .validate(Validator.minLength(1))
         .encodedExample("Airbus A330-900")
     )
-    .modify(_.airlineIcao)(
-      _.description("3-letter ICAO code of the operating airline.")
-        .validate(Validator.minLength(3))
-        .validate(Validator.maxLength(3))
-        .encodedExample("IBE")
-    )
+    .modify(_.airlineIcao)(airlineIcaoSchema)
 }

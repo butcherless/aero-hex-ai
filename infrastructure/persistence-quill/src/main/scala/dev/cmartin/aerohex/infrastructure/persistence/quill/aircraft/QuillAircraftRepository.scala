@@ -10,7 +10,7 @@ import dev.cmartin.aerohex.shared.Pagination
 import io.getquill.*
 import io.getquill.jdbczio.Quill
 import javax.sql.DataSource
-import zio.{IO, URLayer, ZIO, ZLayer}
+import zio.{IO, URLayer, ZLayer}
 
 final class QuillAircraftRepository(dataSource: DataSource) extends AircraftRepository with QuillAirlineIdResolver {
 
@@ -75,8 +75,8 @@ final class QuillAircraftRepository(dataSource: DataSource) extends AircraftRepo
 
   override def update(aircraft: Aircraft): IO[DomainError, Aircraft] =
     resolveAirlineId(aircraft.airlineIcao).flatMap { airlineId =>
-      ctx
-        .run(quote {
+      QuillSqlState.refineZeroRows(
+        ctx.run(quote {
           querySchema[AircraftRow]("aircraft")
             .filter(_.registration == lift(aircraft.registration.value))
             .update(
@@ -85,23 +85,15 @@ final class QuillAircraftRepository(dataSource: DataSource) extends AircraftRepo
               _.airlineId   -> lift(airlineId)
             )
         })
-        .orDie
-        .flatMap {
-          case 0L => ZIO.fail(DomainError.AircraftNotFound(aircraft.registration.value))
-          case _  => ZIO.succeed(aircraft)
-        }
+      )(DomainError.AircraftNotFound(aircraft.registration.value), aircraft)
     }
 
   override def delete(registration: Registration): IO[DomainError, Unit] =
-    ctx
-      .run(quote {
+    QuillSqlState.refineZeroRows(
+      ctx.run(quote {
         querySchema[AircraftRow]("aircraft").filter(_.registration == lift(registration.value)).delete
       })
-      .orDie
-      .flatMap {
-        case 0L => ZIO.fail(DomainError.AircraftNotFound(registration.value))
-        case _  => ZIO.unit
-      }
+    )(DomainError.AircraftNotFound(registration.value), ())
 }
 
 object QuillAircraftRepository {

@@ -10,6 +10,18 @@ import sttp.tapir.Schema
 import sttp.tapir.Validator
 import zio.IO
 
+// Shared verbatim by AirportDto/CreateAirportRequest's iata/icaoCode fields below. Not reused by
+// UpdateAirportRequest's icaoCode, which adds a pattern validator the other two don't have.
+private val iataSchema: Schema[String] => Schema[String] = _.description("3-letter IATA airport code.")
+  .validate(Validator.minLength(3))
+  .validate(Validator.maxLength(3))
+  .encodedExample("MAD")
+
+private val icaoCodeSchema: Schema[String] => Schema[String] = _.description("4-letter ICAO airport code.")
+  .validate(Validator.minLength(4))
+  .validate(Validator.maxLength(4))
+  .encodedExample("LEMD")
+
 case class AirportDto(iata: String, icaoCode: String, name: String, city: String)
 
 object AirportDto {
@@ -22,18 +34,8 @@ object AirportDto {
     )
 
   given Schema[AirportDto] = Schema.derived[AirportDto]
-    .modify(_.iata)(
-      _.description("3-letter IATA airport code.")
-        .validate(Validator.minLength(3))
-        .validate(Validator.maxLength(3))
-        .encodedExample("MAD")
-    )
-    .modify(_.icaoCode)(
-      _.description("4-letter ICAO airport code.")
-        .validate(Validator.minLength(4))
-        .validate(Validator.maxLength(4))
-        .encodedExample("LEMD")
-    )
+    .modify(_.iata)(iataSchema)
+    .modify(_.icaoCode)(icaoCodeSchema)
     .modify(_.name)(_.description("Full airport name.").encodedExample("Adolfo Suárez Madrid-Barajas"))
     .modify(_.city)(_.description("City served by the airport.").encodedExample("Madrid"))
 }
@@ -54,18 +56,8 @@ object CreateAirportRequest {
     )
 
   given Schema[CreateAirportRequest] = Schema.derived[CreateAirportRequest]
-    .modify(_.iata)(
-      _.description("3-letter IATA airport code.")
-        .validate(Validator.minLength(3))
-        .validate(Validator.maxLength(3))
-        .encodedExample("MAD")
-    )
-    .modify(_.icaoCode)(
-      _.description("4-letter ICAO airport code.")
-        .validate(Validator.minLength(4))
-        .validate(Validator.maxLength(4))
-        .encodedExample("LEMD")
-    )
+    .modify(_.iata)(iataSchema)
+    .modify(_.icaoCode)(icaoCodeSchema)
     .modify(_.name)(
       _.description("Full airport name.")
         .validate(Validator.minLength(1))

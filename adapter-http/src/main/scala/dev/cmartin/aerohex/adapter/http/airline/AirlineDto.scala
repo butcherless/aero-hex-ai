@@ -10,6 +10,12 @@ import sttp.tapir.Schema
 import sttp.tapir.Validator
 import zio.IO
 
+// Shared verbatim by AirlineDto/CreateAirlineRequest's icao field below.
+private val icaoSchema: Schema[String] => Schema[String] = _.description("3-letter ICAO airline code.")
+  .validate(Validator.minLength(3))
+  .validate(Validator.maxLength(3))
+  .encodedExample("IBE")
+
 case class AirlineDto(icao: String, name: String, foundationDate: String)
 
 object AirlineDto {
@@ -21,12 +27,7 @@ object AirlineDto {
     )
 
   given Schema[AirlineDto] = Schema.derived[AirlineDto]
-    .modify(_.icao)(
-      _.description("3-letter ICAO airline code.")
-        .validate(Validator.minLength(3))
-        .validate(Validator.maxLength(3))
-        .encodedExample("IBE")
-    )
+    .modify(_.icao)(icaoSchema)
     .modify(_.name)(_.description("Full airline name.").encodedExample("Iberia"))
     .modify(_.foundationDate)(_.description("Date the airline was founded (ISO 8601).").encodedExample("1927-06-28"))
 }
@@ -49,12 +50,7 @@ object CreateAirlineRequest {
       )
 
   given Schema[CreateAirlineRequest] = Schema.derived[CreateAirlineRequest]
-    .modify(_.icao)(
-      _.description("3-letter ICAO airline code.")
-        .validate(Validator.minLength(3))
-        .validate(Validator.maxLength(3))
-        .encodedExample("IBE")
-    )
+    .modify(_.icao)(icaoSchema)
     .modify(_.name)(
       _.description("Full airline name.").validate(Validator.minLength(1)).encodedExample("Iberia")
     )

@@ -11,7 +11,7 @@ import io.getquill.*
 import io.getquill.jdbczio.Quill
 import java.time.LocalDate
 import javax.sql.DataSource
-import zio.{IO, URLayer, ZIO, ZLayer}
+import zio.{IO, URLayer, ZLayer}
 
 final class QuillAirlineRepository(dataSource: DataSource) extends AirlineRepository with QuillCountryIdResolver {
 
@@ -88,8 +88,8 @@ final class QuillAirlineRepository(dataSource: DataSource) extends AirlineReposi
 
   override def update(airline: Airline, countryCode: CountryCode): IO[DomainError, Airline] =
     resolveCountryId(countryCode).flatMap { countryId =>
-      ctx
-        .run(quote {
+      QuillSqlState.refineZeroRows(
+        ctx.run(quote {
           querySchema[AirlineRow]("airlines")
             .filter(_.icaoCode == lift(airline.icao.value))
             .update(
@@ -98,23 +98,15 @@ final class QuillAirlineRepository(dataSource: DataSource) extends AirlineReposi
               _.countryId      -> lift(countryId)
             )
         })
-        .orDie
-        .flatMap {
-          case 0L => ZIO.fail(DomainError.AirlineNotFound(airline.icao.value))
-          case _  => ZIO.succeed(airline)
-        }
+      )(DomainError.AirlineNotFound(airline.icao.value), airline)
     }
 
   override def delete(icao: IcaoCode): IO[DomainError, Unit] =
-    ctx
-      .run(quote {
+    QuillSqlState.refineZeroRows(
+      ctx.run(quote {
         querySchema[AirlineRow]("airlines").filter(_.icaoCode == lift(icao.value)).delete
       })
-      .orDie
-      .flatMap {
-        case 0L => ZIO.fail(DomainError.AirlineNotFound(icao.value))
-        case _  => ZIO.unit
-      }
+    )(DomainError.AirlineNotFound(icao.value), ())
 }
 
 object QuillAirlineRepository {
