@@ -1,11 +1,11 @@
 package dev.cmartin.aerohex.infrastructure.persistence.postgres.common
 
+import dev.cmartin.aerohex.domain.error.DomainError
 import doobie.Query0
 import doobie.Transactor
 import doobie.implicits.*
-import dev.cmartin.aerohex.domain.error.DomainError
-import zio.{IO, Task, ZIO}
 import zio.interop.catz.*
+import zio.{IO, Task, ZIO}
 
 // Shared by every Doobie repository that resolves a natural key to a surrogate id
 // (country_id, airport_id, airline_id FKs) — runs the given single-column query and

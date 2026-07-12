@@ -1,15 +1,14 @@
 package dev.cmartin.aerohex.adapter.http.airline
 
 import dev.cmartin.aerohex.adapter.http.common.CodePatterns
-import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.airline.{Airline, IcaoCode}
-import dev.cmartin.aerohex.domain.country.CountryCode
 import dev.cmartin.aerohex.domain.airline.{CreateAirlineCommand, UpdateAirlineCommand}
+import dev.cmartin.aerohex.domain.country.CountryCode
+import dev.cmartin.aerohex.domain.error.DomainError
+import java.time.LocalDate
 import sttp.tapir.Schema
 import sttp.tapir.Validator
 import zio.IO
-
-import java.time.LocalDate
 
 case class AirlineDto(icao: String, name: String, foundationDate: String)
 

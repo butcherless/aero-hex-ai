@@ -1,8 +1,8 @@
 package dev.cmartin.aerohex.domain.route
 
+import dev.cmartin.aerohex.domain.airport.IataCode
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.error.DomainError.InvalidRoute
-import dev.cmartin.aerohex.domain.airport.IataCode
 import zio.{IO, ZIO}
 
 object RouteValidator {

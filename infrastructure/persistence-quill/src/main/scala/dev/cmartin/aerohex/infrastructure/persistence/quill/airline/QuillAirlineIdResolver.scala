@@ -1,7 +1,7 @@
 package dev.cmartin.aerohex.infrastructure.persistence.quill.airline
 
-import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.airline.IcaoCode
+import dev.cmartin.aerohex.domain.error.DomainError
 import io.getquill.*
 import io.getquill.jdbczio.Quill
 import zio.{IO, ZIO}

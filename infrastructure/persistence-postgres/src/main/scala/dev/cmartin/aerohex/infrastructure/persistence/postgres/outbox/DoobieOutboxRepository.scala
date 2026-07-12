@@ -1,15 +1,14 @@
 package dev.cmartin.aerohex.infrastructure.persistence.postgres.outbox
 
+import dev.cmartin.aerohex.domain.error.DomainError
+import dev.cmartin.aerohex.domain.outbox.OutboxRepository
+import dev.cmartin.aerohex.domain.outbox.{OutboxEvent, OutboxEventId}
 import doobie.Transactor
 import doobie.implicits.*
 import doobie.postgres.implicits.*
-import dev.cmartin.aerohex.domain.error.DomainError
-import dev.cmartin.aerohex.domain.outbox.{OutboxEvent, OutboxEventId}
-import dev.cmartin.aerohex.domain.outbox.OutboxRepository
-import zio.{IO, Task, URLayer, ZLayer}
-import zio.interop.catz.*
-
 import java.util.UUID
+import zio.interop.catz.*
+import zio.{IO, Task, URLayer, ZLayer}
 
 final class DoobieOutboxRepository(xa: Transactor[Task]) extends OutboxRepository {
 

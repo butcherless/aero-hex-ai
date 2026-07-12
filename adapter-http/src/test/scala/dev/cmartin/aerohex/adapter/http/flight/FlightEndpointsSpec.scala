@@ -2,21 +2,20 @@ package dev.cmartin.aerohex.adapter.http.flight
 
 import dev.cmartin.aerohex.domain.airline.IcaoCode
 import dev.cmartin.aerohex.domain.error.DomainError
-import dev.cmartin.aerohex.domain.flight.{Flight, FlightCode, FindFlightUseCase}
+import dev.cmartin.aerohex.domain.flight.{FindFlightUseCase, Flight, FlightCode}
 import dev.cmartin.aerohex.domain.route.RouteId
 import dev.cmartin.aerohex.shared.Pagination
 import io.circe.generic.auto.*
+import java.time.LocalTime
+import java.util.UUID
 import sttp.client4.*
 import sttp.client4.circe.*
 import sttp.client4.impl.zio.RIOMonadAsyncError
 import sttp.client4.testing.BackendStub
 import sttp.model.StatusCode
 import sttp.tapir.server.stub4.TapirStubInterpreter
-import zio.{IO, Scope, Task, ZIO, ZLayer}
 import zio.test.*
-
-import java.time.LocalTime
-import java.util.UUID
+import zio.{IO, Scope, Task, ZIO, ZLayer}
 
 object FlightEndpointsSpec extends ZIOSpecDefault:
 

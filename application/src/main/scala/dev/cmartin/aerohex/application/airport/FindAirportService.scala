@@ -1,13 +1,13 @@
 package dev.cmartin.aerohex.application.airport
 
 import dev.cmartin.aerohex.application.aspect.ServiceAspect
+import dev.cmartin.aerohex.domain.airport.AirportRepository
+import dev.cmartin.aerohex.domain.airport.FindAirportUseCase
+import dev.cmartin.aerohex.domain.airport.{Airport, IataCode}
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.error.DomainError.AirportNotFound
-import dev.cmartin.aerohex.domain.airport.{Airport, IataCode}
-import dev.cmartin.aerohex.domain.airport.FindAirportUseCase
-import dev.cmartin.aerohex.domain.airport.AirportRepository
 import dev.cmartin.aerohex.shared.Pagination
-import zio.{IO, ZIO, URLayer, ZLayer}
+import zio.{IO, URLayer, ZIO, ZLayer}
 
 final class FindAirportService(repo: AirportRepository) extends FindAirportUseCase {
 

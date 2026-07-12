@@ -1,9 +1,8 @@
 package dev.cmartin.aerohex.infrastructure.persistence.quill.config
 
 import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
-import zio.{TaskLayer, ZIO, ZLayer}
-
 import javax.sql.DataSource
+import zio.{TaskLayer, ZIO, ZLayer}
 
 object QuillDataSourceLayer {
 

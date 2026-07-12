@@ -10,8 +10,8 @@ import sttp.client4.impl.zio.RIOMonadAsyncError
 import sttp.client4.testing.BackendStub
 import sttp.model.StatusCode
 import sttp.tapir.server.stub4.TapirStubInterpreter
-import zio.{IO, Scope, Task, UIO, ZIO, ZLayer}
 import zio.test.*
+import zio.{IO, Scope, Task, UIO, ZIO, ZLayer}
 
 object CountryEndpointsSpec extends ZIOSpecDefault:
 

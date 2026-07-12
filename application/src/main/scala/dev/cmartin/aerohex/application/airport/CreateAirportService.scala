@@ -1,10 +1,10 @@
 package dev.cmartin.aerohex.application.airport
 
 import dev.cmartin.aerohex.application.aspect.ServiceAspect
-import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.airport.Airport
-import dev.cmartin.aerohex.domain.airport.{CreateAirportCommand, CreateAirportUseCase}
 import dev.cmartin.aerohex.domain.airport.AirportRepository
+import dev.cmartin.aerohex.domain.airport.{CreateAirportCommand, CreateAirportUseCase}
+import dev.cmartin.aerohex.domain.error.DomainError
 import zio.{IO, URLayer, ZIO, ZLayer}
 
 final class CreateAirportService(repo: AirportRepository) extends CreateAirportUseCase:

@@ -1,7 +1,7 @@
 package dev.cmartin.aerohex.infrastructure.messaging.kafka.outbox
 
 import dev.cmartin.aerohex.domain.outbox.{EventPublisher, OutboxRepository}
-import zio.{ZIO, Schedule, Duration}
+import zio.{Duration, Schedule, ZIO}
 
 object OutboxRelay {
 

@@ -1,12 +1,12 @@
 package dev.cmartin.aerohex.application.aircraft
 
+import dev.cmartin.aerohex.domain.aircraft.AircraftRepository
+import dev.cmartin.aerohex.domain.aircraft.FindAircraftUseCase
+import dev.cmartin.aerohex.domain.aircraft.{Aircraft, Registration}
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.error.DomainError.AircraftNotFound
-import dev.cmartin.aerohex.domain.aircraft.{Aircraft, Registration}
-import dev.cmartin.aerohex.domain.aircraft.FindAircraftUseCase
-import dev.cmartin.aerohex.domain.aircraft.AircraftRepository
 import dev.cmartin.aerohex.shared.Pagination
-import zio.{IO, ZIO, URLayer, ZLayer}
+import zio.{IO, URLayer, ZIO, ZLayer}
 
 final class FindAircraftService(repo: AircraftRepository) extends FindAircraftUseCase {
 

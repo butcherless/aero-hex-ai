@@ -4,16 +4,15 @@ import dev.cmartin.aerohex.domain.airline.*
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.shared.Pagination
 import io.circe.generic.auto.*
+import java.time.LocalDate
 import sttp.client4.*
 import sttp.client4.circe.*
 import sttp.client4.impl.zio.RIOMonadAsyncError
 import sttp.client4.testing.BackendStub
 import sttp.model.StatusCode
 import sttp.tapir.server.stub4.TapirStubInterpreter
-import zio.{IO, Scope, Task, ZIO, ZLayer}
 import zio.test.*
-
-import java.time.LocalDate
+import zio.{IO, Scope, Task, ZIO, ZLayer}
 
 object AirlineEndpointsSpec extends ZIOSpecDefault:
 

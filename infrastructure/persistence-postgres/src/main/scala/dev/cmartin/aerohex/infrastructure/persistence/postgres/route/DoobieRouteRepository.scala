@@ -1,19 +1,18 @@
 package dev.cmartin.aerohex.infrastructure.persistence.postgres.route
 
+import dev.cmartin.aerohex.domain.airline.IcaoCode
+import dev.cmartin.aerohex.domain.airport.IataCode
+import dev.cmartin.aerohex.domain.error.DomainError
+import dev.cmartin.aerohex.domain.route.RouteRepository
+import dev.cmartin.aerohex.domain.route.{Route, RouteId}
 import dev.cmartin.aerohex.infrastructure.persistence.postgres.common.DoobieIdResolver
+import dev.cmartin.aerohex.shared.Pagination
 import doobie.Transactor
 import doobie.implicits.*
 import doobie.postgres.implicits.*
-import dev.cmartin.aerohex.domain.error.DomainError
-import dev.cmartin.aerohex.domain.airline.IcaoCode
-import dev.cmartin.aerohex.domain.airport.IataCode
-import dev.cmartin.aerohex.domain.route.{Route, RouteId}
-import dev.cmartin.aerohex.domain.route.RouteRepository
-import dev.cmartin.aerohex.shared.Pagination
-import zio.{IO, Task, URLayer, ZLayer}
-import zio.interop.catz.*
-
 import java.util.UUID
+import zio.interop.catz.*
+import zio.{IO, Task, URLayer, ZLayer}
 
 final class DoobieRouteRepository(protected val xa: Transactor[Task]) extends RouteRepository
     with DoobieIdResolver {

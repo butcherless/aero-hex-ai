@@ -1,10 +1,10 @@
 package dev.cmartin.aerohex.application.airline
 
 import dev.cmartin.aerohex.application.aspect.ServiceAspect
-import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.airline.Airline
-import dev.cmartin.aerohex.domain.airline.{UpdateAirlineCommand, UpdateAirlineUseCase}
 import dev.cmartin.aerohex.domain.airline.AirlineRepository
+import dev.cmartin.aerohex.domain.airline.{UpdateAirlineCommand, UpdateAirlineUseCase}
+import dev.cmartin.aerohex.domain.error.DomainError
 import zio.{IO, URLayer, ZLayer}
 
 final class UpdateAirlineService(repo: AirlineRepository) extends UpdateAirlineUseCase:

@@ -1,13 +1,13 @@
 package dev.cmartin.aerohex.infrastructure.persistence.postgres.country
 
+import dev.cmartin.aerohex.domain.country.CountryRepository
+import dev.cmartin.aerohex.domain.country.{Country, CountryCode}
+import dev.cmartin.aerohex.domain.error.DomainError
+import dev.cmartin.aerohex.shared.Pagination
 import doobie.Transactor
 import doobie.implicits.*
-import dev.cmartin.aerohex.domain.error.DomainError
-import dev.cmartin.aerohex.domain.country.{Country, CountryCode}
-import dev.cmartin.aerohex.domain.country.CountryRepository
-import dev.cmartin.aerohex.shared.Pagination
-import zio.{IO, Task, UIO, URLayer, ZIO, ZLayer}
 import zio.interop.catz.*
+import zio.{IO, Task, UIO, URLayer, ZIO, ZLayer}
 
 final class DoobieCountryRepository(xa: Transactor[Task]) extends CountryRepository {
 

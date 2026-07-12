@@ -1,9 +1,9 @@
 package dev.cmartin.aerohex.adapter.http.aircraft
 
-import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.aircraft.{Aircraft, Registration}
-import dev.cmartin.aerohex.domain.airline.IcaoCode
 import dev.cmartin.aerohex.domain.aircraft.{CreateAircraftCommand, UpdateAircraftCommand}
+import dev.cmartin.aerohex.domain.airline.IcaoCode
+import dev.cmartin.aerohex.domain.error.DomainError
 import sttp.tapir.Schema
 import sttp.tapir.Validator
 import zio.IO

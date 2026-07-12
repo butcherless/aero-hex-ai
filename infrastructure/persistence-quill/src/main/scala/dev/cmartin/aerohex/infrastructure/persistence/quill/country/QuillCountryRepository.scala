@@ -1,15 +1,14 @@
 package dev.cmartin.aerohex.infrastructure.persistence.quill.country
 
-import dev.cmartin.aerohex.infrastructure.persistence.quill.common.QuillSqlState
-import dev.cmartin.aerohex.domain.error.DomainError
-import dev.cmartin.aerohex.domain.country.{Country, CountryCode}
 import dev.cmartin.aerohex.domain.country.CountryRepository
+import dev.cmartin.aerohex.domain.country.{Country, CountryCode}
+import dev.cmartin.aerohex.domain.error.DomainError
+import dev.cmartin.aerohex.infrastructure.persistence.quill.common.QuillSqlState
 import dev.cmartin.aerohex.shared.Pagination
 import io.getquill.*
 import io.getquill.jdbczio.Quill
-import zio.{IO, UIO, URLayer, ZIO, ZLayer}
-
 import javax.sql.DataSource
+import zio.{IO, UIO, URLayer, ZIO, ZLayer}
 
 final class QuillCountryRepository(dataSource: DataSource) extends CountryRepository {
 

@@ -1,7 +1,7 @@
 package dev.cmartin.aerohex.adapter.http.country
 
-import dev.cmartin.aerohex.adapter.http.common.PaginationParams
 import dev.cmartin.aerohex.adapter.http.common.CodePatterns
+import dev.cmartin.aerohex.adapter.http.common.PaginationParams
 import dev.cmartin.aerohex.adapter.http.error.{EndpointErrors, HttpErrorResponse}
 import io.circe.generic.auto.*
 import sttp.model.StatusCode

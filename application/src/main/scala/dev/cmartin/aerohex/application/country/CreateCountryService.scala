@@ -1,10 +1,10 @@
 package dev.cmartin.aerohex.application.country
 
 import dev.cmartin.aerohex.application.aspect.ServiceAspect
-import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.country.Country
-import dev.cmartin.aerohex.domain.country.{CreateCountryCommand, CreateCountryUseCase}
 import dev.cmartin.aerohex.domain.country.CountryRepository
+import dev.cmartin.aerohex.domain.country.{CreateCountryCommand, CreateCountryUseCase}
+import dev.cmartin.aerohex.domain.error.DomainError
 import zio.{IO, URLayer, ZIO, ZLayer}
 
 final class CreateCountryService(repo: CountryRepository) extends CreateCountryUseCase:

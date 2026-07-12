@@ -1,18 +1,17 @@
 package dev.cmartin.aerohex.infrastructure.persistence.quill.airline
 
-import dev.cmartin.aerohex.infrastructure.persistence.quill.country.QuillCountryIdResolver
-import dev.cmartin.aerohex.infrastructure.persistence.quill.common.QuillSqlState
-import dev.cmartin.aerohex.domain.error.DomainError
+import dev.cmartin.aerohex.domain.airline.AirlineRepository
 import dev.cmartin.aerohex.domain.airline.{Airline, IcaoCode}
 import dev.cmartin.aerohex.domain.country.CountryCode
-import dev.cmartin.aerohex.domain.airline.AirlineRepository
+import dev.cmartin.aerohex.domain.error.DomainError
+import dev.cmartin.aerohex.infrastructure.persistence.quill.common.QuillSqlState
+import dev.cmartin.aerohex.infrastructure.persistence.quill.country.QuillCountryIdResolver
 import dev.cmartin.aerohex.shared.Pagination
 import io.getquill.*
 import io.getquill.jdbczio.Quill
-import zio.{IO, URLayer, ZIO, ZLayer}
-
 import java.time.LocalDate
 import javax.sql.DataSource
+import zio.{IO, URLayer, ZIO, ZLayer}
 
 final class QuillAirlineRepository(dataSource: DataSource) extends AirlineRepository with QuillCountryIdResolver {
 

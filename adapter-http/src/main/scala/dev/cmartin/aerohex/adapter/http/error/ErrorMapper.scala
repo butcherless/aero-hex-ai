@@ -2,7 +2,6 @@ package dev.cmartin.aerohex.adapter.http.error
 
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.error.DomainError.*
-
 import sttp.model.StatusCode
 
 case class ApiError(statusCode: StatusCode, message: String)

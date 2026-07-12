@@ -1,5 +1,6 @@
 package dev.cmartin.aerohex.application.aircraft
 
+import AircraftRepositoryStub.{stubAircraftRepo, unimplementedAircraftRepo}
 import dev.cmartin.aerohex.domain.aircraft.{
   Aircraft,
   CreateAircraftCommand,
@@ -12,10 +13,9 @@ import dev.cmartin.aerohex.domain.aircraft.{
 }
 import dev.cmartin.aerohex.domain.airline.IcaoCode
 import dev.cmartin.aerohex.domain.error.DomainError
-import AircraftRepositoryStub.{stubAircraftRepo, unimplementedAircraftRepo}
 import dev.cmartin.aerohex.shared.Pagination
-import zio.{Ref, Scope, ZIO, ZLayer}
 import zio.test.*
+import zio.{Ref, Scope, ZIO, ZLayer}
 
 object AircraftServiceSpec extends ZIOSpecDefault:
 

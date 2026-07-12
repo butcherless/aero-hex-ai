@@ -1,7 +1,7 @@
 package dev.cmartin.aerohex.application.aspect
 
-import zio.{Scope, ZIO}
 import zio.test.*
+import zio.{Scope, ZIO}
 
 object ServiceAspectSpec extends ZIOSpecDefault:
 

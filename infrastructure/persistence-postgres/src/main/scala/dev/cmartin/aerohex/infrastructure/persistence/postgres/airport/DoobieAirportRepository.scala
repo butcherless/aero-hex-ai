@@ -1,17 +1,17 @@
 package dev.cmartin.aerohex.infrastructure.persistence.postgres.airport
 
+import dev.cmartin.aerohex.domain.airline.IcaoCode
+import dev.cmartin.aerohex.domain.airport.AirportRepository
+import dev.cmartin.aerohex.domain.airport.{Airport, IataCode}
+import dev.cmartin.aerohex.domain.country.CountryCode
+import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.infrastructure.persistence.postgres.common.DoobieIdResolver
+import dev.cmartin.aerohex.shared.Pagination
 import doobie.Transactor
 import doobie.implicits.*
 import doobie.postgres.*
-import dev.cmartin.aerohex.domain.error.DomainError
-import dev.cmartin.aerohex.domain.airline.IcaoCode
-import dev.cmartin.aerohex.domain.airport.{Airport, IataCode}
-import dev.cmartin.aerohex.domain.country.CountryCode
-import dev.cmartin.aerohex.domain.airport.AirportRepository
-import dev.cmartin.aerohex.shared.Pagination
-import zio.{IO, Task, URLayer, ZIO, ZLayer}
 import zio.interop.catz.*
+import zio.{IO, Task, URLayer, ZIO, ZLayer}
 
 final class DoobieAirportRepository(protected val xa: Transactor[Task]) extends AirportRepository
     with DoobieIdResolver {

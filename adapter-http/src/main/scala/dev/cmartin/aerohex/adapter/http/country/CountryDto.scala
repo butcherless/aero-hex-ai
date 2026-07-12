@@ -1,8 +1,8 @@
 package dev.cmartin.aerohex.adapter.http.country
 
-import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.country.{Country, CountryCode}
 import dev.cmartin.aerohex.domain.country.{CreateCountryCommand, UpdateCountryCommand}
+import dev.cmartin.aerohex.domain.error.DomainError
 import sttp.tapir.{Schema, Validator}
 import zio.IO
 

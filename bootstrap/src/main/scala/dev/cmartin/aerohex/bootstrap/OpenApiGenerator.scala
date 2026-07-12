@@ -2,8 +2,8 @@ package dev.cmartin.aerohex.bootstrap
 
 import dev.cmartin.aerohex.adapter.http.ApiSpec
 import sttp.apispec.openapi.Server
-import sttp.tapir.docs.openapi.OpenAPIDocsInterpreter
 import sttp.apispec.openapi.circe.yaml.*
+import sttp.tapir.docs.openapi.OpenAPIDocsInterpreter
 
 object OpenApiGenerator:
   def main(args: Array[String]): Unit =

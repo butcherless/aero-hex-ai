@@ -1,10 +1,10 @@
 package dev.cmartin.aerohex.application.airport
 
 import dev.cmartin.aerohex.application.aspect.ServiceAspect
-import dev.cmartin.aerohex.domain.error.DomainError
-import dev.cmartin.aerohex.domain.airport.IataCode
-import dev.cmartin.aerohex.domain.airport.DeleteAirportUseCase
 import dev.cmartin.aerohex.domain.airport.AirportRepository
+import dev.cmartin.aerohex.domain.airport.DeleteAirportUseCase
+import dev.cmartin.aerohex.domain.airport.IataCode
+import dev.cmartin.aerohex.domain.error.DomainError
 import zio.{IO, URLayer, ZLayer}
 
 final class DeleteAirportService(repo: AirportRepository) extends DeleteAirportUseCase:

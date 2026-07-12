@@ -2,7 +2,6 @@ package dev.cmartin.aerohex.domain.route
 
 import dev.cmartin.aerohex.domain.airline.IcaoCode
 import dev.cmartin.aerohex.domain.airport.IataCode
-
 import java.util.UUID
 
 opaque type RouteId = UUID

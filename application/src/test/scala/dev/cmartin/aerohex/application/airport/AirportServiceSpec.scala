@@ -1,5 +1,7 @@
 package dev.cmartin.aerohex.application.airport
 
+import AirportRepositoryStub.{stubAirportRepo, unimplementedAirportRepo}
+import dev.cmartin.aerohex.application.country.CountryRepositoryStub.{stubCountryRepo, unimplementedCountryRepo}
 import dev.cmartin.aerohex.domain.airline.IcaoCode
 import dev.cmartin.aerohex.domain.airport.{
   Airport,
@@ -14,11 +16,9 @@ import dev.cmartin.aerohex.domain.airport.{
 }
 import dev.cmartin.aerohex.domain.country.{Country, CountryCode}
 import dev.cmartin.aerohex.domain.error.DomainError
-import dev.cmartin.aerohex.application.country.CountryRepositoryStub.{stubCountryRepo, unimplementedCountryRepo}
-import AirportRepositoryStub.{stubAirportRepo, unimplementedAirportRepo}
 import dev.cmartin.aerohex.shared.Pagination
-import zio.{Ref, Scope, ZIO, ZLayer}
 import zio.test.*
+import zio.{Ref, Scope, ZIO, ZLayer}
 
 object AirportServiceSpec extends ZIOSpecDefault:
 

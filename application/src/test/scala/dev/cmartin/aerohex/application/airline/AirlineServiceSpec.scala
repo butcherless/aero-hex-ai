@@ -1,5 +1,6 @@
 package dev.cmartin.aerohex.application.airline
 
+import AirlineRepositoryStub.{stubAirlineRepo, unimplementedAirlineRepo}
 import dev.cmartin.aerohex.domain.airline.{
   Airline,
   CreateAirlineCommand,
@@ -12,12 +13,10 @@ import dev.cmartin.aerohex.domain.airline.{
 }
 import dev.cmartin.aerohex.domain.country.CountryCode
 import dev.cmartin.aerohex.domain.error.DomainError
-import AirlineRepositoryStub.{stubAirlineRepo, unimplementedAirlineRepo}
 import dev.cmartin.aerohex.shared.Pagination
-import zio.{Ref, Scope, ZIO, ZLayer}
-import zio.test.*
-
 import java.time.LocalDate
+import zio.test.*
+import zio.{Ref, Scope, ZIO, ZLayer}
 
 object AirlineServiceSpec extends ZIOSpecDefault:
 

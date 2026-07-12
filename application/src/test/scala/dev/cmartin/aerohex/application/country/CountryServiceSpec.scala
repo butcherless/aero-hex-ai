@@ -1,5 +1,6 @@
 package dev.cmartin.aerohex.application.country
 
+import CountryRepositoryStub.{stubCountryRepo, unimplementedCountryRepo}
 import dev.cmartin.aerohex.domain.country.{
   Country,
   CountryCode,
@@ -11,10 +12,9 @@ import dev.cmartin.aerohex.domain.country.{
   UpdateCountryUseCase
 }
 import dev.cmartin.aerohex.domain.error.DomainError
-import CountryRepositoryStub.{stubCountryRepo, unimplementedCountryRepo}
 import dev.cmartin.aerohex.shared.Pagination
-import zio.{Ref, Scope, ZIO, ZLayer}
 import zio.test.*
+import zio.{Ref, Scope, ZIO, ZLayer}
 
 object CountryServiceSpec extends ZIOSpecDefault:
 

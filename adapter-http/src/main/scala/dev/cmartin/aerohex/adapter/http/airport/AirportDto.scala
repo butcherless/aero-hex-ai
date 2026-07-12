@@ -1,11 +1,11 @@
 package dev.cmartin.aerohex.adapter.http.airport
 
 import dev.cmartin.aerohex.adapter.http.common.CodePatterns
-import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.airline.IcaoCode
 import dev.cmartin.aerohex.domain.airport.{Airport, IataCode}
-import dev.cmartin.aerohex.domain.country.CountryCode
 import dev.cmartin.aerohex.domain.airport.{CreateAirportCommand, UpdateAirportCommand}
+import dev.cmartin.aerohex.domain.country.CountryCode
+import dev.cmartin.aerohex.domain.error.DomainError
 import sttp.tapir.Schema
 import sttp.tapir.Validator
 import zio.IO

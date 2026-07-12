@@ -2,13 +2,12 @@ package dev.cmartin.aerohex.application.flight
 
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.error.DomainError.FlightInstanceNotFound
-import dev.cmartin.aerohex.domain.flight.{FlightInstance, FlightInstanceId}
 import dev.cmartin.aerohex.domain.flight.FindFlightInstanceUseCase
 import dev.cmartin.aerohex.domain.flight.FlightInstanceRepository
+import dev.cmartin.aerohex.domain.flight.{FlightInstance, FlightInstanceId}
 import dev.cmartin.aerohex.shared.Pagination
-import zio.{IO, ZIO, URLayer, ZLayer}
-
 import java.util.UUID
+import zio.{IO, URLayer, ZIO, ZLayer}
 
 final class FindFlightInstanceService(repo: FlightInstanceRepository) extends FindFlightInstanceUseCase {
 

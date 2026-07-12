@@ -1,7 +1,6 @@
 package dev.cmartin.aerohex.domain.flight
 
 import dev.cmartin.aerohex.domain.aircraft.Registration
-
 import java.time.LocalDateTime
 import java.util.UUID
 

@@ -1,9 +1,8 @@
 package dev.cmartin.aerohex.infrastructure.persistence.quill.common
 
 import dev.cmartin.aerohex.domain.error.DomainError
-import zio.ZIO
-
 import java.sql.SQLException
+import zio.ZIO
 
 private[quill] object QuillSqlState:
   private val uniqueViolation = "23505"

@@ -3,10 +3,9 @@ package dev.cmartin.aerohex.infrastructure.messaging.kafka.route
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.outbox.{EventPublisher, OutboxEvent}
 import dev.cmartin.aerohex.infrastructure.messaging.kafka.config.KafkaConfig
-import zio.{IO, ZIO, ZLayer, URLayer, TaskLayer}
-import zio.kafka.producer.{Producer, ProducerSettings}
-
 import scala.annotation.unused
+import zio.kafka.producer.{Producer, ProducerSettings}
+import zio.{IO, TaskLayer, URLayer, ZIO, ZLayer}
 
 // `producer` is unused until publish() is implemented for real (see CLAUDE.md's
 // Pending implementations table) — @unused silences -Wunused until then.
