@@ -304,6 +304,38 @@ sbt coverageAggregate
 
 **Missing-dir gotcha:** if a module's tests run without ever recompiling that module (nothing changed since the last compile), scoverage never writes its local `.coverage-data/` dir, and the instrumented run then fails with `ExceptionInInitializerError` at test runtime. Fix: `mkdir -p <module>/.coverage-data/scoverage-data` per module before running tests (the CI workflow does this). Never `rm -rf` an existing `.coverage-data/` dir to "reset" it — `coverageDataDir` lives outside `target/` specifically so `sbt clean` never touches the statement catalog; deleting it yourself just recreates the same gap.
 
+## Validation
+
+Four independent layers, each catching a different class of problem — run the ones relevant to
+what changed, not always all four:
+
+1. **Local build** — `sbt clean` → `compile` → `test` (155 unit tests, in-memory stubs / Tapir
+   stub server) → `integrationTests/test` (78 tests, real Postgres via Testcontainers, needs
+   Docker — see `## Integration tests` above) → `bootstrap/assembly` (package) →
+   `coverageAggregate` (see `## Coverage` above for the `mkdir -p .coverage-data/...` step first).
+2. **OpenAPI spec** — `/validate-openapi` skill (`bash .claude/skills/validate-openapi/scripts/run.sh`).
+   Rebuilds the jar from clean, generates the spec via `OpenApiGenerator`, then checks it with
+   Redocly (OAS 3.1 schema conformance), an inline-schema-completeness check, and Spectral
+   (best-practice lint). Reports an endpoint inventory table alongside pass/fail.
+3. **End-to-end** — `/run-e2e-tests` skill
+   (`bash .claude/skills/run-e2e-tests/scripts/run.sh`). Starts real Postgres and the real HTTP
+   server (**must** launch with `-cp <jar> dev.cmartin.aerohex.bootstrap.Main`, never
+   `java -jar` — the assembly jar's default main-class is `OpenApiGenerator`, the spec-dump tool
+   step 2 uses, not the server; `-jar` prints YAML and exits without ever binding a port), then
+   runs the Postman collection's 5 dedicated `E2E — ...` folders (`docs/api/collection.json`)
+   against it via Newman. This is the only workflow that drives the actual running server rather
+   than stubs or a throwaway Testcontainers database.
+4. **CI** — no dedicated skill; check with `gh run list --workflow=scala.yml --limit 5` and
+   `gh run view --log --job=<job-id>` after a push. Runs steps 1's `compile`/`test`/
+   `coverageAggregate`/`assembly` (never `integrationTests`, deliberately excluded — see
+   `## Integration tests`) against a fresh checkout, so its coverage number is lower than a local
+   run that includes the integration suite; that gap is expected, not a regression.
+
+Layering, cheapest/narrowest first: unit tests (stubs) → integration tests (real Postgres,
+opt-in module) → E2E (real server + real dev Postgres, closest to production) → OpenAPI
+validation (contract correctness, an independent axis from runtime behavior) → CI (confirms
+1–3 reproduce in GitHub's environment).
+
 ## Formatter
 
 `.scalafmt.conf`: `maxColumn = 120`, `align.preset = most`, `newlines.source = keep`, `lineEndings = preserve`, `rewrite.scala3.removeOptionalBraces = no`, `project.git = true` (only git-tracked files formatted; run `sbt scalafmtAll` for new files).
