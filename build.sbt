@@ -27,23 +27,37 @@ libraryDependencies ++= commonTest
 // coverageDataDir outside target/ so sbt clean never deletes the statement catalog
 val coverageSettings: Seq[Setting[?]] = Seq(
   coverageEnabled := true,
-  coverageDataDir := baseDirectory.value / ".coverage-data"
+  coverageDataDir := baseDirectory.value / ".coverage-data",
+  // No build-wide gate yet — flip coverageFailOnMinimum to true once the current
+  // baseline is measured with `sbt coverageAggregate` (thresholds below are a
+  // starting guess, not a measured floor).
+  coverageFailOnMinimum      := false,
+  coverageMinimumStmtTotal   := 70,
+  coverageMinimumBranchTotal := 60
 )
 
 // ─── Modules ────────────────────────────────────────────────────────────────
 
+// Single source of truth for "modules aggregated at root" — the CI workflow's
+// per-module `mkdir -p .coverage-data/scoverage-data` list (a plain bash step, kept
+// separate on purpose — see CLAUDE.md's CAS caveat on why an sbt *task* doing this
+// isn't safe: sbt 2's action cache can skip a cacheable task's side effects on a
+// repeat invocation) is the one list NOT derived from this and must be kept in sync
+// by hand when a module is added or removed here.
+lazy val coverageProjects: Seq[Project] = Seq(
+  sharedKernel,
+  domain,
+  application,
+  persistencePostgres,
+  persistenceQuill,
+  messagingKafka,
+  migration,
+  adapterHttp,
+  bootstrap
+)
+
 lazy val root = rootProject
-  .aggregate(
-    sharedKernel,
-    domain,
-    application,
-    persistencePostgres,
-    persistenceQuill,
-    messagingKafka,
-    migration,
-    adapterHttp,
-    bootstrap
-  )
+  .aggregate(coverageProjects.map(p => p: ProjectReference)*)
   .settings(
     name           := "aero-hex-ai",
     publish / skip := true
