@@ -3,10 +3,8 @@ package dev.cmartin.aerohex.infrastructure.messaging.kafka.route
 import zio.kafka.serde.Serde
 
 case class RouteCreatedEvent(
-    routeId: String,
     originIata: String,
     destinationIata: String,
-    airlineIcao: String,
     distanceKm: Int
 )
 

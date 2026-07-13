@@ -29,7 +29,7 @@ classDiagram
     Country "1" --> "many" Airline: registers
     Airport "1" --> "many" Route: origin of
     Airport "1" --> "many" Route: destination of
-    Airline "1" --> "many" Route: operates
+    Airline "many" --> "many" Route: route_airlines
     Airline "1" --> "many" Aircraft: has fleet of
     Airline "1" --> "many" Flight: operates
     Route "1" --> "many" Flight: scheduled as
@@ -49,6 +49,15 @@ another entity's identifier). If an entity is only reachable *through* another o
 table, it's left out — keeping the model simple and avoiding denormalized/derivable edges. Each
 chapter notes what's reachable only transitively, so it's clear the omission was deliberate, not
 missed.
+
+**Common queries — deduplication, parent wins.** Every relationship shows up in *both* entities'
+chapters (e.g. Country↔Airport appears in §2.1 and §2.2), but each query pair (X→Y and its
+inverse Y→X) is listed only once: in whichever entity is the **parent** — the `1` side of that
+relationship's `1 → many` edge. The child's chapter instead points back to the parent's chapter
+rather than repeating the same SQL. This applies recursively down the graph: `Airport` is
+`Country`'s child but `Route`'s parent, so §2.2 keeps the Airport↔Route queries (parent there)
+while pointing to §2.1 for the Country↔Airport queries (child there). Avoids the same SQL being
+maintained in two places and drifting out of sync.
 
 ### 2.1 Country
 
@@ -86,12 +95,11 @@ in the model; the type's only other use is `Airport.iataCode`, its own identity)
 | Route          | outgoing  | 1 → many    | origin of      |
 | Route          | outgoing  | 1 → many    | destination of |
 
-Common queries, against the current (post-`V7`) surrogate-key schema:
+Common queries, against the current (post-`V7`) surrogate-key schema. `Airport` is `Country`'s
+child, so the Country↔Airport pair is kept once at the parent — see §2.1:
 
 | Query                                    | SQL                                                                                                        |
 |------------------------------------------|------------------------------------------------------------------------------------------------------------|
-| Get the country for an airport           | `SELECT c.* FROM countries c JOIN airports a ON a.country_id = c.id WHERE a.iata_code = 'MAD';`            |
-| Get all airports in a country            | `SELECT a.* FROM airports a JOIN countries c ON a.country_id = c.id WHERE c.code = 'ES';`                  |
 | Get all routes originating at an airport | `SELECT r.* FROM routes r JOIN airports a ON r.origin_airport_id = a.id WHERE a.iata_code = 'MAD';`        |
 | Get the origin airport for a route       | `SELECT a.* FROM airports a JOIN routes r ON r.origin_airport_id = a.id WHERE r.id = '<route-uuid>';`      |
 | Get all routes arriving at an airport    | `SELECT r.* FROM routes r JOIN airports a ON r.destination_airport_id = a.id WHERE a.iata_code = 'MAD';`   |
@@ -113,12 +121,11 @@ Belongs to one `Country`; three entities reference it independently by `IcaoCode
 | Aircraft       | outgoing  | 1 → many    | has fleet of  |
 | Flight         | outgoing  | 1 → many    | operates      |
 
-Common queries, against the current (post-`V7`) surrogate-key schema:
+Common queries, against the current (post-`V7`) surrogate-key schema. `Airline` is `Country`'s
+child, so the Country↔Airline pair is kept once at the parent — see §2.1:
 
 | Query                                       | SQL                                                                                             |
 |---------------------------------------------|-------------------------------------------------------------------------------------------------|
-| Get the country an airline is registered in | `SELECT c.* FROM countries c JOIN airlines l ON l.country_id = c.id WHERE l.icao_code = 'IBE';` |
-| Get all airlines registered in a country    | `SELECT l.* FROM airlines l JOIN countries c ON l.country_id = c.id WHERE c.code = 'ES';`       |
 | Get all routes operated by an airline       | `SELECT r.* FROM routes r JOIN airlines l ON r.airline_id = l.id WHERE l.icao_code = 'IBE';`    |
 | Get the airline operating a route           | `SELECT l.* FROM airlines l JOIN routes r ON r.airline_id = l.id WHERE r.id = '<route-uuid>';`  |
 
@@ -143,16 +150,13 @@ The hub entity: the only one referencing two other entities' identifiers three t
 | Airline        | incoming  | many → 1    | operated by     |
 | Flight         | outgoing  | 1 → many    | scheduled as    |
 
-Common queries, against the current (post-`V7`) surrogate-key schema:
+Common queries, against the current (post-`V7`) surrogate-key schema. `Route` is the child in
+both its `Airport` and `Airline` relationships, so those query pairs are kept once at the
+parent — origin/destination-airport queries at §2.2, operating-airline queries at §2.3. Only the
+one query with no parent chapter to own it (it spans all three relationships at once) stays here:
 
 | Query                                    | SQL                                                                                                                                                                                                                                                                                   |
 |------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Get the origin airport for a route       | `SELECT a.* FROM airports a JOIN routes r ON r.origin_airport_id = a.id WHERE r.id = '<route-uuid>';`                                                                                                                                                                                 |
-| Get all routes originating at an airport | `SELECT r.* FROM routes r JOIN airports a ON r.origin_airport_id = a.id WHERE a.iata_code = 'MAD';`                                                                                                                                                                                   |
-| Get the destination airport for a route  | `SELECT a.* FROM airports a JOIN routes r ON r.destination_airport_id = a.id WHERE r.id = '<route-uuid>';`                                                                                                                                                                            |
-| Get all routes arriving at an airport    | `SELECT r.* FROM routes r JOIN airports a ON r.destination_airport_id = a.id WHERE a.iata_code = 'MAD';`                                                                                                                                                                              |
-| Get the airline operating a route        | `SELECT l.* FROM airlines l JOIN routes r ON r.airline_id = l.id WHERE r.id = '<route-uuid>';`                                                                                                                                                                                        |
-| Get all routes operated by an airline    | `SELECT r.* FROM routes r JOIN airlines l ON r.airline_id = l.id WHERE l.icao_code = 'IBE';`                                                                                                                                                                                          |
 | Get the countries joined by a route      | `SELECT DISTINCT c.* FROM routes r JOIN airports ao ON r.origin_airport_id = ao.id JOIN airports ad ON r.destination_airport_id = ad.id JOIN airlines l ON r.airline_id = l.id JOIN countries c ON c.id IN (ao.country_id, ad.country_id, l.country_id) WHERE r.id = '<route-uuid>';` |
 
 No SQL for the `Flight` relationship: `Flight` has no Flyway table (see §2.3's note), so it's
@@ -179,7 +183,8 @@ Neither persisted (no Flyway table) nor creatable (`FindFlightUseCase` is read-o
 
 Common queries — same shape as every other chapter, but `flights` has no Flyway table (see
 §2.3/§2.4's notes and `01-domain-model.md` Open Question 5), so the SQL column is a placeholder
-until that gap closes:
+until that gap closes. `Flight` is the parent in its `FlightInstance` relationship, so the last
+two rows below are kept here rather than duplicated at §2.7:
 
 | Query | SQL |
 |---|---|
@@ -207,7 +212,9 @@ domain-model-only today.
 | Airline | incoming | many → 1 | belongs to fleet of |
 | FlightInstance | outgoing | 1 → many | carries |
 
-Common queries — placeholders, same reason as §2.5: no `aircraft` table exists yet.
+Common queries — placeholders, same reason as §2.5: no `aircraft` table exists yet. `Aircraft` is
+the parent in its `FlightInstance` relationship, so the last two rows below are kept here rather
+than duplicated at §2.7:
 
 | Query | SQL |
 |---|---|
@@ -233,14 +240,9 @@ Flyway table) nor creatable (no `CreateFlightInstanceUseCase` exists).
 | Flight | incoming | many → 1 | occurrence of |
 | Aircraft | incoming | many → 1 | carried by |
 
-Common queries — placeholders, same reason as §2.5/§2.6: no `flight_instances` table exists yet.
-
-| Query | SQL |
-|---|---|
-| Get the flight a flight instance occurs on | `TODO — flight_instances has no Flyway table yet` |
-| Get all flight instances of a flight | `TODO — flight_instances has no Flyway table yet` |
-| Get the aircraft that carried a flight instance | `TODO — flight_instances has no Flyway table yet` |
-| Get all flight instances carried by an aircraft | `TODO — flight_instances has no Flyway table yet` |
+No common-queries table here: `FlightInstance` is the child in both of its relationships
+(`Flight` and `Aircraft`), so both query pairs are kept once at their parent — see §2.5 for the
+Flight↔FlightInstance pair, §2.6 for the Aircraft↔FlightInstance pair.
 
 Considered and excluded as transitive: everything else in the graph. `Route` and `Airline` (via
 `Flight`), `Airline` again (via `Aircraft`), `Airport` (via `Flight → Route`), and `Country`

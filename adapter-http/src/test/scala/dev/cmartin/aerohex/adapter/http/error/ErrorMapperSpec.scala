@@ -35,8 +35,16 @@ object ErrorMapperSpec extends ZIOSpecDefault:
           assertTrue(status == StatusCode.Conflict, body.message.contains("IBE"))
         },
         test("maps RouteNotFound to 404") {
-          val (status, body) = ErrorMapper.toHttpError(DomainError.RouteNotFound("route-1"))
-          assertTrue(status == StatusCode.NotFound, body.message.contains("route-1"))
+          val (status, body) = ErrorMapper.toHttpError(DomainError.RouteNotFound("MAD", "TFN"))
+          assertTrue(status == StatusCode.NotFound, body.message.contains("MAD"), body.message.contains("TFN"))
+        },
+        test("maps RouteAirlineAlreadyExists to 409") {
+          val (status, body) = ErrorMapper.toHttpError(DomainError.RouteAirlineAlreadyExists("MAD", "TFN", "IBE"))
+          assertTrue(status == StatusCode.Conflict, body.message.contains("IBE"))
+        },
+        test("maps RouteAirlineNotFound to 404") {
+          val (status, body) = ErrorMapper.toHttpError(DomainError.RouteAirlineNotFound("MAD", "TFN", "IBE"))
+          assertTrue(status == StatusCode.NotFound, body.message.contains("IBE"))
         },
         test("maps AircraftNotFound to 404") {
           val (status, body) = ErrorMapper.toHttpError(DomainError.AircraftNotFound("EC-MIG"))
@@ -45,6 +53,14 @@ object ErrorMapperSpec extends ZIOSpecDefault:
         test("maps FlightNotFound to 404") {
           val (status, body) = ErrorMapper.toHttpError(DomainError.FlightNotFound("UX9117"))
           assertTrue(status == StatusCode.NotFound, body.message.contains("UX9117"))
+        },
+        test("maps FlightAlreadyExists to 409") {
+          val (status, body) = ErrorMapper.toHttpError(DomainError.FlightAlreadyExists("UX9117"))
+          assertTrue(status == StatusCode.Conflict, body.message.contains("UX9117"))
+        },
+        test("maps InvalidFlightCode to 400") {
+          val (status, _) = ErrorMapper.toHttpError(DomainError.InvalidFlightCode(""))
+          assertTrue(status == StatusCode.BadRequest)
         },
         test("maps FlightInstanceNotFound to 404") {
           val (status, body) = ErrorMapper.toHttpError(DomainError.FlightInstanceNotFound("fi-1"))

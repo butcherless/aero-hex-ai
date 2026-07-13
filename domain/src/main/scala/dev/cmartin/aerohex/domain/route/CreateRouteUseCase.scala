@@ -6,7 +6,6 @@ import zio.IO
 case class CreateRouteCommand(
     originIata: String,
     destinationIata: String,
-    airlineIcao: String,
     distanceKm: Int
 )
 

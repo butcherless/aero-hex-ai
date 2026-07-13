@@ -1,8 +1,8 @@
 # Aviation Hexagonal — CLAUDE.md
 
 Scala 3 multi-module project demonstrating Hexagonal Architecture with ZIO.
-Domain concepts: **Country → Airport → Airline → Aircraft → Route**, plus **Flight → FlightInstance**
-(models + stub endpoints only), with an outbox pattern for Kafka events.
+Domain concepts: **Country → Airport → Airline → Aircraft → Route → Flight**, plus
+**FlightInstance** (model + stub endpoints only), with an outbox pattern for Kafka events.
 
 ## Git workflow
 
@@ -73,7 +73,7 @@ shared-kernel
     └── domain
             ├── application
             ├── persistence-postgres   (infrastructure — unwired; Doobie repos kept schema-consistent)
-            ├── persistence-quill      (infrastructure — wired into bootstrap; Country + Airport + Airline + Aircraft)
+            ├── persistence-quill      (infrastructure — wired into bootstrap; Country + Airport + Airline + Aircraft + Flight)
             ├── messaging-kafka        (infrastructure — not wired into bootstrap)
             └── adapter-http
                         └── bootstrap  (composition root: domain + application + adapter-http + persistence-quill + persistence-postgres + migration)
@@ -92,8 +92,8 @@ Rule: inner modules never depend on outer ones. `domain` has zero framework depe
   - `port/in/` — driving ports / use-case interfaces
   - `port/out/` — driven ports / repository + publisher interfaces
 - **`application/`** — orchestrates ports, implements `port/in`. Each service has a companion `ZLayer`.
-- **`persistence-postgres/`** — Doobie implementations of `port/out` (`DoobieCountryRepository`, `DoobieAirportRepository`, `DoobieAirlineRepository`, `DoobieAircraftRepository`, `DoobieRouteRepository`, `DoobieOutboxRepository`). Unwired but kept schema-consistent, in case Doobie is chosen again.
-- **`persistence-quill/`** — Quill implementations of `CountryRepository`/`AirportRepository`/`AirlineRepository`/`AircraftRepository`; all four wired via `WiringModule`, sharing one `QuillDataSourceLayer.live` `DataSource`. The only resources backed by real persistence — Route/Flight/FlightInstance are still an in-memory stub.
+- **`persistence-postgres/`** — Doobie implementations of `port/out` (`DoobieCountryRepository`, `DoobieAirportRepository`, `DoobieAirlineRepository`, `DoobieAircraftRepository`, `DoobieRouteRepository`, `DoobieFlightRepository`, `DoobieOutboxRepository`). Unwired but kept schema-consistent, in case Doobie is chosen again.
+- **`persistence-quill/`** — Quill implementations of `CountryRepository`/`AirportRepository`/`AirlineRepository`/`AircraftRepository`/`FlightRepository`; all five wired via `WiringModule`, sharing one `QuillDataSourceLayer.live` `DataSource`. Route/RouteAirline/FlightInstance are still an in-memory stub.
 - **Persistence policy:** all wired repositories must use the same implementation — switching is all-or-nothing across every entity, in one commit (see the header comment in `WiringModule.scala`).
 - **`messaging-kafka/`** — ZIO Kafka producer and outbox relay. Not wired into bootstrap.
 - **`migration/`** — Flyway SQL migrations; no domain dependency. `Main` runs `FlywayMigration.migrateFromEnv` at startup (see the `bootstrap` bullet).
@@ -112,14 +112,17 @@ Tapir stub server. It is deliberately **not** in `root`'s `.aggregate(...)`, so 
 sbt integrationTests/test   # or: sbt integrationTest (alias)
 ```
 
-Coverage so far: `FlywayMigrationItSpec` (migrations reach `V12`), Country (`DoobieCountryRepositoryItSpec`
+Coverage so far: `FlywayMigrationItSpec` (migrations reach `V14`), Country (`DoobieCountryRepositoryItSpec`
 + `QuillCountryRepositoryItSpec`, incl. `validateCode` success/failure against the `country_codes`
 master table), Airport (`DoobieAirportRepositoryItSpec` +
 `QuillAirportRepositoryItSpec`), Airline (`DoobieAirlineRepositoryItSpec` +
 `QuillAirlineRepositoryItSpec`), Aircraft (`DoobieAircraftRepositoryItSpec` +
 `QuillAircraftRepositoryItSpec`, seeding a `Country` then an `Airline` first since `aircraft.airline_id`
-FKs to `airlines.id`) — each seeding its own `Country` row first since `airports.country_id`/
-`airlines.country_id` FK to `countries.id` — 78 tests total, all green. Route is not implemented yet.
+FKs to `airlines.id`), Flight (`DoobieFlightRepositoryItSpec` + `QuillFlightRepositoryItSpec`, seeding a
+`Country`, two `Airport`s (origin + destination), and an `Airline` first since `flights.origin_airport_id`/
+`destination_airport_id`/`airline_id` FK to `airports.id`/`airlines.id`) — each seeding its own `Country`
+row first since `airports.country_id`/`airlines.country_id` FK to `countries.id` — 106 tests total, all
+green. Route is not implemented yet.
 See `plans/add-persistence-integration-tests.md` for the full scope table and design rationale (why a
 plain subproject instead of sbt's deprecated `IntegrationTest` config, why one module instead of
 three, why fresh-container-per-suite).
@@ -139,31 +142,31 @@ Two gotchas baked into the setup, both documented with why in the plan doc:
 
 **Opaque types** — use `.value` to unwrap:
 ```scala
-FlightCode("UX9117")      // construct
-flight.code.value         // unwrap to String
+FlightInstanceId.generate    // construct (UUID-based)
+instance.id.value            // unwrap to UUID
 ```
-Remaining plain opaque types: `FlightCode`, `RouteId`, `FlightInstanceId`,
-`OutboxEventId`, `NonEmptyString` (shared-kernel) — none has a real smart
-constructor.
+Remaining plain opaque types: `FlightInstanceId`, `OutboxEventId`, `NonEmptyString`
+(shared-kernel) — none has a real smart constructor.
 
-`CountryCode`, `IataCode`, `IcaoCode`, and `Registration` are ZIO Prelude
+`CountryCode`, `IataCode`, `IcaoCode`, `Registration`, and `FlightCode` are ZIO Prelude
 `Newtype[String]`s instead, each with a real, enforced `assertion` (see
 `docs/analysis/validation-analysis-hexagonal.md` §2/§6 for why). Same
 `.value` unwrap convention either way; construct via `CountryCode("ES")` /
-`IataCode("MAD")` / `IcaoCode("IBE")` / `Registration("EC-MIG")` for
-compile-time-known literals (a malformed literal fails to compile),
+`IataCode("MAD")` / `IcaoCode("IBE")` / `Registration("EC-MIG")` / `FlightCode("UX9117")`
+for compile-time-known literals (a malformed literal fails to compile),
 `.make(raw).toZIO` for runtime strings that need validating, `.unsafeMake(raw)`
 for already-trusted data (DB reads, Tapir-already-validated path params,
 cross-entity reference fields). Real validation is wired into each type's
 *owning* entity's create path only (`CreateCountryRequest`/`CreateAirportRequest`/
-`CreateAirlineRequest`/`CreateAircraftRequest`.toCommand) — a reference field on
-another entity (e.g. `Route.airlineIcao`, `Aircraft.airlineIcao`, `Route.origin`)
-always uses `unsafeMake`, never `.make`. `IataCode`'s assertion enforces both
-shape and its fixed 3-letter length; `IcaoCode`'s enforces shape only (alphabetic,
-any length) since `Airline`'s own code is 3 letters and `Airport`'s is 4 — the
-per-entity length stays an HTTP-layer `Validator`. `Registration`'s assertion
-(non-blank, ≤10 chars) is bound-for-bound identical to its HTTP `Validator`,
-since real-world registrations have no fixed shape to check.
+`CreateAirlineRequest`/`CreateAircraftRequest`/`CreateFlightRequest`.toCommand) — a
+reference field on another entity (e.g. `Aircraft.airlineIcao`, `Route.origin`,
+`Flight.origin`/`destination`/`airlineIcao`) always uses `unsafeMake`, never `.make`.
+`IataCode`'s assertion enforces both shape and its fixed 3-letter length; `IcaoCode`'s
+enforces shape only (alphabetic, any length) since `Airline`'s own code is 3 letters
+and `Airport`'s is 4 — the per-entity length stays an HTTP-layer `Validator`.
+`Registration`'s assertion (non-blank, ≤10 chars) and `FlightCode`'s (non-blank,
+≤8 chars) are both bound-for-bound identical to their HTTP `Validator`s, since
+real-world registrations/flight designators have no fixed shape to check.
 
 **ZLayer wiring** — every infrastructure class exposes a companion `val layer`:
 ```scala
@@ -225,6 +228,17 @@ V12 — country_codes new table (PK: `code VARCHAR(2)`, no other columns). A sta
       Deliberately **not** FK'd to `countries` — used only by `CountryRepository.isValidCode`
       to validate a new `Country`'s code on creation (`CreateCountryService`); `countries`
       itself still accepts whatever code a caller supplies at the schema level, same as before.
+V13 — routes/route_airlines: drops `routes.airline_id`/its FK/index and the old 3-column
+      `uq_route_segment`; replaces it with a 2-column `UNIQUE (origin_airport_id,
+      destination_airport_id)` (Route is now airline-agnostic infrastructure). Sets
+      `routes.id DEFAULT gen_random_uuid()` since the domain no longer generates it
+      (`RouteId` was removed). Adds `route_airlines(route_id, airline_id)` — a new join table
+      modeling Route↔Airline as many-to-many, composite PK, indexed on `airline_id` for the
+      reverse lookup direction.
+V14 — flights      new table (PK: surrogate `id BIGINT GENERATED ALWAYS AS IDENTITY`, natural key
+      `code VARCHAR(8)` UNIQUE NOT NULL, `alias VARCHAR(8)`, `sched_departure`/`sched_arrival TIME`,
+      FK → `origin_airport_id`/`destination_airport_id` (`airports.id`, ×2) and `airline_id`
+      (`airlines.id`). Designed with a surrogate id from creation, like V11.
 ```
 
 **Flyway runs at application startup**: `Main` executes `FlywayMigration.migrateFromEnv` before
@@ -310,8 +324,8 @@ sbt coverageAggregate
 Four independent layers, each catching a different class of problem — run the ones relevant to
 what changed, not always all four:
 
-1. **Local build** — `sbt clean` → `compile` → `test` (155 unit tests, in-memory stubs / Tapir
-   stub server) → `integrationTests/test` (78 tests, real Postgres via Testcontainers, needs
+1. **Local build** — `sbt clean` → `compile` → `test` (281 unit tests, in-memory stubs / Tapir
+   stub server) → `integrationTests/test` (106 tests, real Postgres via Testcontainers, needs
    Docker — see `## Integration tests` above) → `bootstrap/assembly` (package) →
    `coverageAggregate` (see `## Coverage` above for the `mkdir -p .coverage-data/...` step first).
 2. **OpenAPI spec** — `/validate-openapi` skill (`bash .claude/skills/validate-openapi/scripts/run.sh`).

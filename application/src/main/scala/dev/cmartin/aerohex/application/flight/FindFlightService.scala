@@ -11,7 +11,7 @@ import zio.{IO, URLayer, ZIO, ZLayer}
 final class FindFlightService(repo: FlightRepository) extends FindFlightUseCase {
 
   override def findByCode(code: String): IO[DomainError, Flight] =
-    repo.findByCode(FlightCode(code)).flatMap {
+    repo.findByCode(FlightCode.unsafeMake(code)).flatMap {
       case Some(f) => ZIO.succeed(f)
       case None    => ZIO.fail(FlightNotFound(code))
     }

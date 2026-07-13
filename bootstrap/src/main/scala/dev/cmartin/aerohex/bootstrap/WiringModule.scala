@@ -25,6 +25,7 @@ import dev.cmartin.aerohex.infrastructure.persistence.quill.airline.QuillAirline
 import dev.cmartin.aerohex.infrastructure.persistence.quill.airport.QuillAirportRepository
 import dev.cmartin.aerohex.infrastructure.persistence.quill.config.QuillDataSourceLayer
 import dev.cmartin.aerohex.infrastructure.persistence.quill.country.QuillCountryRepository
+import dev.cmartin.aerohex.infrastructure.persistence.quill.flight.QuillFlightRepository
 import dev.cmartin.aerohex.shared.Pagination
 import zio.*
 
@@ -33,9 +34,9 @@ import zio.*
 // across entities. If this ever switches (e.g. back to Doobie), switch every wired repository in
 // the same change, not one at a time, to avoid the split Country=Quill/Airport=Doobie state this
 // project went through. Doobie implementations (DoobieCountryRepository, DoobieAirportRepository,
-// DoobieAirlineRepository, DoobieAircraftRepository, DoobieRouteRepository) still exist in
-// persistence-postgres and are kept schema-consistent, but none are wired here today. All other
-// repositories use in-memory stubs.
+// DoobieAirlineRepository, DoobieAircraftRepository, DoobieRouteRepository, DoobieFlightRepository)
+// still exist in persistence-postgres and are kept schema-consistent, but none are wired here
+// today. Route/RouteAirline/FlightInstance repositories use in-memory stubs.
 object WiringModule {
 
   private val countryRepoLayer: TaskLayer[CountryRepository] =
@@ -52,19 +53,22 @@ object WiringModule {
 
   private val routeRepoLayer: ULayer[RouteRepository] = ZLayer.succeed(
     new RouteRepository:
-      def findById(id: RouteId): IO[DomainError, Option[Route]] = ZIO.none
-      def findAll(p: Pagination): IO[DomainError, List[Route]]  = ZIO.succeed(Nil)
-      def save(r: Route): IO[DomainError, Route]                = ZIO.succeed(r)
-      def delete(id: RouteId): IO[DomainError, Unit]            = ZIO.unit
+      def findBySegment(o: IataCode, d: IataCode): IO[DomainError, Option[Route]] = ZIO.none
+      def findAll(p: Pagination): IO[DomainError, List[Route]]                    = ZIO.succeed(Nil)
+      def save(r: Route): IO[DomainError, Route]                                  = ZIO.succeed(r)
+      def delete(o: IataCode, d: IataCode): IO[DomainError, Unit]                 = ZIO.unit
   )
 
-  private val flightRepoLayer: ULayer[FlightRepository] = ZLayer.succeed(
-    new FlightRepository:
-      def findByCode(code: FlightCode): IO[DomainError, Option[Flight]] = ZIO.none
-      def findAll(p: Pagination): IO[DomainError, List[Flight]]         = ZIO.succeed(Nil)
-      def save(f: Flight): IO[DomainError, Flight]                      = ZIO.succeed(f)
-      def delete(code: FlightCode): IO[DomainError, Unit]               = ZIO.unit
+  private val routeAirlineRepoLayer: ULayer[RouteAirlineRepository] = ZLayer.succeed(
+    new RouteAirlineRepository:
+      def associate(o: IataCode, d: IataCode, icao: IcaoCode): IO[DomainError, Unit]    = ZIO.unit
+      def disassociate(o: IataCode, d: IataCode, icao: IcaoCode): IO[DomainError, Unit] = ZIO.unit
+      def findAirlines(o: IataCode, d: IataCode): IO[DomainError, List[Airline]]        = ZIO.succeed(Nil)
+      def findRoutes(icao: IcaoCode, p: Pagination): IO[DomainError, List[Route]]       = ZIO.succeed(Nil)
   )
+
+  private val flightRepoLayer: TaskLayer[FlightRepository] =
+    QuillDataSourceLayer.live >>> QuillFlightRepository.layer
 
   private val flightInstanceRepoLayer: ULayer[FlightInstanceRepository] = ZLayer.succeed(
     new FlightInstanceRepository:
@@ -87,24 +91,36 @@ object WiringModule {
       ((airportRepoLayer ++ countryRepoLayer) >>> FindAirportsByCountryService.layer) ++
       (airportRepoLayer >>> FindCountryForAirportService.layer)
 
-  private val airlineUseCaseLayers = (airlineRepoLayer >>> FindAirlineService.layer) ++
-    (airlineRepoLayer >>> CreateAirlineService.layer) ++
-    (airlineRepoLayer >>> UpdateAirlineService.layer) ++
-    (airlineRepoLayer >>> DeleteAirlineService.layer) ++
-    ((airlineRepoLayer ++ countryRepoLayer) >>> FindAirlinesByCountryService.layer)
+  private val airlineUseCaseLayers =
+    (airlineRepoLayer >>> FindAirlineService.layer) ++
+      (airlineRepoLayer >>> CreateAirlineService.layer) ++
+      (airlineRepoLayer >>> UpdateAirlineService.layer) ++
+      (airlineRepoLayer >>> DeleteAirlineService.layer) ++
+      ((airlineRepoLayer ++ countryRepoLayer) >>> FindAirlinesByCountryService.layer) ++
+      (routeAirlineRepoLayer >>> FindAirlinesByRouteService.layer)
 
   private val aircraftUseCaseLayers = (aircraftRepoLayer >>> FindAircraftService.layer) ++
     (aircraftRepoLayer >>> CreateAircraftService.layer) ++
     (aircraftRepoLayer >>> UpdateAircraftService.layer) ++
     (aircraftRepoLayer >>> DeleteAircraftService.layer)
 
+  private val routeUseCaseLayers =
+    (((airportRepoLayer >>> FindAirportService.layer) ++ routeRepoLayer) >>> CreateRouteService.layer) ++
+      (routeAirlineRepoLayer >>> AssociateAirlineService.layer) ++
+      (routeAirlineRepoLayer >>> DisassociateAirlineService.layer) ++
+      (routeAirlineRepoLayer >>> FindRoutesByAirlineService.layer)
+
+  private val flightUseCaseLayers = (flightRepoLayer >>> FindFlightService.layer) ++
+    (flightRepoLayer >>> CreateFlightService.layer) ++
+    (flightRepoLayer >>> UpdateFlightService.layer) ++
+    (flightRepoLayer >>> DeleteFlightService.layer)
+
   val appLayer: TaskLayer[HttpServer.AppRoutes] =
     (countryUseCaseLayers >>> CountryRoutes.layer) ++
       (airportUseCaseLayers >>> AirportRoutes.layer) ++
       (airlineUseCaseLayers >>> AirlineRoutes.layer) ++
-      (((airportRepoLayer >>> FindAirportService.layer) ++ routeRepoLayer) >>> CreateRouteService.layer >>>
-        RouteRoutes.layer) ++
+      (routeUseCaseLayers >>> RouteRoutes.layer) ++
       (aircraftUseCaseLayers >>> AircraftRoutes.layer) ++
-      (flightRepoLayer >>> FindFlightService.layer >>> FlightRoutes.layer) ++
+      (flightUseCaseLayers >>> FlightRoutes.layer) ++
       (flightInstanceRepoLayer >>> FindFlightInstanceService.layer >>> FlightInstanceRoutes.layer)
 }

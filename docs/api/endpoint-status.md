@@ -29,13 +29,20 @@ Swagger UI: `http://localhost:8080/docs`
 | Airlines | PUT | `/api/v1/airlines/{icao}` | ✓ implemented |
 | Airlines | DELETE | `/api/v1/airlines/{icao}` | ✓ implemented |
 | Airlines | GET | `/api/v1/countries/{code}/airlines` | ✓ implemented |
+| Airlines | GET | `/api/v1/routes/{origin}/{destination}/airlines` | stub |
 | Aircraft | GET | `/api/v1/aircraft` | ✓ implemented |
 | Aircraft | GET | `/api/v1/aircraft/{registration}` | ✓ implemented |
 | Aircraft | POST | `/api/v1/aircraft` | ✓ implemented |
 | Aircraft | PUT | `/api/v1/aircraft/{registration}` | ✓ implemented |
 | Aircraft | DELETE | `/api/v1/aircraft/{registration}` | ✓ implemented |
-| Flights | GET | `/api/v1/flights` | stub |
-| Flights | GET | `/api/v1/flights/{code}` | stub |
+| Flights | GET | `/api/v1/flights` | ✓ implemented |
+| Flights | GET | `/api/v1/flights/{code}` | ✓ implemented |
+| Flights | POST | `/api/v1/flights` | ✓ implemented |
+| Flights | PUT | `/api/v1/flights/{code}` | ✓ implemented |
+| Flights | DELETE | `/api/v1/flights/{code}` | ✓ implemented |
 | Flight Instances | GET | `/api/v1/flight-instances` | stub |
 | Flight Instances | GET | `/api/v1/flight-instances/{id}` | stub |
 | Routes | POST | `/api/v1/routes` | stub |
+| Routes | POST | `/api/v1/routes/{origin}/{destination}/airlines/{icao}` | stub |
+| Routes | DELETE | `/api/v1/routes/{origin}/{destination}/airlines/{icao}` | stub |
+| Routes | GET | `/api/v1/airlines/{icao}/routes` | stub |

@@ -10,6 +10,7 @@ import dev.cmartin.aerohex.domain.airline.{
   UpdateAirlineUseCase
 }
 import dev.cmartin.aerohex.domain.country.CountryCode
+import dev.cmartin.aerohex.domain.route.FindAirlinesByRouteUseCase
 import dev.cmartin.aerohex.shared.Pagination
 import sttp.tapir.ztapir.{RichZEndpoint, ZServerEndpoint}
 import zio.*
@@ -19,7 +20,8 @@ class AirlineRoutes(
     createSvc: CreateAirlineUseCase,
     findByCountrySvc: FindAirlinesByCountryUseCase,
     updateSvc: UpdateAirlineUseCase,
-    deleteSvc: DeleteAirlineUseCase
+    deleteSvc: DeleteAirlineUseCase,
+    findByRouteSvc: FindAirlinesByRouteUseCase
 ):
   val serverEndpoints: List[ZServerEndpoint[Any, Any]] = List(
     AirlineEndpoints.findAll.zServerLogic { (page, pageSize) =>
@@ -60,13 +62,19 @@ class AirlineRoutes(
       deleteSvc
         .delete(IcaoCode.unsafeMake(icao))
         .mapError(ErrorMapper.toHttpError)
+    },
+    AirlineEndpoints.findByRoute.zServerLogic { (origin, destination) =>
+      findByRouteSvc
+        .findByRoute(origin, destination)
+        .map(_.map(AirlineDto.fromDomain))
+        .mapError(ErrorMapper.toHttpError)
     }
   )
 
 object AirlineRoutes:
   val layer: URLayer[
     FindAirlineUseCase & CreateAirlineUseCase & FindAirlinesByCountryUseCase & UpdateAirlineUseCase &
-      DeleteAirlineUseCase,
+      DeleteAirlineUseCase & FindAirlinesByRouteUseCase,
     AirlineRoutes
   ] =
-    ZLayer.fromFunction(new AirlineRoutes(_, _, _, _, _))
+    ZLayer.fromFunction(new AirlineRoutes(_, _, _, _, _, _))

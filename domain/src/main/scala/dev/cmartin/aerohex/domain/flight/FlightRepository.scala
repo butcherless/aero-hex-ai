@@ -8,5 +8,6 @@ trait FlightRepository {
   def findByCode(code: FlightCode): IO[DomainError, Option[Flight]]
   def findAll(pagination: Pagination): IO[DomainError, List[Flight]]
   def save(flight: Flight): IO[DomainError, Flight]
+  def update(flight: Flight): IO[DomainError, Flight]
   def delete(code: FlightCode): IO[DomainError, Unit]
 }

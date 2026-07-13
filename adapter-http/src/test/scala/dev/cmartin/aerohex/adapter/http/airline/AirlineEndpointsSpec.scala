@@ -3,6 +3,7 @@ package dev.cmartin.aerohex.adapter.http.airline
 import dev.cmartin.aerohex.domain.airline.*
 import dev.cmartin.aerohex.domain.country.CountryCode
 import dev.cmartin.aerohex.domain.error.DomainError
+import dev.cmartin.aerohex.domain.route.FindAirlinesByRouteUseCase
 import dev.cmartin.aerohex.shared.Pagination
 import io.circe.generic.auto.*
 import java.time.LocalDate
@@ -58,6 +59,9 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
   private val notFoundDelete: DeleteAirlineUseCase =
     (icao: IcaoCode) => ZIO.fail(DomainError.AirlineNotFound(icao.value))
 
+  private val defaultFindByRoute: FindAirlinesByRouteUseCase =
+    (_: String, _: String) => ZIO.succeed(List(iberia))
+
   // ── Backend factory ────────────────────────────────────────────────────────
 
   private def makeBackend(
@@ -65,10 +69,13 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
       create: CreateAirlineUseCase = defaultCreate,
       findByCountry: FindAirlinesByCountryUseCase = defaultFindByCountry,
       update: UpdateAirlineUseCase = defaultUpdate,
-      delete: DeleteAirlineUseCase = defaultDelete
+      delete: DeleteAirlineUseCase = defaultDelete,
+      findByRoute: FindAirlinesByRouteUseCase = defaultFindByRoute
   ): Backend[Task] =
     TapirStubInterpreter(BackendStub(new RIOMonadAsyncError[Any]))
-      .whenServerEndpointsRunLogic(new AirlineRoutes(find, create, findByCountry, update, delete).serverEndpoints)
+      .whenServerEndpointsRunLogic(
+        new AirlineRoutes(find, create, findByCountry, update, delete, findByRoute).serverEndpoints
+      )
       .backend()
 
   // ── Spec ──────────────────────────────────────────────────────────────────
@@ -351,8 +358,22 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
           yield assertTrue(response.code == StatusCode.BadRequest)
         }
       ),
+      suite("GET /api/v1/routes/{origin}/{destination}/airlines")(
+        test("returns 200 with the airlines operating the route") {
+          for
+            response <- basicRequest
+                          .get(uri"https://test.com/api/v1/routes/MAD/TFN/airlines")
+                          .response(asJson[List[AirlineDto]])
+                          .send(makeBackend())
+            airlines  = response.body.toOption.getOrElse(Nil)
+          yield assertTrue(
+            response.code == StatusCode.Ok,
+            airlines.map(_.icao) == List("IBE")
+          )
+        }
+      ),
       suite("AirlineRoutes.layer")(
-        test("wires all five use cases into the route list") {
+        test("wires all six use cases into the route list") {
           for
             endpointCount <- ZIO
                                .serviceWith[AirlineRoutes](_.serverEndpoints.size)
@@ -362,9 +383,10 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
                                  ZLayer.succeed(defaultFindByCountry),
                                  ZLayer.succeed(defaultUpdate),
                                  ZLayer.succeed(defaultDelete),
+                                 ZLayer.succeed(defaultFindByRoute),
                                  AirlineRoutes.layer
                                )
-          yield assertTrue(endpointCount == 6)
+          yield assertTrue(endpointCount == 7)
         }
       )
     )

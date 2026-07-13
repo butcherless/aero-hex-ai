@@ -28,6 +28,17 @@ object AirlineEndpoints {
   private val countryCodeParam =
     alphaCodeParam("code", "ISO 3166-1 alpha-2 country code (e.g. ES).", 2, CodePatterns.alpha2)
 
+  private val originParam =
+    alphaCodeParam("origin", "3-letter IATA code of the origin airport (e.g. MAD).", 3, CodePatterns.alpha3)
+
+  private val destinationParam =
+    alphaCodeParam(
+      "destination",
+      "3-letter IATA code of the destination airport (e.g. TFN).",
+      3,
+      CodePatterns.alpha3
+    )
+
   private val notFoundErrorOut: EndpointOutput[(StatusCode, HttpErrorResponse)] =
     oneOf[(StatusCode, HttpErrorResponse)](
       EndpointErrors.notFoundVariant("Airline not found."),
@@ -83,6 +94,15 @@ object AirlineEndpoints {
           EndpointErrors.unexpectedError
         )
       )
+
+  val findByRoute: PublicEndpoint[(String, String), (StatusCode, HttpErrorResponse), List[AirlineDto], Any] =
+    endpoint.get
+      .in("api" / "v1" / "routes" / originParam / destinationParam / "airlines")
+      .summary("List airlines operating a route")
+      .description("Returns the airlines operating the given route.")
+      .tag("Airlines")
+      .out(jsonBody[List[AirlineDto]].description("Airlines operating the given route."))
+      .errorOut(oneOf[(StatusCode, HttpErrorResponse)](EndpointErrors.unexpectedError))
 
   // #4 Location header carries the canonical URL of the created resource (HTTP best practice)
   val create: PublicEndpoint[CreateAirlineRequest, (StatusCode, HttpErrorResponse), (AirlineDto, String), Any] =

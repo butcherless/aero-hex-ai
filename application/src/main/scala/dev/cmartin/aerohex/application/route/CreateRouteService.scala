@@ -1,13 +1,12 @@
 package dev.cmartin.aerohex.application.route
 
-import dev.cmartin.aerohex.domain.airline.IcaoCode
 import dev.cmartin.aerohex.domain.airport.FindAirportUseCase
 import dev.cmartin.aerohex.domain.error.DomainError
+import dev.cmartin.aerohex.domain.route.Route
 import dev.cmartin.aerohex.domain.route.RouteRepository
 import dev.cmartin.aerohex.domain.route.RouteValidator
 import dev.cmartin.aerohex.domain.route.{CreateRouteCommand, CreateRouteUseCase}
-import dev.cmartin.aerohex.domain.route.{Route, RouteId}
-import zio.{IO, URLayer, ZLayer}
+import zio.{IO, URLayer, ZIO, ZLayer}
 
 final class CreateRouteService(
     findAirport: FindAirportUseCase,
@@ -19,11 +18,13 @@ final class CreateRouteService(
       origin      <- findAirport.findByIata(command.originIata)
       destination <- findAirport.findByIata(command.destinationIata)
       _           <- RouteValidator.validate(origin.iataCode, destination.iataCode, command.distanceKm)
+      existing    <- routeRepository.findBySegment(origin.iataCode, destination.iataCode)
+      _           <- ZIO
+                       .fail(DomainError.RouteAlreadyExists(origin.iataCode.value, destination.iataCode.value))
+                       .when(existing.isDefined)
       route        = Route(
-                       id = RouteId.generate,
                        origin = origin.iataCode,
                        destination = destination.iataCode,
-                       airlineIcao = IcaoCode.unsafeMake(command.airlineIcao),
                        distanceKm = command.distanceKm
                      )
       saved       <- routeRepository.save(route)
