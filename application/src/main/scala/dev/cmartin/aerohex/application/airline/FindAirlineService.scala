@@ -7,15 +7,13 @@ import dev.cmartin.aerohex.domain.airline.{Airline, AirlineIcaoCode}
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.error.DomainError.AirlineNotFound
 import dev.cmartin.aerohex.shared.Pagination
-import zio.{IO, URLayer, ZIO, ZLayer}
+import zio.{IO, URLayer, ZLayer}
 
 final class FindAirlineService(repo: AirlineRepository) extends FindAirlineUseCase {
 
   override def findByIcao(icao: String): IO[DomainError, Airline] =
-    repo.findByIcao(AirlineIcaoCode.unsafeMake(icao)).flatMap {
-      case Some(airline) => ZIO.succeed(airline)
-      case None          => ZIO.fail(AirlineNotFound(icao))
-    } @@ ServiceAspect.logged(s"FindAirlineService.findByIcao($icao)")
+    repo.findByIcao(AirlineIcaoCode.unsafeMake(icao)).someOrFail(AirlineNotFound(icao)) @@
+      ServiceAspect.logged(s"FindAirlineService.findByIcao($icao)")
 
   override def findAll(pagination: Pagination): IO[DomainError, List[Airline]] =
     repo.findAll(pagination) @@ ServiceAspect.logged("FindAirlineService.findAll")

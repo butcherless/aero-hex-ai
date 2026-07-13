@@ -13,11 +13,7 @@ final class FindFlightInstanceService(repo: FlightInstanceRepository) extends Fi
 
   override def findById(id: String): IO[DomainError, FlightInstance] =
     scala.util.Try(UUID.fromString(id)).toOption match {
-      case Some(uuid) =>
-        repo.findById(FlightInstanceId(uuid)).flatMap {
-          case Some(j) => ZIO.succeed(j)
-          case None    => ZIO.fail(FlightInstanceNotFound(id))
-        }
+      case Some(uuid) => repo.findById(FlightInstanceId(uuid)).someOrFail(FlightInstanceNotFound(id))
       case None       => ZIO.fail(FlightInstanceNotFound(id))
     }
 
