@@ -50,6 +50,10 @@ object ErrorMapperSpec extends ZIOSpecDefault:
           val (status, body) = ErrorMapper.toHttpError(DomainError.AircraftNotFound("EC-MIG"))
           assertTrue(status == StatusCode.NotFound, body.message.contains("EC-MIG"))
         },
+        test("maps InvalidRegistration to 400") {
+          val (status, body) = ErrorMapper.toHttpError(DomainError.InvalidRegistration(""))
+          assertTrue(status == StatusCode.BadRequest, body.message.contains("Invalid registration"))
+        },
         test("maps FlightNotFound to 404") {
           val (status, body) = ErrorMapper.toHttpError(DomainError.FlightNotFound("UX9117"))
           assertTrue(status == StatusCode.NotFound, body.message.contains("UX9117"))

@@ -1,7 +1,7 @@
 package dev.cmartin.aerohex.infrastructure.persistence.quill.airline
 
 import dev.cmartin.aerohex.domain.airline.AirlineRepository
-import dev.cmartin.aerohex.domain.airline.{Airline, IcaoCode}
+import dev.cmartin.aerohex.domain.airline.{Airline, AirlineIcaoCode}
 import dev.cmartin.aerohex.domain.country.CountryCode
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.infrastructure.persistence.quill.common.QuillSqlState
@@ -28,9 +28,9 @@ final class QuillAirlineRepository(dataSource: DataSource) extends AirlineReposi
   import ctx.*
 
   private def toAirline(a: AirlineRow): Airline =
-    Airline(IcaoCode.unsafeMake(a.icaoCode), a.name, a.foundationDate)
+    Airline(AirlineIcaoCode.unsafeMake(a.icaoCode), a.name, a.foundationDate)
 
-  override def findByIcao(icao: IcaoCode): IO[DomainError, Option[Airline]] =
+  override def findByIcao(icao: AirlineIcaoCode): IO[DomainError, Option[Airline]] =
     ctx
       .run(quote {
         querySchema[AirlineRow]("airlines").filter(_.icaoCode == lift(icao.value))
@@ -101,7 +101,7 @@ final class QuillAirlineRepository(dataSource: DataSource) extends AirlineReposi
       )(DomainError.AirlineNotFound(airline.icao.value), airline)
     }
 
-  override def delete(icao: IcaoCode): IO[DomainError, Unit] =
+  override def delete(icao: AirlineIcaoCode): IO[DomainError, Unit] =
     QuillSqlState.refineZeroRows(
       ctx.run(quote {
         querySchema[AirlineRow]("airlines").filter(_.icaoCode == lift(icao.value)).delete

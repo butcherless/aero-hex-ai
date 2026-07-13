@@ -11,7 +11,7 @@ import dev.cmartin.aerohex.domain.aircraft.{
   UpdateAircraftCommand,
   UpdateAircraftUseCase
 }
-import dev.cmartin.aerohex.domain.airline.IcaoCode
+import dev.cmartin.aerohex.domain.airline.AirlineIcaoCode
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.shared.Pagination
 import zio.test.*
@@ -19,8 +19,8 @@ import zio.{Ref, Scope, ZIO, ZLayer}
 
 object AircraftServiceSpec extends ZIOSpecDefault:
 
-  private val ecMig = Aircraft(Registration("EC-MIG"), "B788", "Boeing 787-8", IcaoCode("IBE"))
-  private val ecAbc = Aircraft(Registration("EC-ABC"), "A320", "Airbus A320", IcaoCode("VLG"))
+  private val ecMig = Aircraft(Registration("EC-MIG"), "B788", "Boeing 787-8", AirlineIcaoCode("IBE"))
+  private val ecAbc = Aircraft(Registration("EC-ABC"), "A320", "Airbus A320", AirlineIcaoCode("VLG"))
 
   override def spec: Spec[TestEnvironment & Scope, Any] =
     suite("Aircraft application services")(
@@ -32,7 +32,7 @@ object AircraftServiceSpec extends ZIOSpecDefault:
                           onFindByRegistration = _ => ZIO.none,
                           onSave = a => savedRef.set(Some(a)).as(a)
                         )
-            command   = CreateAircraftCommand(Registration("EC-MIG"), "B788", "Boeing 787-8", IcaoCode("IBE"))
+            command   = CreateAircraftCommand(Registration("EC-MIG"), "B788", "Boeing 787-8", AirlineIcaoCode("IBE"))
             result   <- new CreateAircraftService(repo).create(command)
             saved    <- savedRef.get
           yield assertTrue(
@@ -42,7 +42,7 @@ object AircraftServiceSpec extends ZIOSpecDefault:
         },
         test("fails with AircraftAlreadyExists and never calls save when the aircraft already exists") {
           val repo    = stubAircraftRepo(onFindByRegistration = _ => ZIO.some(ecMig))
-          val command = CreateAircraftCommand(Registration("EC-MIG"), "B788", "Other name", IcaoCode("IBE"))
+          val command = CreateAircraftCommand(Registration("EC-MIG"), "B788", "Other name", AirlineIcaoCode("IBE"))
           for error <- new CreateAircraftService(repo).create(command).flip
           yield assertTrue(error == DomainError.AircraftAlreadyExists("EC-MIG"))
         }
@@ -70,7 +70,7 @@ object AircraftServiceSpec extends ZIOSpecDefault:
             capturedRef <- Ref.make[Option[Aircraft]](None)
             repo         = stubAircraftRepo(onUpdate = a => capturedRef.set(Some(a)).as(a))
             command      =
-              UpdateAircraftCommand(Registration("EC-MIG"), "B789", "Boeing 787-9", IcaoCode("IBE"))
+              UpdateAircraftCommand(Registration("EC-MIG"), "B789", "Boeing 787-9", AirlineIcaoCode("IBE"))
             result      <- new UpdateAircraftService(repo).update(command)
             captured    <- capturedRef.get
           yield assertTrue(
@@ -80,7 +80,7 @@ object AircraftServiceSpec extends ZIOSpecDefault:
         },
         test("propagates AircraftNotFound from the repository") {
           val repo    = stubAircraftRepo(onUpdate = _ => ZIO.fail(DomainError.AircraftNotFound("XXX")))
-          val command = UpdateAircraftCommand(Registration("XXX"), "B789", "Nowhere", IcaoCode("IBE"))
+          val command = UpdateAircraftCommand(Registration("XXX"), "B789", "Nowhere", AirlineIcaoCode("IBE"))
           for error <- new UpdateAircraftService(repo).update(command).flip
           yield assertTrue(error == DomainError.AircraftNotFound("XXX"))
         }

@@ -1,6 +1,6 @@
 package dev.cmartin.aerohex.adapter.http.flight
 
-import dev.cmartin.aerohex.domain.airline.IcaoCode
+import dev.cmartin.aerohex.domain.airline.AirlineIcaoCode
 import dev.cmartin.aerohex.domain.airport.IataCode
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.flight.{CreateFlightCommand, UpdateFlightCommand}
@@ -88,7 +88,7 @@ object CreateFlightRequest {
           schedArrival = LocalTime.parse(req.schedArrival),
           origin = IataCode.unsafeMake(req.originIata),
           destination = IataCode.unsafeMake(req.destinationIata),
-          airlineIcao = IcaoCode.unsafeMake(req.airlineIcao)
+          airlineIcao = AirlineIcaoCode.unsafeMake(req.airlineIcao)
         )
       )
 
@@ -127,7 +127,7 @@ object UpdateFlightRequest {
       schedArrival = LocalTime.parse(req.schedArrival),
       origin = IataCode.unsafeMake(req.originIata),
       destination = IataCode.unsafeMake(req.destinationIata),
-      airlineIcao = IcaoCode.unsafeMake(req.airlineIcao)
+      airlineIcao = AirlineIcaoCode.unsafeMake(req.airlineIcao)
     )
 
   given Schema[UpdateFlightRequest] = Schema.derived[UpdateFlightRequest]

@@ -6,7 +6,7 @@ import java.time.LocalDate
 import zio.IO
 
 case class CreateAirlineCommand(
-    icao: IcaoCode,
+    icao: AirlineIcaoCode,
     name: String,
     foundationDate: LocalDate,
     countryCode: CountryCode

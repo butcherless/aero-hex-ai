@@ -1,7 +1,7 @@
 package dev.cmartin.aerohex.infrastructure.persistence.postgres.airline
 
 import dev.cmartin.aerohex.domain.airline.AirlineRepository
-import dev.cmartin.aerohex.domain.airline.{Airline, IcaoCode}
+import dev.cmartin.aerohex.domain.airline.{Airline, AirlineIcaoCode}
 import dev.cmartin.aerohex.domain.country.CountryCode
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.infrastructure.persistence.postgres.common.DoobieIdResolver
@@ -23,12 +23,12 @@ final class DoobieAirlineRepository(protected val xa: Transactor[Task]) extends 
       DomainError.CountryNotFound(code.value)
     )
 
-  override def findByIcao(icao: IcaoCode): IO[DomainError, Option[Airline]] =
+  override def findByIcao(icao: AirlineIcaoCode): IO[DomainError, Option[Airline]] =
     sql"SELECT icao_code, name, foundation_date FROM airlines WHERE icao_code = ${icao.value}"
       .query[(String, String, LocalDate)]
       .option
       .transact(xa)
-      .map(_.map((i, n, fd) => Airline(IcaoCode.unsafeMake(i), n, fd)))
+      .map(_.map((i, n, fd) => Airline(AirlineIcaoCode.unsafeMake(i), n, fd)))
       .orDie
 
   override def findAll(pagination: Pagination): IO[DomainError, List[Airline]] =
@@ -37,7 +37,7 @@ final class DoobieAirlineRepository(protected val xa: Transactor[Task]) extends 
       .query[(String, String, LocalDate)]
       .to[List]
       .transact(xa)
-      .map(_.map((i, n, fd) => Airline(IcaoCode.unsafeMake(i), n, fd)))
+      .map(_.map((i, n, fd) => Airline(AirlineIcaoCode.unsafeMake(i), n, fd)))
       .orDie
 
   override def findByCountry(code: CountryCode, pagination: Pagination): IO[DomainError, List[Airline]] =
@@ -47,7 +47,7 @@ final class DoobieAirlineRepository(protected val xa: Transactor[Task]) extends 
       .query[(String, String, LocalDate)]
       .to[List]
       .transact(xa)
-      .map(_.map((i, n, fd) => Airline(IcaoCode.unsafeMake(i), n, fd)))
+      .map(_.map((i, n, fd) => Airline(AirlineIcaoCode.unsafeMake(i), n, fd)))
       .orDie
 
   override def save(airline: Airline, countryCode: CountryCode): IO[DomainError, Airline] =
@@ -87,7 +87,7 @@ final class DoobieAirlineRepository(protected val xa: Transactor[Task]) extends 
         }
     }
 
-  override def delete(icao: IcaoCode): IO[DomainError, Unit] =
+  override def delete(icao: AirlineIcaoCode): IO[DomainError, Unit] =
     sql"DELETE FROM airlines WHERE icao_code = ${icao.value}"
       .update.run
       .transact(xa)

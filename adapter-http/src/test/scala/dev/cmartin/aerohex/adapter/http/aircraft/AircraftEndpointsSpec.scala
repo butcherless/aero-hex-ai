@@ -1,7 +1,7 @@
 package dev.cmartin.aerohex.adapter.http.aircraft
 
 import dev.cmartin.aerohex.domain.aircraft.*
-import dev.cmartin.aerohex.domain.airline.IcaoCode
+import dev.cmartin.aerohex.domain.airline.AirlineIcaoCode
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.shared.Pagination
 import io.circe.generic.auto.*
@@ -16,8 +16,8 @@ import zio.{IO, Scope, Task, ZIO, ZLayer}
 
 object AircraftEndpointsSpec extends ZIOSpecDefault:
 
-  private val ecMig = Aircraft(Registration("EC-MIG"), "B788", "Boeing 787-8", IcaoCode("IBE"))
-  private val ecAbc = Aircraft(Registration("EC-ABC"), "A320", "Airbus A320", IcaoCode("VLG"))
+  private val ecMig = Aircraft(Registration("EC-MIG"), "B788", "Boeing 787-8", AirlineIcaoCode("IBE"))
+  private val ecAbc = Aircraft(Registration("EC-ABC"), "A320", "Airbus A320", AirlineIcaoCode("VLG"))
 
   // ── Stub use-case implementations ─────────────────────────────────────────
 
@@ -201,6 +201,22 @@ object AircraftEndpointsSpec extends ZIOSpecDefault:
                 .body(
                   """{"registration":"EXTREMELYLONGREG","typeCode":"B788","description":"Boeing 787-8","airlineIcao":"IBE"}"""
                 )
+                .contentType("application/json")
+                .send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        },
+        test(
+          "returns 400 when registration contains a newline (real Registration.make check, not the length-only schema validator)"
+        ) {
+          // "A\nB" is 3 chars — within the schema's minLength(1)/maxLength(10) bounds — but the
+          // domain assertion "^.{1,10}$".r doesn't match newlines, so only Registration.make itself
+          // (not Tapir's schema validator) rejects it, exercising CreateAircraftRequest.toCommand's
+          // orElseFail(InvalidRegistration(...)) branch.
+          for
+            response <-
+              basicRequest
+                .post(uri"https://test.com/api/v1/aircraft")
+                .body("""{"registration":"A\nB","typeCode":"B788","description":"Boeing 787-8","airlineIcao":"IBE"}""")
                 .contentType("application/json")
                 .send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)

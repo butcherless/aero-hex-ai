@@ -4,4 +4,4 @@ import dev.cmartin.aerohex.domain.error.DomainError
 import zio.IO
 
 trait DeleteAirlineUseCase:
-  def delete(icao: IcaoCode): IO[DomainError, Unit]
+  def delete(icao: AirlineIcaoCode): IO[DomainError, Unit]

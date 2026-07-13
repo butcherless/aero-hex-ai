@@ -66,6 +66,8 @@ object ApiSpec:
     AircraftEndpoints.delete,
     FlightEndpoints.findAll,
     FlightEndpoints.findByCode,
+    FlightEndpoints.findAirline,
+    FlightEndpoints.findByAirline,
     FlightEndpoints.create,
     FlightEndpoints.update,
     FlightEndpoints.delete,

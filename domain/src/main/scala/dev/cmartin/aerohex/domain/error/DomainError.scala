@@ -9,9 +9,10 @@ object DomainError {
   case class AirportNotFound(iata: String)                                                extends DomainError
   case class AirportAlreadyExists(iata: String)                                           extends DomainError
   case class InvalidIataCode(iata: String)                                                extends DomainError
+  case class InvalidAirportIcaoCode(icao: String)                                         extends DomainError
   case class AirlineNotFound(icao: String)                                                extends DomainError
   case class AirlineAlreadyExists(icao: String)                                           extends DomainError
-  case class InvalidIcaoCode(icao: String)                                                extends DomainError
+  case class InvalidAirlineIcaoCode(icao: String)                                         extends DomainError
   case class RouteNotFound(origin: String, destination: String)                           extends DomainError
   case class RouteAlreadyExists(origin: String, destination: String)                      extends DomainError
   case class InvalidRoute(reason: String)                                                 extends DomainError

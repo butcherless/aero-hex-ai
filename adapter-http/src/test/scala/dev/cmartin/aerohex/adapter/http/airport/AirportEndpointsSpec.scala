@@ -1,7 +1,6 @@
 package dev.cmartin.aerohex.adapter.http.airport
 
 import dev.cmartin.aerohex.adapter.http.country.CountryDto
-import dev.cmartin.aerohex.domain.airline.IcaoCode
 import dev.cmartin.aerohex.domain.airport.*
 import dev.cmartin.aerohex.domain.country.{Country, CountryCode}
 import dev.cmartin.aerohex.domain.error.DomainError
@@ -18,9 +17,9 @@ import zio.{IO, Scope, Task, ZIO, ZLayer}
 
 object AirportEndpointsSpec extends ZIOSpecDefault:
 
-  private val madrid    = Airport(IataCode("MAD"), IcaoCode("LEMD"), "Adolfo Suárez Madrid-Barajas", "Madrid")
+  private val madrid    = Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Adolfo Suárez Madrid-Barajas", "Madrid")
   private val barcelona =
-    Airport(IataCode("BCN"), IcaoCode("LEBL"), "Josep Tarradellas Barcelona-El Prat", "Barcelona")
+    Airport(IataCode("BCN"), AirportIcaoCode("LEBL"), "Josep Tarradellas Barcelona-El Prat", "Barcelona")
 
   // ── Stub use-case implementations ─────────────────────────────────────────
 
@@ -341,7 +340,7 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
                 .send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         },
-        test("returns 400 when icaoCode is 4 chars but not alphabetic (real IcaoCode.make check, not a stub)") {
+        test("returns 400 when icaoCode is 4 chars but not alphabetic (real AirportIcaoCode.make check, not a stub)") {
           for
             response <-
               basicRequest

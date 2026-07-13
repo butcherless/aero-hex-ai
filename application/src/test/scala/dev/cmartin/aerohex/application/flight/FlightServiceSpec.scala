@@ -1,21 +1,23 @@
 package dev.cmartin.aerohex.application.flight
 
 import FlightRepositoryStub.{stubFlightRepo, unimplementedFlightRepo}
-import dev.cmartin.aerohex.domain.airline.IcaoCode
+import dev.cmartin.aerohex.domain.airline.{Airline, AirlineIcaoCode}
 import dev.cmartin.aerohex.domain.airport.IataCode
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.flight.{
   CreateFlightCommand,
   CreateFlightUseCase,
   DeleteFlightUseCase,
+  FindAirlineForFlightUseCase,
   FindFlightUseCase,
+  FindFlightsByAirlineUseCase,
   Flight,
   FlightCode,
   UpdateFlightCommand,
   UpdateFlightUseCase
 }
 import dev.cmartin.aerohex.shared.Pagination
-import java.time.LocalTime
+import java.time.{LocalDate, LocalTime}
 import zio.test.*
 import zio.{Ref, Scope, ZIO, ZLayer}
 
@@ -28,8 +30,10 @@ object FlightServiceSpec extends ZIOSpecDefault:
     LocalTime.of(8, 55),
     IataCode("MAD"),
     IataCode("TFN"),
-    IcaoCode("AEA")
+    AirlineIcaoCode("AEA")
   )
+
+  private val airEuropa = Airline(AirlineIcaoCode("AEA"), "Air Europa", LocalDate.of(1986, 11, 21))
 
   private val vy1234 = Flight(
     FlightCode("VY1234"),
@@ -38,7 +42,7 @@ object FlightServiceSpec extends ZIOSpecDefault:
     LocalTime.of(11, 30),
     IataCode("MAD"),
     IataCode("BCN"),
-    IcaoCode("VLG")
+    AirlineIcaoCode("VLG")
   )
 
   override def spec: Spec[TestEnvironment & Scope, Any] =
@@ -58,7 +62,7 @@ object FlightServiceSpec extends ZIOSpecDefault:
                           LocalTime.of(8, 55),
                           IataCode("MAD"),
                           IataCode("TFN"),
-                          IcaoCode("AEA")
+                          AirlineIcaoCode("AEA")
                         )
             result   <- new CreateFlightService(repo).create(command)
             saved    <- savedRef.get
@@ -76,7 +80,7 @@ object FlightServiceSpec extends ZIOSpecDefault:
             LocalTime.of(8, 55),
             IataCode("MAD"),
             IataCode("TFN"),
-            IcaoCode("AEA")
+            AirlineIcaoCode("AEA")
           )
           for error <- new CreateFlightService(repo).create(command).flip
           yield assertTrue(error == DomainError.FlightAlreadyExists("UX9117"))
@@ -111,7 +115,7 @@ object FlightServiceSpec extends ZIOSpecDefault:
                              LocalTime.of(9, 15),
                              IataCode("MAD"),
                              IataCode("TFN"),
-                             IcaoCode("AEA")
+                             AirlineIcaoCode("AEA")
                            )
             result      <- new UpdateFlightService(repo).update(command)
             captured    <- capturedRef.get
@@ -129,7 +133,7 @@ object FlightServiceSpec extends ZIOSpecDefault:
             LocalTime.of(9, 15),
             IataCode("MAD"),
             IataCode("TFN"),
-            IcaoCode("AEA")
+            AirlineIcaoCode("AEA")
           )
           for error <- new UpdateFlightService(repo).update(command).flip
           yield assertTrue(error == DomainError.FlightNotFound("XXXXXX"))
@@ -144,6 +148,30 @@ object FlightServiceSpec extends ZIOSpecDefault:
         test("propagates FlightNotFound from the repository") {
           val repo = stubFlightRepo(onDelete = _ => ZIO.fail(DomainError.FlightNotFound("XXXXXX")))
           for error <- new DeleteFlightService(repo).delete(FlightCode("XXXXXX")).flip
+          yield assertTrue(error == DomainError.FlightNotFound("XXXXXX"))
+        }
+      ),
+      suite("FindFlightsByAirlineService")(
+        test("delegates to the repository unchanged") {
+          val repo = stubFlightRepo(onFindByAirline = (_, _) => ZIO.succeed(List(ux9117)))
+          for result <- new FindFlightsByAirlineService(repo).findByAirline(AirlineIcaoCode("AEA"), Pagination(1, 20))
+          yield assertTrue(result == List(ux9117))
+        },
+        test("returns an empty list for an airline with no flights") {
+          val repo = stubFlightRepo(onFindByAirline = (_, _) => ZIO.succeed(Nil))
+          for result <- new FindFlightsByAirlineService(repo).findByAirline(AirlineIcaoCode("VLG"), Pagination(1, 20))
+          yield assertTrue(result.isEmpty)
+        }
+      ),
+      suite("FindAirlineForFlightService")(
+        test("returns the operating airline when the flight is found") {
+          val repo = stubFlightRepo(onFindAirlineByCode = _ => ZIO.some(airEuropa))
+          for result <- new FindAirlineForFlightService(repo).findAirline(FlightCode("UX9117"))
+          yield assertTrue(result == airEuropa)
+        },
+        test("fails with FlightNotFound when the flight does not exist") {
+          val repo = stubFlightRepo(onFindAirlineByCode = _ => ZIO.none)
+          for error <- new FindAirlineForFlightService(repo).findAirline(FlightCode("XXXXXX")).flip
           yield assertTrue(error == DomainError.FlightNotFound("XXXXXX"))
         }
       ),
@@ -170,6 +198,18 @@ object FlightServiceSpec extends ZIOSpecDefault:
           for _ <- ZIO
                      .service[DeleteFlightUseCase]
                      .provide(ZLayer.succeed(unimplementedFlightRepo), DeleteFlightService.layer)
+          yield assertCompletes
+        },
+        test("FindFlightsByAirlineService.layer constructs a usable instance") {
+          for _ <- ZIO
+                     .service[FindFlightsByAirlineUseCase]
+                     .provide(ZLayer.succeed(unimplementedFlightRepo), FindFlightsByAirlineService.layer)
+          yield assertCompletes
+        },
+        test("FindAirlineForFlightService.layer constructs a usable instance") {
+          for _ <- ZIO
+                     .service[FindAirlineForFlightUseCase]
+                     .provide(ZLayer.succeed(unimplementedFlightRepo), FindAirlineForFlightService.layer)
           yield assertCompletes
         }
       )

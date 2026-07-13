@@ -1,7 +1,7 @@
 package dev.cmartin.aerohex.application.route
 
 import dev.cmartin.aerohex.application.aspect.ServiceAspect
-import dev.cmartin.aerohex.domain.airline.IcaoCode
+import dev.cmartin.aerohex.domain.airline.AirlineIcaoCode
 import dev.cmartin.aerohex.domain.airport.IataCode
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.route.{DisassociateAirlineUseCase, RouteAirlineRepository}
@@ -13,7 +13,7 @@ final class DisassociateAirlineService(repo: RouteAirlineRepository) extends Dis
     repo.disassociate(
       IataCode.unsafeMake(originIata),
       IataCode.unsafeMake(destinationIata),
-      IcaoCode.unsafeMake(airlineIcao)
+      AirlineIcaoCode.unsafeMake(airlineIcao)
     ) @@ ServiceAspect.logged(s"DisassociateAirlineService.disassociate($originIata, $destinationIata, $airlineIcao)")
 }
 

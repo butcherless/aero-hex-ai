@@ -1,7 +1,7 @@
 package dev.cmartin.aerohex.it.support
 
-import dev.cmartin.aerohex.domain.airline.{Airline, AirlineRepository, IcaoCode}
-import dev.cmartin.aerohex.domain.airport.{Airport, AirportRepository, IataCode}
+import dev.cmartin.aerohex.domain.airline.{Airline, AirlineRepository, AirlineIcaoCode}
+import dev.cmartin.aerohex.domain.airport.{Airport, AirportIcaoCode, AirportRepository, IataCode}
 import dev.cmartin.aerohex.domain.country.{Country, CountryCode, CountryRepository}
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.flight.{Flight, FlightCode, FlightRepository}
@@ -29,7 +29,7 @@ object FlightRepositoryContractSpec:
   ): ZIO[AirportRepository, DomainError, Unit] =
     ZIO.serviceWithZIO[AirportRepository](
       _.save(
-        Airport(IataCode.unsafeMake(iata), IcaoCode.unsafeMake(icao), name, city),
+        Airport(IataCode.unsafeMake(iata), AirportIcaoCode.unsafeMake(icao), name, city),
         CountryCode.unsafeMake(countryCode)
       ).unit
     )
@@ -40,7 +40,7 @@ object FlightRepositoryContractSpec:
       countryCode: String
   ): ZIO[AirlineRepository, DomainError, Unit] =
     ZIO.serviceWithZIO[AirlineRepository](
-      _.save(Airline(IcaoCode.unsafeMake(icao), name, LocalDate.of(2000, 1, 1)), CountryCode.unsafeMake(countryCode)).unit
+      _.save(Airline(AirlineIcaoCode.unsafeMake(icao), name, LocalDate.of(2000, 1, 1)), CountryCode.unsafeMake(countryCode)).unit
     )
 
   def tests: List[Spec[FlightRepository & AirportRepository & AirlineRepository & CountryRepository, Any]] = List(
@@ -58,7 +58,7 @@ object FlightRepositoryContractSpec:
                    LocalTime.of(8, 55),
                    IataCode("MAD"),
                    IataCode("TFN"),
-                   IcaoCode("AEA")
+                   AirlineIcaoCode("AEA")
                  )
         saved <- repo.save(ux9117)
         found <- repo.findByCode(FlightCode("UX9117"))
@@ -79,11 +79,74 @@ object FlightRepositoryContractSpec:
                     LocalTime.of(10, 0),
                     IataCode("CDG"),
                     IataCode("ORY"),
-                    IcaoCode("AFR")
+                    AirlineIcaoCode("AFR")
                   )
                 )
         all  <- repo.findAll(Pagination(page = 1, pageSize = 100))
       yield assertTrue(all.exists(_.code.value == "AF1234"))
+    },
+    test("findAirlineByCode returns the operating airline for an existing flight") {
+      for
+        _      <- seedCountry("GR", "Greece")
+        _      <- seedAirport("ATH", "LGAV", "Eleftherios Venizelos", "Athens", "GR")
+        _      <- seedAirport("SKG", "LGTS", "Macedonia", "Thessaloniki", "GR")
+        // seedAirline always persists LocalDate.of(2000, 1, 1) regardless of the real founding
+        // date, so the expected fixture must match that, not Olympic Air's actual 1957 founding.
+        airline = Airline(AirlineIcaoCode("OAL"), "Olympic Air", LocalDate.of(2000, 1, 1))
+        _      <- seedAirline("OAL", "Olympic Air", "GR")
+        repo   <- ZIO.service[FlightRepository]
+        _      <- repo.save(
+                    Flight(
+                      FlightCode("OA1234"),
+                      None,
+                      LocalTime.of(11, 0),
+                      LocalTime.of(12, 0),
+                      IataCode("ATH"),
+                      IataCode("SKG"),
+                      AirlineIcaoCode("OAL")
+                    )
+                  )
+        found  <- repo.findAirlineByCode(FlightCode("OA1234"))
+      yield assertTrue(found.contains(airline))
+    },
+    test("findAirlineByCode returns None for an unknown flight code") {
+      for
+        repo  <- ZIO.service[FlightRepository]
+        found <- repo.findAirlineByCode(FlightCode("ZZ0000"))
+      yield assertTrue(found.isEmpty)
+    },
+    test("findByAirline returns only flights operated by that airline") {
+      for
+        _      <- seedCountry("IT", "Italy")
+        _      <- seedAirport("FCO", "LIRF", "Fiumicino", "Rome", "IT")
+        _      <- seedAirport("MXP", "LIMC", "Malpensa", "Milan", "IT")
+        _      <- seedAirline("AZA", "ITA Airways", "IT")
+        _      <- seedAirline("RYR", "Ryanair", "IT")
+        repo   <- ZIO.service[FlightRepository]
+        _      <- repo.save(
+                    Flight(
+                      FlightCode("AZ100"),
+                      None,
+                      LocalTime.of(6, 0),
+                      LocalTime.of(7, 10),
+                      IataCode("FCO"),
+                      IataCode("MXP"),
+                      AirlineIcaoCode("AZA")
+                    )
+                  )
+        _      <- repo.save(
+                    Flight(
+                      FlightCode("FR200"),
+                      None,
+                      LocalTime.of(8, 0),
+                      LocalTime.of(9, 10),
+                      IataCode("FCO"),
+                      IataCode("MXP"),
+                      AirlineIcaoCode("RYR")
+                    )
+                  )
+        byAza  <- repo.findByAirline(AirlineIcaoCode("AZA"), Pagination(page = 1, pageSize = 100))
+      yield assertTrue(byAza.map(_.code.value) == List("AZ100"))
     },
     test("update changes the schedule, alias, and airline of an existing flight") {
       for
@@ -101,7 +164,7 @@ object FlightRepositoryContractSpec:
                        LocalTime.of(9, 50),
                        IataCode("LIS"),
                        IataCode("OPO"),
-                       IcaoCode("TAP")
+                       AirlineIcaoCode("TAP")
                      )
                    )
         updated  = Flight(
@@ -111,7 +174,7 @@ object FlightRepositoryContractSpec:
                      LocalTime.of(10, 20),
                      IataCode("LIS"),
                      IataCode("OPO"),
-                     IcaoCode("PGA")
+                     AirlineIcaoCode("PGA")
                    )
         saved   <- repo.update(updated)
         found   <- repo.findByCode(FlightCode("TP1234"))
@@ -133,7 +196,7 @@ object FlightRepositoryContractSpec:
                        LocalTime.of(10, 0),
                        IataCode("LUX"),
                        IataCode("BRU"),
-                       IcaoCode("LGL")
+                       AirlineIcaoCode("LGL")
                      )
                    )
                    .flip
@@ -154,7 +217,7 @@ object FlightRepositoryContractSpec:
                      LocalTime.of(9, 40),
                      IataCode("OST"),
                      IataCode("LGG"),
-                     IcaoCode("BEL")
+                     AirlineIcaoCode("BEL")
                    )
                  )
         error <- repo
@@ -166,7 +229,7 @@ object FlightRepositoryContractSpec:
                        LocalTime.of(9, 40),
                        IataCode("XXX"),
                        IataCode("LGG"),
-                       IcaoCode("BEL")
+                       AirlineIcaoCode("BEL")
                      )
                    )
                    .flip
@@ -187,7 +250,7 @@ object FlightRepositoryContractSpec:
                      LocalTime.of(9, 30),
                      IataCode("AMS"),
                      IataCode("RTM"),
-                     IcaoCode("KLM")
+                     AirlineIcaoCode("KLM")
                    )
                  )
         error <- repo
@@ -199,7 +262,7 @@ object FlightRepositoryContractSpec:
                        LocalTime.of(9, 30),
                        IataCode("AMS"),
                        IataCode("RTM"),
-                       IcaoCode("YYY")
+                       AirlineIcaoCode("YYY")
                      )
                    )
                    .flip
@@ -220,7 +283,7 @@ object FlightRepositoryContractSpec:
                        LocalTime.of(10, 0),
                        IataCode("XXX"),
                        IataCode("ZRH"),
-                       IcaoCode("SWR")
+                       AirlineIcaoCode("SWR")
                      )
                    )
                    .flip
@@ -241,7 +304,7 @@ object FlightRepositoryContractSpec:
                        LocalTime.of(10, 0),
                        IataCode("ARN"),
                        IataCode("GOT"),
-                       IcaoCode("YYY")
+                       AirlineIcaoCode("YYY")
                      )
                    )
                    .flip
@@ -261,7 +324,7 @@ object FlightRepositoryContractSpec:
                    LocalTime.of(10, 0),
                    IataCode("OSL"),
                    IataCode("BGO"),
-                   IcaoCode("SAS")
+                   AirlineIcaoCode("SAS")
                  )
         _     <- repo.save(flight)
         error <- repo.save(flight).flip
@@ -282,7 +345,7 @@ object FlightRepositoryContractSpec:
                      LocalTime.of(9, 45),
                      IataCode("CPH"),
                      IataCode("AAL"),
-                     IcaoCode("DAN")
+                     AirlineIcaoCode("DAN")
                    )
                  )
         _     <- repo.delete(FlightCode("DX1234"))

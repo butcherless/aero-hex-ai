@@ -18,8 +18,8 @@ import zio.{IO, Scope, Task, ZIO, ZLayer}
 
 object AirlineEndpointsSpec extends ZIOSpecDefault:
 
-  private val iberia  = Airline(IcaoCode("IBE"), "Iberia", LocalDate.of(1927, 6, 28))
-  private val vueling = Airline(IcaoCode("VLG"), "Vueling", LocalDate.of(2004, 3, 1))
+  private val iberia  = Airline(AirlineIcaoCode("IBE"), "Iberia", LocalDate.of(1927, 6, 28))
+  private val vueling = Airline(AirlineIcaoCode("VLG"), "Vueling", LocalDate.of(2004, 3, 1))
 
   // ── Stub use-case implementations ─────────────────────────────────────────
 
@@ -54,13 +54,16 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
   private val countryNotFoundUpdate: UpdateAirlineUseCase =
     (cmd: UpdateAirlineCommand) => ZIO.fail(DomainError.CountryNotFound(cmd.countryCode.value))
 
-  private val defaultDelete: DeleteAirlineUseCase = (_: IcaoCode) => ZIO.unit
+  private val defaultDelete: DeleteAirlineUseCase = (_: AirlineIcaoCode) => ZIO.unit
 
   private val notFoundDelete: DeleteAirlineUseCase =
-    (icao: IcaoCode) => ZIO.fail(DomainError.AirlineNotFound(icao.value))
+    (icao: AirlineIcaoCode) => ZIO.fail(DomainError.AirlineNotFound(icao.value))
 
   private val defaultFindByRoute: FindAirlinesByRouteUseCase =
     (_: String, _: String) => ZIO.succeed(List(iberia))
+
+  private val failingFindByRoute: FindAirlinesByRouteUseCase =
+    (origin: String, destination: String) => ZIO.fail(DomainError.RouteNotFound(origin, destination))
 
   // ── Backend factory ────────────────────────────────────────────────────────
 
@@ -208,7 +211,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
                 .send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         },
-        test("returns 400 when icao is 3 chars but not alphabetic (real IcaoCode.make check, not a stub)") {
+        test("returns 400 when icao is 3 chars but not alphabetic (real AirlineIcaoCode.make check, not a stub)") {
           for
             response <-
               basicRequest
@@ -370,6 +373,13 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
             response.code == StatusCode.Ok,
             airlines.map(_.icao) == List("IBE")
           )
+        },
+        test("propagates the mapped domain error when the use case fails") {
+          for
+            response <- basicRequest
+                          .get(uri"https://test.com/api/v1/routes/MAD/TFN/airlines")
+                          .send(makeBackend(findByRoute = failingFindByRoute))
+          yield assertTrue(response.code == StatusCode.NotFound)
         }
       ),
       suite("AirlineRoutes.layer")(

@@ -1,8 +1,7 @@
 package dev.cmartin.aerohex.adapter.http.airport
 
 import dev.cmartin.aerohex.adapter.http.common.{CodePatterns, SchemaModifiers}
-import dev.cmartin.aerohex.domain.airline.IcaoCode
-import dev.cmartin.aerohex.domain.airport.{Airport, IataCode}
+import dev.cmartin.aerohex.domain.airport.{Airport, AirportIcaoCode, IataCode}
 import dev.cmartin.aerohex.domain.airport.{CreateAirportCommand, UpdateAirportCommand}
 import dev.cmartin.aerohex.domain.country.CountryCode
 import dev.cmartin.aerohex.domain.error.DomainError
@@ -46,7 +45,7 @@ object CreateAirportRequest {
   def toCommand(req: CreateAirportRequest): IO[DomainError, CreateAirportCommand] =
     for
       iataCode <- IataCode.make(req.iata).toZIO.orElseFail(DomainError.InvalidIataCode(req.iata))
-      icaoCode <- IcaoCode.make(req.icaoCode).toZIO.orElseFail(DomainError.InvalidIcaoCode(req.icaoCode))
+      icaoCode <- AirportIcaoCode.make(req.icaoCode).toZIO.orElseFail(DomainError.InvalidAirportIcaoCode(req.icaoCode))
     yield CreateAirportCommand(
       iataCode = iataCode,
       icaoCode = icaoCode,
@@ -75,7 +74,7 @@ object UpdateAirportRequest {
   def toCommand(iata: String, req: UpdateAirportRequest): UpdateAirportCommand =
     UpdateAirportCommand(
       iataCode = IataCode.unsafeMake(iata),
-      icaoCode = IcaoCode.unsafeMake(req.icaoCode),
+      icaoCode = AirportIcaoCode.unsafeMake(req.icaoCode),
       name = req.name,
       city = req.city,
       countryCode = CountryCode.unsafeMake(req.countryCode)

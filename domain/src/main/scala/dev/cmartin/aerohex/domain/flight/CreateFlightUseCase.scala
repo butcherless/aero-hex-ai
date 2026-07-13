@@ -1,6 +1,6 @@
 package dev.cmartin.aerohex.domain.flight
 
-import dev.cmartin.aerohex.domain.airline.IcaoCode
+import dev.cmartin.aerohex.domain.airline.AirlineIcaoCode
 import dev.cmartin.aerohex.domain.airport.IataCode
 import dev.cmartin.aerohex.domain.error.DomainError
 import java.time.LocalTime
@@ -13,7 +13,7 @@ case class CreateFlightCommand(
     schedArrival: LocalTime,
     origin: IataCode,
     destination: IataCode,
-    airlineIcao: IcaoCode
+    airlineIcao: AirlineIcaoCode
 )
 
 trait CreateFlightUseCase:

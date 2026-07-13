@@ -2,11 +2,11 @@ package dev.cmartin.aerohex.adapter.http.airline
 
 import dev.cmartin.aerohex.adapter.http.error.ErrorMapper
 import dev.cmartin.aerohex.domain.airline.{
+  AirlineIcaoCode,
   CreateAirlineUseCase,
   DeleteAirlineUseCase,
   FindAirlineUseCase,
   FindAirlinesByCountryUseCase,
-  IcaoCode,
   UpdateAirlineUseCase
 }
 import dev.cmartin.aerohex.domain.country.CountryCode
@@ -60,7 +60,7 @@ class AirlineRoutes(
     },
     AirlineEndpoints.delete.zServerLogic { icao =>
       deleteSvc
-        .delete(IcaoCode.unsafeMake(icao))
+        .delete(AirlineIcaoCode.unsafeMake(icao))
         .mapError(ErrorMapper.toHttpError)
     },
     AirlineEndpoints.findByRoute.zServerLogic { (origin, destination) =>

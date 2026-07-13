@@ -61,10 +61,10 @@ object WiringModule {
 
   private val routeAirlineRepoLayer: ULayer[RouteAirlineRepository] = ZLayer.succeed(
     new RouteAirlineRepository:
-      def associate(o: IataCode, d: IataCode, icao: IcaoCode): IO[DomainError, Unit]    = ZIO.unit
-      def disassociate(o: IataCode, d: IataCode, icao: IcaoCode): IO[DomainError, Unit] = ZIO.unit
-      def findAirlines(o: IataCode, d: IataCode): IO[DomainError, List[Airline]]        = ZIO.succeed(Nil)
-      def findRoutes(icao: IcaoCode, p: Pagination): IO[DomainError, List[Route]]       = ZIO.succeed(Nil)
+      def associate(o: IataCode, d: IataCode, icao: AirlineIcaoCode): IO[DomainError, Unit]    = ZIO.unit
+      def disassociate(o: IataCode, d: IataCode, icao: AirlineIcaoCode): IO[DomainError, Unit] = ZIO.unit
+      def findAirlines(o: IataCode, d: IataCode): IO[DomainError, List[Airline]]               = ZIO.succeed(Nil)
+      def findRoutes(icao: AirlineIcaoCode, p: Pagination): IO[DomainError, List[Route]]       = ZIO.succeed(Nil)
   )
 
   private val flightRepoLayer: TaskLayer[FlightRepository] =
@@ -110,10 +110,13 @@ object WiringModule {
       (routeAirlineRepoLayer >>> DisassociateAirlineService.layer) ++
       (routeAirlineRepoLayer >>> FindRoutesByAirlineService.layer)
 
-  private val flightUseCaseLayers = (flightRepoLayer >>> FindFlightService.layer) ++
-    (flightRepoLayer >>> CreateFlightService.layer) ++
-    (flightRepoLayer >>> UpdateFlightService.layer) ++
-    (flightRepoLayer >>> DeleteFlightService.layer)
+  private val flightUseCaseLayers =
+    (flightRepoLayer >>> FindFlightService.layer) ++
+      (flightRepoLayer >>> CreateFlightService.layer) ++
+      (flightRepoLayer >>> UpdateFlightService.layer) ++
+      (flightRepoLayer >>> DeleteFlightService.layer) ++
+      (flightRepoLayer >>> FindFlightsByAirlineService.layer) ++
+      (flightRepoLayer >>> FindAirlineForFlightService.layer)
 
   val appLayer: TaskLayer[HttpServer.AppRoutes] =
     (countryUseCaseLayers >>> CountryRoutes.layer) ++

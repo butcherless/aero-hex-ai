@@ -1,8 +1,7 @@
 package dev.cmartin.aerohex.infrastructure.persistence.postgres.airport
 
-import dev.cmartin.aerohex.domain.airline.IcaoCode
 import dev.cmartin.aerohex.domain.airport.AirportRepository
-import dev.cmartin.aerohex.domain.airport.{Airport, IataCode}
+import dev.cmartin.aerohex.domain.airport.{Airport, AirportIcaoCode, IataCode}
 import dev.cmartin.aerohex.domain.country.{Country, CountryCode}
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.infrastructure.persistence.postgres.common.DoobieIdResolver
@@ -27,7 +26,7 @@ final class DoobieAirportRepository(protected val xa: Transactor[Task]) extends 
       .query[(String, String, String, String)]
       .option
       .transact(xa)
-      .map(_.map((i, icao, n, city) => Airport(IataCode.unsafeMake(i), IcaoCode.unsafeMake(icao), n, city)))
+      .map(_.map((i, icao, n, city) => Airport(IataCode.unsafeMake(i), AirportIcaoCode.unsafeMake(icao), n, city)))
       .orDie
 
   override def findAll(pagination: Pagination): IO[DomainError, List[Airport]] =
@@ -36,7 +35,7 @@ final class DoobieAirportRepository(protected val xa: Transactor[Task]) extends 
       .query[(String, String, String, String)]
       .to[List]
       .transact(xa)
-      .map(_.map((i, icao, n, city) => Airport(IataCode.unsafeMake(i), IcaoCode.unsafeMake(icao), n, city)))
+      .map(_.map((i, icao, n, city) => Airport(IataCode.unsafeMake(i), AirportIcaoCode.unsafeMake(icao), n, city)))
       .orDie
 
   override def searchByName(query: String): IO[DomainError, List[Airport]] = {
@@ -46,7 +45,7 @@ final class DoobieAirportRepository(protected val xa: Transactor[Task]) extends 
       .query[(String, String, String, String)]
       .to[List]
       .transact(xa)
-      .map(_.map((i, icao, n, city) => Airport(IataCode.unsafeMake(i), IcaoCode.unsafeMake(icao), n, city)))
+      .map(_.map((i, icao, n, city) => Airport(IataCode.unsafeMake(i), AirportIcaoCode.unsafeMake(icao), n, city)))
       .orDie
   }
 
@@ -57,7 +56,7 @@ final class DoobieAirportRepository(protected val xa: Transactor[Task]) extends 
       .query[(String, String, String, String)]
       .to[List]
       .transact(xa)
-      .map(_.map((i, icao, n, city) => Airport(IataCode.unsafeMake(i), IcaoCode.unsafeMake(icao), n, city)))
+      .map(_.map((i, icao, n, city) => Airport(IataCode.unsafeMake(i), AirportIcaoCode.unsafeMake(icao), n, city)))
       .orDie
 
   override def findCountryByIata(iata: IataCode): IO[DomainError, Option[Country]] =

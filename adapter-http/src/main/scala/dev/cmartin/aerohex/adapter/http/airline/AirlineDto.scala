@@ -1,7 +1,7 @@
 package dev.cmartin.aerohex.adapter.http.airline
 
 import dev.cmartin.aerohex.adapter.http.common.SchemaModifiers
-import dev.cmartin.aerohex.domain.airline.{Airline, IcaoCode}
+import dev.cmartin.aerohex.domain.airline.{Airline, AirlineIcaoCode}
 import dev.cmartin.aerohex.domain.airline.{CreateAirlineCommand, UpdateAirlineCommand}
 import dev.cmartin.aerohex.domain.country.CountryCode
 import dev.cmartin.aerohex.domain.error.DomainError
@@ -36,10 +36,10 @@ case class CreateAirlineRequest(icao: String, name: String, foundationDate: Stri
 
 object CreateAirlineRequest {
   def toCommand(req: CreateAirlineRequest): IO[DomainError, CreateAirlineCommand] =
-    IcaoCode
+    AirlineIcaoCode
       .make(req.icao)
       .toZIO
-      .orElseFail(DomainError.InvalidIcaoCode(req.icao))
+      .orElseFail(DomainError.InvalidAirlineIcaoCode(req.icao))
       .map(icao =>
         CreateAirlineCommand(
           icao = icao,
@@ -65,7 +65,7 @@ case class UpdateAirlineRequest(name: String, foundationDate: String, countryCod
 object UpdateAirlineRequest {
   def toCommand(icao: String, req: UpdateAirlineRequest): UpdateAirlineCommand =
     UpdateAirlineCommand(
-      icao = IcaoCode.unsafeMake(icao),
+      icao = AirlineIcaoCode.unsafeMake(icao),
       name = req.name,
       foundationDate = LocalDate.parse(req.foundationDate),
       countryCode = CountryCode.unsafeMake(req.countryCode)

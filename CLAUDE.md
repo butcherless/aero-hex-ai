@@ -52,7 +52,7 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 | Language | Scala 3 LTS | 3.3.8 |
 | Build | SBT | 1.12.13 |
 | Effect | ZIO | 2.1.26 |
-| Smart constructors (`CountryCode`/`IataCode`/`IcaoCode`/`Registration`) | ZIO Prelude | 1.0.0-RC47 |
+| Smart constructors (`CountryCode`/`IataCode`/`AirportIcaoCode`/`AirlineIcaoCode`/`Registration`) | ZIO Prelude | 1.0.0-RC47 |
 | HTTP server | ZIO HTTP | 3.11.3 |
 | HTTP endpoints | Tapir | 1.13.26 |
 | Persistence (wired default) | Quill | 4.8.6 |
@@ -148,11 +148,12 @@ instance.id.value            // unwrap to UUID
 Remaining plain opaque types: `FlightInstanceId`, `OutboxEventId`, `NonEmptyString`
 (shared-kernel) — none has a real smart constructor.
 
-`CountryCode`, `IataCode`, `IcaoCode`, `Registration`, and `FlightCode` are ZIO Prelude
-`Newtype[String]`s instead, each with a real, enforced `assertion` (see
+`CountryCode`, `IataCode`, `AirportIcaoCode`, `AirlineIcaoCode`, `Registration`, and `FlightCode`
+are ZIO Prelude `Newtype[String]`s instead, each with a real, enforced `assertion` (see
 `docs/analysis/validation-analysis-hexagonal.md` §2/§6 for why). Same
 `.value` unwrap convention either way; construct via `CountryCode("ES")` /
-`IataCode("MAD")` / `IcaoCode("IBE")` / `Registration("EC-MIG")` / `FlightCode("UX9117")`
+`IataCode("MAD")` / `AirportIcaoCode("LEMD")` / `AirlineIcaoCode("IBE")` /
+`Registration("EC-MIG")` / `FlightCode("UX9117")`
 for compile-time-known literals (a malformed literal fails to compile),
 `.make(raw).toZIO` for runtime strings that need validating, `.unsafeMake(raw)`
 for already-trusted data (DB reads, Tapir-already-validated path params,
@@ -161,12 +162,17 @@ cross-entity reference fields). Real validation is wired into each type's
 `CreateAirlineRequest`/`CreateAircraftRequest`/`CreateFlightRequest`.toCommand) — a
 reference field on another entity (e.g. `Aircraft.airlineIcao`, `Route.origin`,
 `Flight.origin`/`destination`/`airlineIcao`) always uses `unsafeMake`, never `.make`.
-`IataCode`'s assertion enforces both shape and its fixed 3-letter length; `IcaoCode`'s
-enforces shape only (alphabetic, any length) since `Airline`'s own code is 3 letters
-and `Airport`'s is 4 — the per-entity length stays an HTTP-layer `Validator`.
+`IataCode`'s assertion enforces both shape and its fixed 3-letter length. `AirportIcaoCode`
+(4 letters, e.g. `"LEMD"`) and `AirlineIcaoCode` (3 letters, e.g. `"IBE"`) used to be one shared
+`IcaoCode` type that could only enforce alphabetic shape, not length, since `Airline`'s own code
+is 3 letters and `Airport`'s is 4; they're now two distinct types, each enforcing its own exact
+length — closing that gap without needing any DB migration (`airlines.icao_code VARCHAR(3)` /
+`airports.icao_code VARCHAR(4)` already matched). The HTTP-layer path-param/schema `Validator`s
+for both were already correctly scoped to 3/4 letters and needed no change.
 `Registration`'s assertion (non-blank, ≤10 chars) and `FlightCode`'s (non-blank,
 ≤8 chars) are both bound-for-bound identical to their HTTP `Validator`s, since
-real-world registrations/flight designators have no fixed shape to check.
+real-world registrations/flight designators have no fixed shape to check — reviewed and confirmed
+still generous enough (real-world registrations/designators top out around 7-8 chars).
 
 **ZLayer wiring** — every infrastructure class exposes a companion `val layer`:
 ```scala

@@ -2,7 +2,7 @@ package dev.cmartin.aerohex.infrastructure.persistence.postgres.aircraft
 
 import dev.cmartin.aerohex.domain.aircraft.AircraftRepository
 import dev.cmartin.aerohex.domain.aircraft.{Aircraft, Registration}
-import dev.cmartin.aerohex.domain.airline.IcaoCode
+import dev.cmartin.aerohex.domain.airline.AirlineIcaoCode
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.infrastructure.persistence.postgres.common.DoobieIdResolver
 import dev.cmartin.aerohex.shared.Pagination
@@ -16,7 +16,7 @@ import zio.{IO, Task, URLayer, ZIO, ZLayer}
 final class DoobieAircraftRepository(protected val xa: Transactor[Task]) extends AircraftRepository
     with DoobieIdResolver {
 
-  private def resolveAirlineId(icao: IcaoCode): IO[DomainError, Long] =
+  private def resolveAirlineId(icao: AirlineIcaoCode): IO[DomainError, Long] =
     resolveId(
       sql"SELECT id FROM airlines WHERE icao_code = ${icao.value}".query[Long],
       DomainError.AirlineNotFound(icao.value)
@@ -29,7 +29,9 @@ final class DoobieAircraftRepository(protected val xa: Transactor[Task]) extends
       .query[(String, String, String, String)]
       .option
       .transact(xa)
-      .map(_.map((reg, tc, desc, icao) => Aircraft(Registration.unsafeMake(reg), tc, desc, IcaoCode.unsafeMake(icao))))
+      .map(_.map((reg, tc, desc, icao) =>
+        Aircraft(Registration.unsafeMake(reg), tc, desc, AirlineIcaoCode.unsafeMake(icao))
+      ))
       .orDie
 
   override def findAll(pagination: Pagination): IO[DomainError, List[Aircraft]] =
@@ -39,7 +41,9 @@ final class DoobieAircraftRepository(protected val xa: Transactor[Task]) extends
       .query[(String, String, String, String)]
       .to[List]
       .transact(xa)
-      .map(_.map((reg, tc, desc, icao) => Aircraft(Registration.unsafeMake(reg), tc, desc, IcaoCode.unsafeMake(icao))))
+      .map(_.map((reg, tc, desc, icao) =>
+        Aircraft(Registration.unsafeMake(reg), tc, desc, AirlineIcaoCode.unsafeMake(icao))
+      ))
       .orDie
 
   override def save(aircraft: Aircraft): IO[DomainError, Aircraft] =

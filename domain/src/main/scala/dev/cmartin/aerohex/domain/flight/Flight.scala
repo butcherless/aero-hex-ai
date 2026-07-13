@@ -1,6 +1,6 @@
 package dev.cmartin.aerohex.domain.flight
 
-import dev.cmartin.aerohex.domain.airline.IcaoCode
+import dev.cmartin.aerohex.domain.airline.AirlineIcaoCode
 import dev.cmartin.aerohex.domain.airport.IataCode
 import java.time.LocalTime
 import zio.prelude.Assertion.*
@@ -9,11 +9,11 @@ import zio.prelude.{Assertion, Newtype}
 /** An airline flight designator (e.g. `"UX9117"`) — an Airline Designator +
   * Flight Number per IATA's Standard Schedules Information Manual (SSIM). A ZIO
   * Prelude smart [[https://zio.dev/zio-prelude/newtypes/ Newtype]] — unlike
-  * `IataCode`/`IcaoCode`, real-world flight codes vary enough in shape across
-  * codeshares/charters that no single alphanumeric pattern applies across all
-  * of them (mirrors `Registration`'s rationale exactly); `assertion` enforces
-  * only non-blank plus a maximum length of 8 characters (covers codeshare
-  * aliases like `"AEA9117"`).
+  * `IataCode`/`AirlineIcaoCode`, real-world flight codes vary enough in shape
+  * across codeshares/charters that no single alphanumeric pattern applies
+  * across all of them (mirrors `Registration`'s rationale exactly); `assertion`
+  * enforces only non-blank plus a maximum length of 8 characters (covers
+  * codeshare aliases like `"AEA9117"`).
   *
   *   - `FlightCode("UX9117")` — for compile-time-known literals.
   *   - `FlightCode.make(raw)` — for runtime strings, bridged to
@@ -56,8 +56,8 @@ type FlightCode = FlightCode.Type
   *   itself is many-to-many with `Airline` (a route can have several
   *   operators), this field is what pins one specific airline to this specific
   *   scheduled flight — not redundant with `Route`, despite sharing the
-  *   `IcaoCode` type. Constructed via `IcaoCode.unsafeMake`, mirroring
-  *   `Route.airlineIcao`/`Aircraft.airlineIcao`.
+  *   `AirlineIcaoCode` type. Constructed via `AirlineIcaoCode.unsafeMake`,
+  *   mirroring `Route.airlineIcao`/`Aircraft.airlineIcao`.
   */
 case class Flight(
     code: FlightCode,
@@ -66,5 +66,5 @@ case class Flight(
     schedArrival: LocalTime,
     origin: IataCode,
     destination: IataCode,
-    airlineIcao: IcaoCode
+    airlineIcao: AirlineIcaoCode
 )

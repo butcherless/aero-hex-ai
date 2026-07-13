@@ -2,8 +2,8 @@ package dev.cmartin.aerohex.application.route
 
 import RouteAirlineRepositoryStub.{stubRouteAirlineRepo, unimplementedRouteAirlineRepo}
 import RouteRepositoryStub.{stubRouteRepo, unimplementedRouteRepo}
-import dev.cmartin.aerohex.domain.airline.{Airline, IcaoCode}
-import dev.cmartin.aerohex.domain.airport.{Airport, FindAirportUseCase, IataCode}
+import dev.cmartin.aerohex.domain.airline.{Airline, AirlineIcaoCode}
+import dev.cmartin.aerohex.domain.airport.{Airport, AirportIcaoCode, FindAirportUseCase, IataCode}
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.route.{
   AssociateAirlineUseCase,
@@ -21,16 +21,16 @@ import zio.{IO, Scope, ZIO, ZLayer}
 
 object RouteServiceSpec extends ZIOSpecDefault:
 
-  private val mad    = Airport(IataCode("MAD"), IcaoCode("LEMD"), "Barajas", "Madrid")
-  private val tfn    = Airport(IataCode("TFN"), IcaoCode("GCXO"), "Norte", "Tenerife")
+  private val mad    = Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Barajas", "Madrid")
+  private val tfn    = Airport(IataCode("TFN"), AirportIcaoCode("GCXO"), "Norte", "Tenerife")
   private val route  = Route(IataCode("MAD"), IataCode("TFN"), 1740)
-  private val iberia = Airline(IcaoCode("IBE"), "Iberia", LocalDate.of(1927, 6, 28))
+  private val iberia = Airline(AirlineIcaoCode("IBE"), "Iberia", LocalDate.of(1927, 6, 28))
 
   private def findAirportStub(byIata: String => IO[DomainError, Airport]): FindAirportUseCase =
     new FindAirportUseCase:
-      def findByIata(iata: String): IO[DomainError, Airport]           = byIata(iata)
-      def findAll(p: Pagination): IO[DomainError, List[Airport]]       = ZIO.die(new NotImplementedError("findAll"))
-      def searchByName(query: String): IO[DomainError, List[Airport]]  =
+      def findByIata(iata: String): IO[DomainError, Airport]          = byIata(iata)
+      def findAll(p: Pagination): IO[DomainError, List[Airport]]      = ZIO.die(new NotImplementedError("findAll"))
+      def searchByName(query: String): IO[DomainError, List[Airport]] =
         ZIO.die(new NotImplementedError("searchByName"))
 
   override def spec: Spec[TestEnvironment & Scope, Any] =

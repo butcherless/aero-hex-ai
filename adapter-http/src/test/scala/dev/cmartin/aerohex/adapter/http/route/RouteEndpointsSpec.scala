@@ -50,6 +50,9 @@ object RouteEndpointsSpec extends ZIOSpecDefault:
   private val defaultFindByAirline: FindRoutesByAirlineUseCase =
     (_: String, _: Pagination) => ZIO.succeed(List(route))
 
+  private val failingFindByAirline: FindRoutesByAirlineUseCase =
+    (icao: String, _: Pagination) => ZIO.fail(DomainError.AirlineNotFound(icao))
+
   // ── Backend factory ────────────────────────────────────────────────────────
 
   private def makeBackend(
@@ -187,6 +190,13 @@ object RouteEndpointsSpec extends ZIOSpecDefault:
             response.code == StatusCode.Ok,
             routes.exists(_.originIata == "MAD")
           )
+        },
+        test("propagates the mapped domain error when the use case fails") {
+          for
+            response <- basicRequest
+                          .get(uri"https://test.com/api/v1/airlines/AEA/routes")
+                          .send(makeBackend(findByAirline = failingFindByAirline))
+          yield assertTrue(response.code == StatusCode.NotFound)
         }
       ),
       suite("RouteRoutes.layer")(

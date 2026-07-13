@@ -3,32 +3,29 @@ package dev.cmartin.aerohex.domain.airline
 import zio.prelude.Assertion.*
 import zio.prelude.{Assertion, Newtype}
 
-/** An ICAO-issued alphabetic code, shared across `Airline` (3 letters, e.g.
-  * `"IBE"`), `Airport` (4 letters, e.g. `"LEMD"`), `Route`, and `Flight`. A ZIO
-  * Prelude smart [[https://zio.dev/zio-prelude/newtypes/ Newtype]] —
-  * `assertion` enforces only the alphabetic shape at construction, not the
-  * per-entity length (BR-03), since the two entities that own this code
-  * directly (`Airline`, `Airport`) disagree on length (3 vs. 4 letters); that
-  * check stays at the HTTP boundary
-  * (`Validator.pattern(CodePatterns.alpha3/4)`).
+/** An ICAO-issued airline code, e.g. `"IBE"`. A ZIO Prelude smart
+  * [[https://zio.dev/zio-prelude/newtypes/ Newtype]] — `assertion` enforces the
+  * exact 3-letter/alphabetic shape (BR-03) at construction. Distinct from
+  * `Airport`'s own `AirportIcaoCode` (4 letters) — the two entities' ICAO codes
+  * disagree on length, so each gets its own type rather than sharing one that
+  * could only enforce shape, not length.
   *
-  *   - `IcaoCode("IBE")` — for compile-time-known literals; a malformed literal
-  *     fails to compile.
-  *   - `IcaoCode.make(raw)` — for runtime strings that need validating, bridged
-  *     to `IO[DomainError, _]` via `.toZIO` (see
+  *   - `AirlineIcaoCode("IBE")` — for compile-time-known literals; a malformed
+  *     literal fails to compile.
+  *   - `AirlineIcaoCode.make(raw)` — for runtime strings that need validating,
+  *     bridged to `IO[DomainError, _]` via `.toZIO` (see
   *     `CreateAirlineRequest.toCommand`, currently the only call site that
-  *     needs it — Airport's own `icaoCode` field and every cross-entity
-  *     reference field still go through `unsafeMake`, matching `CountryCode`'s
-  *     precedent of enforcing real validation one entity's own natural key at a
-  *     time).
-  *   - `IcaoCode.unsafeMake(raw)` — for already-trusted data (DB reads,
+  *     needs it — every cross-entity reference field still goes through
+  *     `unsafeMake`, matching `CountryCode`'s precedent of enforcing real
+  *     validation one entity's own natural key at a time).
+  *   - `AirlineIcaoCode.unsafeMake(raw)` — for already-trusted data (DB reads,
   *     Tapir-already-validated path params, cross-entity reference fields).
   */
-object IcaoCode extends Newtype[String]:
-  override inline def assertion: Assertion[String] = matches("^[a-zA-Z]+$".r)
-  extension (i: IcaoCode) def value: String        = unwrap(i)
-  def unsafeMake(value: String): IcaoCode          = wrap(value)
-type IcaoCode = IcaoCode.Type
+object AirlineIcaoCode extends Newtype[String]:
+  override inline def assertion: Assertion[String] = matches("^[a-zA-Z]{3}$".r)
+  extension (i: AirlineIcaoCode) def value: String = unwrap(i)
+  def unsafeMake(value: String): AirlineIcaoCode   = wrap(value)
+type AirlineIcaoCode = AirlineIcaoCode.Type
 
 /** An organization providing a regular public service of air transport on one
   * or more routes. Belongs to one [[Country]], resolved by relationship rather
@@ -37,9 +34,8 @@ type IcaoCode = IcaoCode.Type
   *
   * @param icao
   *   the airline's ICAO code (e.g. `"IBE"`), exactly 3 letters (BR-03), and
-  *   natural key. Shape (alphabetic) is enforced by `IcaoCode`'s own smart
-  *   constructor; the 3-letter length and ICAO membership are not — see
-  *   `IcaoCode`'s scaladoc.
+  *   natural key. Shape and length are both enforced by `AirlineIcaoCode`'s own
+  *   smart constructor; ICAO membership is not — see its scaladoc.
   * @param name
   *   the airline's full name (e.g. `"Iberia"`). Must not be blank in practice
   *   (BR-14), enforced only at the HTTP write boundary
@@ -49,7 +45,7 @@ type IcaoCode = IcaoCode.Type
   *   future) beyond the SQL `DATE` type at the persistence layer.
   */
 case class Airline(
-    icao: IcaoCode,
+    icao: AirlineIcaoCode,
     name: String,
     foundationDate: java.time.LocalDate
 )

@@ -1,8 +1,7 @@
 package dev.cmartin.aerohex.infrastructure.persistence.quill.airport
 
-import dev.cmartin.aerohex.domain.airline.IcaoCode
 import dev.cmartin.aerohex.domain.airport.AirportRepository
-import dev.cmartin.aerohex.domain.airport.{Airport, IataCode}
+import dev.cmartin.aerohex.domain.airport.{Airport, AirportIcaoCode, IataCode}
 import dev.cmartin.aerohex.domain.country.{Country, CountryCode}
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.infrastructure.persistence.quill.common.QuillSqlState
@@ -33,7 +32,7 @@ final class QuillAirportRepository(dataSource: DataSource) extends AirportReposi
   import ctx.*
 
   private def toAirport(a: AirportRow): Airport =
-    Airport(IataCode.unsafeMake(a.iataCode), IcaoCode.unsafeMake(a.icaoCode), a.name, a.city)
+    Airport(IataCode.unsafeMake(a.iataCode), AirportIcaoCode.unsafeMake(a.icaoCode), a.name, a.city)
 
   override def findByIata(iata: IataCode): IO[DomainError, Option[Airport]] =
     ctx

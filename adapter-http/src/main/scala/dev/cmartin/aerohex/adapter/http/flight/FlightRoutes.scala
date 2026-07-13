@@ -1,10 +1,14 @@
 package dev.cmartin.aerohex.adapter.http.flight
 
+import dev.cmartin.aerohex.adapter.http.airline.AirlineDto
 import dev.cmartin.aerohex.adapter.http.error.ErrorMapper
+import dev.cmartin.aerohex.domain.airline.AirlineIcaoCode
 import dev.cmartin.aerohex.domain.flight.{
   CreateFlightUseCase,
   DeleteFlightUseCase,
+  FindAirlineForFlightUseCase,
   FindFlightUseCase,
+  FindFlightsByAirlineUseCase,
   FlightCode,
   UpdateFlightUseCase
 }
@@ -16,7 +20,9 @@ class FlightRoutes(
     useCase: FindFlightUseCase,
     createSvc: CreateFlightUseCase,
     updateSvc: UpdateFlightUseCase,
-    deleteSvc: DeleteFlightUseCase
+    deleteSvc: DeleteFlightUseCase,
+    findByAirlineSvc: FindFlightsByAirlineUseCase,
+    findAirlineSvc: FindAirlineForFlightUseCase
 ):
   val serverEndpoints: List[ZServerEndpoint[Any, Any]] = List(
     FlightEndpoints.findAll.zServerLogic { (page, pageSize) =>
@@ -51,12 +57,25 @@ class FlightRoutes(
       deleteSvc
         .delete(FlightCode.unsafeMake(code))
         .mapError(ErrorMapper.toHttpError)
+    },
+    FlightEndpoints.findByAirline.zServerLogic { (icao, page, pageSize) =>
+      findByAirlineSvc
+        .findByAirline(AirlineIcaoCode.unsafeMake(icao), Pagination(page, pageSize))
+        .map(_.map(FlightDto.fromDomain))
+        .mapError(ErrorMapper.toHttpError)
+    },
+    FlightEndpoints.findAirline.zServerLogic { code =>
+      findAirlineSvc
+        .findAirline(FlightCode.unsafeMake(code))
+        .map(AirlineDto.fromDomain)
+        .mapError(ErrorMapper.toHttpError)
     }
   )
 
 object FlightRoutes:
   val layer: URLayer[
-    FindFlightUseCase & CreateFlightUseCase & UpdateFlightUseCase & DeleteFlightUseCase,
+    FindFlightUseCase & CreateFlightUseCase & UpdateFlightUseCase & DeleteFlightUseCase &
+      FindFlightsByAirlineUseCase & FindAirlineForFlightUseCase,
     FlightRoutes
   ] =
-    ZLayer.fromFunction(new FlightRoutes(_, _, _, _))
+    ZLayer.fromFunction(new FlightRoutes(_, _, _, _, _, _))

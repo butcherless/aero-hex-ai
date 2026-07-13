@@ -2,7 +2,7 @@ package dev.cmartin.aerohex.infrastructure.persistence.quill.aircraft
 
 import dev.cmartin.aerohex.domain.aircraft.AircraftRepository
 import dev.cmartin.aerohex.domain.aircraft.{Aircraft, Registration}
-import dev.cmartin.aerohex.domain.airline.IcaoCode
+import dev.cmartin.aerohex.domain.airline.AirlineIcaoCode
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.infrastructure.persistence.quill.airline.QuillAirlineIdResolver
 import dev.cmartin.aerohex.infrastructure.persistence.quill.common.QuillSqlState
@@ -27,7 +27,12 @@ final class QuillAircraftRepository(dataSource: DataSource) extends AircraftRepo
   import ctx.*
 
   private def toAircraft(row: AircraftRow, airlineIcao: String): Aircraft =
-    Aircraft(Registration.unsafeMake(row.registration), row.typeCode, row.description, IcaoCode.unsafeMake(airlineIcao))
+    Aircraft(
+      Registration.unsafeMake(row.registration),
+      row.typeCode,
+      row.description,
+      AirlineIcaoCode.unsafeMake(airlineIcao)
+    )
 
   override def findByRegistration(registration: Registration): IO[DomainError, Option[Aircraft]] =
     ctx

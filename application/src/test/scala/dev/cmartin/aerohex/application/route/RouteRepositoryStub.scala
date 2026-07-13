@@ -13,11 +13,11 @@ private[application] object RouteRepositoryStub:
   val unimplementedRouteRepo: RouteRepository = new RouteRepository:
     def findBySegment(o: IataCode, d: IataCode): IO[DomainError, Option[Route]] =
       ZIO.die(new NotImplementedError("findBySegment"))
-    def findAll(p: Pagination): IO[DomainError, List[Route]]                   =
+    def findAll(p: Pagination): IO[DomainError, List[Route]]                    =
       ZIO.die(new NotImplementedError("findAll"))
-    def save(r: Route): IO[DomainError, Route]                                 =
+    def save(r: Route): IO[DomainError, Route]                                  =
       ZIO.die(new NotImplementedError("save"))
-    def delete(o: IataCode, d: IataCode): IO[DomainError, Unit]                =
+    def delete(o: IataCode, d: IataCode): IO[DomainError, Unit]                 =
       ZIO.die(new NotImplementedError("delete"))
 
   def stubRouteRepo(
@@ -28,6 +28,6 @@ private[application] object RouteRepositoryStub:
       onDelete: (IataCode, IataCode) => IO[DomainError, Unit] = unimplementedRouteRepo.delete
   ): RouteRepository = new RouteRepository:
     def findBySegment(o: IataCode, d: IataCode): IO[DomainError, Option[Route]] = onFindBySegment(o, d)
-    def findAll(p: Pagination): IO[DomainError, List[Route]]                   = onFindAll(p)
-    def save(r: Route): IO[DomainError, Route]                                 = onSave(r)
-    def delete(o: IataCode, d: IataCode): IO[DomainError, Unit]                = onDelete(o, d)
+    def findAll(p: Pagination): IO[DomainError, List[Route]]                    = onFindAll(p)
+    def save(r: Route): IO[DomainError, Route]                                  = onSave(r)
+    def delete(o: IataCode, d: IataCode): IO[DomainError, Unit]                 = onDelete(o, d)

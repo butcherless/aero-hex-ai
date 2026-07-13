@@ -2,7 +2,7 @@ package dev.cmartin.aerohex.adapter.http.aircraft
 
 import dev.cmartin.aerohex.domain.aircraft.{Aircraft, Registration}
 import dev.cmartin.aerohex.domain.aircraft.{CreateAircraftCommand, UpdateAircraftCommand}
-import dev.cmartin.aerohex.domain.airline.IcaoCode
+import dev.cmartin.aerohex.domain.airline.AirlineIcaoCode
 import dev.cmartin.aerohex.domain.error.DomainError
 import sttp.tapir.Schema
 import sttp.tapir.Validator
@@ -49,7 +49,7 @@ object CreateAircraftRequest {
           registration = registration,
           typeCode = req.typeCode,
           description = req.description,
-          airlineIcao = IcaoCode.unsafeMake(req.airlineIcao)
+          airlineIcao = AirlineIcaoCode.unsafeMake(req.airlineIcao)
         )
       )
 
@@ -79,7 +79,7 @@ object UpdateAircraftRequest {
       registration = Registration.unsafeMake(registration),
       typeCode = req.typeCode,
       description = req.description,
-      airlineIcao = IcaoCode.unsafeMake(req.airlineIcao)
+      airlineIcao = AirlineIcaoCode.unsafeMake(req.airlineIcao)
     )
 
   given Schema[UpdateAircraftRequest] = Schema.derived[UpdateAircraftRequest]

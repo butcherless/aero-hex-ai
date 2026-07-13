@@ -1,6 +1,6 @@
 package dev.cmartin.aerohex.domain.aircraft
 
-import dev.cmartin.aerohex.domain.airline.IcaoCode
+import dev.cmartin.aerohex.domain.airline.AirlineIcaoCode
 import zio.prelude.Assertion.*
 import zio.prelude.{Assertion, Newtype}
 
@@ -8,11 +8,12 @@ import zio.prelude.{Assertion, Newtype}
   * `"EC-MIG"`) — formally the *Aircraft Registration Mark* per ICAO Annex 7,
   * informally the *tail number*. A ZIO Prelude smart
   * [[https://zio.dev/zio-prelude/newtypes/ Newtype]] — unlike
-  * `CountryCode`/`IataCode`/`IcaoCode`, real-world registrations vary in shape
-  * by country of registry (`"EC-MIG"` Spain, `"N12345"` US, `"G-ABCD"` UK), so
-  * no single alphabetic/fixed-length pattern applies across all of them;
-  * `assertion` enforces only non-blank plus a maximum length of 10, the same
-  * bound the HTTP boundary validated before this type had a smart constructor.
+  * `CountryCode`/`IataCode`/`AirlineIcaoCode`, real-world registrations vary in
+  * shape by country of registry (`"EC-MIG"` Spain, `"N12345"` US, `"G-ABCD"`
+  * UK), so no single alphabetic/fixed-length pattern applies across all of
+  * them; `assertion` enforces only non-blank plus a maximum length of 10, the
+  * same bound the HTTP boundary validated before this type had a smart
+  * constructor.
   *
   *   - `Registration("EC-MIG")` — for compile-time-known literals.
   *   - `Registration.make(raw)` — for runtime strings, bridged to
@@ -46,8 +47,8 @@ type Registration = Registration.Type
   *   (`Validator.minLength(1)`), not by this type.
   * @param airlineIcao
   *   the ICAO code of the airline this aircraft belongs to. Shares the
-  *   `IcaoCode` Newtype with `Airline`/`Airport`/`Route`/`Flight`; constructed
-  *   via `IcaoCode.unsafeMake` everywhere on this entity since it's a
+  *   `AirlineIcaoCode` Newtype with `Airline`/`Route`/`Flight`; constructed via
+  *   `AirlineIcaoCode.unsafeMake` everywhere on this entity since it's a
   *   cross-entity reference, not `Aircraft`'s own natural key — real format
   *   validation for this field lives on `Airline`'s own `icao` construction,
   *   not here (mirrors `Route.airlineIcao`).
@@ -56,5 +57,5 @@ case class Aircraft(
     registration: Registration,
     typeCode: String,
     description: String,
-    airlineIcao: IcaoCode
+    airlineIcao: AirlineIcaoCode
 )
