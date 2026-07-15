@@ -13,7 +13,7 @@ import javax.sql.DataSource
 
 object PostgresContainerSupport {
 
-  private val image = DockerImageName.parse("postgres:16-alpine")
+  private val image = DockerImageName.parse("postgres:18-alpine")
 
   // Fresh container per suite: simplest correctness story, avoids state bleeding
   // between specs. See plans/add-persistence-integration-tests.md.

@@ -271,7 +271,7 @@ database predates this).
 ## Local infrastructure
 
 `docker-compose.yml`:
-- **Postgres 16** on `localhost:5432` — database/user/password: `aviation`
+- **Postgres 18** on `localhost:5432` — database/user/password: `aviation`
 - **Kafka** (KRaft, no ZooKeeper) on `localhost:9092` — auto-creates topics
 
 Environment variables (with fallbacks):
