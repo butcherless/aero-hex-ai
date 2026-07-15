@@ -13,7 +13,6 @@ import zio.{IO, UIO, URLayer, ZIO, ZLayer}
 final class QuillCountryRepository(dataSource: DataSource) extends CountryRepository {
 
   private case class CountryRow(id: Long, code: String, name: String)
-  private case class CountryCodeRow(code: String)
 
   private val ctx = new Quill.Postgres(SnakeCase, dataSource)
 
@@ -22,18 +21,24 @@ final class QuillCountryRepository(dataSource: DataSource) extends CountryReposi
   private def toCountry(row: CountryRow): Country =
     Country(CountryCode.unsafeMake(row.code), row.name)
 
+  // No querySchema/case-class row mapper for country_codes: that table has a single column
+  // (code), and Quill's macro flags any single-field row class as "questionable" (it can't tell
+  // whether you meant a genuine one-column entity or forgot to write a custom encoder — see
+  // https://getquill.io/#extending-quill-custom-encoding). A raw EXISTS query sidesteps the
+  // ambiguity entirely (and is arguably the better query anyway — no need to materialize a row).
   override def validateCode(code: CountryCode): IO[DomainError, Unit] =
     ctx
       .run(quote {
-        querySchema[CountryCodeRow]("country_codes").filter(_.code == lift(code.value))
+        infix"select exists(select 1 from country_codes where code = ${lift(code.value)})".as[Query[Boolean]]
       })
       .orDie
+      .map(_.headOption.getOrElse(false))
       .flatMap {
-        case Nil =>
+        case false =>
           ZIO.fail(
             DomainError.InvalidCountryCode(List(s"${code.value} is not a recognized ISO 3166-1 alpha-2 country code"))
           )
-        case _   => ZIO.unit
+        case true  => ZIO.unit
       }
 
   override def findByCode(code: CountryCode): IO[DomainError, Option[Country]] =
