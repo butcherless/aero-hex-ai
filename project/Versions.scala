@@ -5,7 +5,7 @@ object Versions {
   val zioInteropCats = "23.1.0.13"
   val doobie         = "1.0.0-RC9" // RC12 exists but still not stable
   val zioHttp        = "3.11.3"
-  val tapir          = "1.13.26"
+  val tapir          = "1.13.28"
   val zioKafka       = "3.7.0"
   val flyway         = "12.11.0"
   val postgresql     = "42.7.13"
