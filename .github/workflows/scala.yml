@@ -7,6 +7,11 @@ on:
   pull_request:
     types: [ opened, synchronize, reopened ]
   workflow_dispatch:
+    inputs:
+      run_integration_tests:
+        description: 'Also run the integration-tests module (opt-in, real Postgres via Testcontainers)'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -24,45 +29,6 @@ jobs:
     env:
       SBT_OPTS: "-Xmx2g"
 
-    # services:
-    #   postgres:
-    #     image: postgres:18-alpine
-    #     env:
-    #       POSTGRES_USER: aviation
-    #       POSTGRES_PASSWORD: aviation
-    #       POSTGRES_DB: aviation
-    #     ports:
-    #       - 5432:5432
-    #     options: >-
-    #       --health-cmd pg_isready
-    #       --health-interval 10s
-    #       --health-timeout 5s
-    #       --health-retries 5
-    #
-    #   kafka:
-    #     image: confluentinc/cp-kafka:8.3.0
-    #     env:
-    #       KAFKA_NODE_ID: 1
-    #       KAFKA_PROCESS_ROLES: broker,controller
-    #       KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
-    #       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-    #       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
-    #       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
-    #       KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
-    #       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
-    #       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-    #       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
-    #       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
-    #       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
-    #     ports:
-    #       - 9092:9092
-    #     options: >-
-    #       --health-cmd "kafka-topics --bootstrap-server localhost:9092 --list"
-    #       --health-interval 15s
-    #       --health-timeout 10s
-    #       --health-retries 10
-    #       --health-start-period 30s
-
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -78,3 +44,30 @@ jobs:
         run: sbt coverageAggregate
       - name: Assembly
         run: sbt "bootstrap/assembly"
+
+  integration-tests:
+    # Opt-in only: manually dispatched with the run_integration_tests input checked. Never runs
+    # on a plain push/PR, matching the project's convention that integrationTests is excluded from
+    # the default sbt test/compile aggregate (see CLAUDE.md's "Integration tests" section) — this
+    # just extends that same "explicit invocation only" policy into CI.
+    #
+    # No postgres `services:` container needed: the integration-tests module spins up its own
+    # throwaway Postgres via Testcontainers (see PostgresContainerSupport.scala), and ubuntu-24.04
+    # runners already have Docker available for that.
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_integration_tests }}
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    env:
+      SBT_OPTS: "-Xmx2g"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Setup build environment
+        uses: ./.github/actions/setup-build-env
+      - name: Integration tests (real Postgres via Testcontainers)
+        run: sbt integrationTests/test

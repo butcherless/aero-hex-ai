@@ -359,10 +359,14 @@ what changed, not always all four:
    stubs or a throwaway Testcontainers database. The skill doc has a load-bearing gotcha about
    which main class to launch; read it there rather than assuming `java -jar` works.
 4. **CI** — no dedicated skill; check with `gh run list --workflow=scala.yml --limit 5` and
-   `gh run view --log --job=<job-id>` after a push. Runs steps 1's `compile`/`test`/
-   `coverageAggregate`/`assembly` (never `integrationTests`, deliberately excluded — see
-   `## Integration tests`) against a fresh checkout, so its coverage number is lower than a local
-   run that includes the integration suite; that gap is expected, not a regression.
+   `gh run view --log --job=<job-id>` after a push. The `build` job runs step 1's `compile`/`test`/
+   `coverageAggregate`/`assembly` on every push/PR (never `integrationTests` here, deliberately
+   excluded — see `## Integration tests`), so its coverage number is lower than a local run that
+   includes the integration suite; that gap is expected, not a regression. A separate
+   `integration-tests` job runs `sbt integrationTests/test` (real Postgres via Testcontainers,
+   no `services:` container needed — ubuntu-24.04 runners already have Docker), but only when the
+   workflow is manually dispatched with the `run_integration_tests` input checked — it never runs
+   on a plain push/PR, matching `integrationTests`' own opt-in convention.
 
 Layering, cheapest/narrowest first: unit tests (stubs) → integration tests (real Postgres,
 opt-in module) → E2E (real server + real dev Postgres, closest to production) → OpenAPI
