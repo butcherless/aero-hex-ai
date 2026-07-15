@@ -8,7 +8,7 @@ import dev.cmartin.aerohex.domain.flight.{Flight, FlightCode}
 import java.time.LocalTime
 import sttp.tapir.Schema
 import sttp.tapir.Validator
-import zio.IO
+import zio.{IO, ZIO}
 
 // Shared verbatim by CreateFlightRequest/UpdateFlightRequest's originIata/destinationIata/airlineIcao below.
 private val originIataSchema: Schema[String] => Schema[String] = _.description(
@@ -76,10 +76,10 @@ case class CreateFlightRequest(
 
 object CreateFlightRequest {
   def toCommand(req: CreateFlightRequest): IO[DomainError, CreateFlightCommand] =
-    FlightCode
-      .make(req.code)
-      .toZIO
-      .orElseFail(DomainError.InvalidFlightCode(req.code))
+    ZIO
+      .fromEither(FlightCode.validateAll(req.code).toEitherWith(errs =>
+        DomainError.InvalidFlightCode(errs.toChunk.toList)
+      ))
       .map(code =>
         CreateFlightCommand(
           code = code,

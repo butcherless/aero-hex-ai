@@ -1,8 +1,9 @@
 package dev.cmartin.aerohex.domain.aircraft
 
 import dev.cmartin.aerohex.domain.airline.AirlineIcaoCode
+import dev.cmartin.aerohex.domain.validation.FieldValidation
 import zio.prelude.Assertion.*
-import zio.prelude.{Assertion, Newtype}
+import zio.prelude.{Assertion, Newtype, Validation}
 
 /** The international code identifying a specific physical aircraft (e.g.
   * `"EC-MIG"`) — formally the *Aircraft Registration Mark* per ICAO Annex 7,
@@ -16,8 +17,10 @@ import zio.prelude.{Assertion, Newtype}
   * constructor.
   *
   *   - `Registration("EC-MIG")` — for compile-time-known literals.
-  *   - `Registration.make(raw)` — for runtime strings, bridged to
-  *     `IO[DomainError, _]` via `.toZIO` (see
+  *   - `Registration.make(raw)` — for runtime strings, failing fast with a
+  *     single message from `assertion`.
+  *   - `Registration.validateAll(raw)` — like `.make`, but accumulates every
+  *     failing rule (blank / max length) instead of stopping at the first (see
   *     `CreateAircraftRequest.toCommand`).
   *   - `Registration.unsafeMake(raw)` — for already-trusted data (DB reads,
   *     Tapir-already-validated path params).
@@ -26,6 +29,13 @@ object Registration extends Newtype[String]:
   override inline def assertion: Assertion[String] = matches("^.{1,10}$".r)
   extension (r: Registration) def value: String    = unwrap(r)
   def unsafeMake(value: String): Registration      = wrap(value)
+
+  def validateAll(raw: String): Validation[String, Registration] =
+    Validation.validateWith(
+      FieldValidation.notBlank("registration", raw),
+      FieldValidation.maxLength("registration", raw, 10),
+      FieldValidation.singleLine("registration", raw)
+    )((_, _, _) => unsafeMake(raw))
 type Registration = Registration.Type
 
 /** An airplane capable of flight to transport people and cargo. Belongs to one

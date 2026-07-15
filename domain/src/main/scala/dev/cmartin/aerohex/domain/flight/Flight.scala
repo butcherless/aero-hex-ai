@@ -2,9 +2,10 @@ package dev.cmartin.aerohex.domain.flight
 
 import dev.cmartin.aerohex.domain.airline.AirlineIcaoCode
 import dev.cmartin.aerohex.domain.airport.IataCode
+import dev.cmartin.aerohex.domain.validation.FieldValidation
 import java.time.LocalTime
 import zio.prelude.Assertion.*
-import zio.prelude.{Assertion, Newtype}
+import zio.prelude.{Assertion, Newtype, Validation}
 
 /** An airline flight designator (e.g. `"UX9117"`) — an Airline Designator +
   * Flight Number per IATA's Standard Schedules Information Manual (SSIM). A ZIO
@@ -16,8 +17,11 @@ import zio.prelude.{Assertion, Newtype}
   * codeshare aliases like `"AEA9117"`).
   *
   *   - `FlightCode("UX9117")` — for compile-time-known literals.
-  *   - `FlightCode.make(raw)` — for runtime strings, bridged to
-  *     `IO[DomainError, _]` via `.toZIO` (see `CreateFlightRequest.toCommand`).
+  *   - `FlightCode.make(raw)` — for runtime strings, failing fast with a single
+  *     message from `assertion`.
+  *   - `FlightCode.validateAll(raw)` — like `.make`, but accumulates every
+  *     failing rule (blank / max length) instead of stopping at the first (see
+  *     `CreateFlightRequest.toCommand`).
   *   - `FlightCode.unsafeMake(raw)` — for already-trusted data (DB reads,
   *     Tapir-already-validated path params, update paths).
   */
@@ -25,6 +29,13 @@ object FlightCode extends Newtype[String]:
   override inline def assertion: Assertion[String] = matches("^.{1,8}$".r)
   extension (f: FlightCode) def value: String      = unwrap(f)
   def unsafeMake(value: String): FlightCode        = wrap(value)
+
+  def validateAll(raw: String): Validation[String, FlightCode] =
+    Validation.validateWith(
+      FieldValidation.notBlank("flight code", raw),
+      FieldValidation.maxLength("flight code", raw, 8),
+      FieldValidation.singleLine("flight code", raw)
+    )((_, _, _) => unsafeMake(raw))
 type FlightCode = FlightCode.Type
 
 /** A scheduled, timetabled service operated by an Airline along a route between

@@ -1,5 +1,6 @@
 package dev.cmartin.aerohex.adapter.http.country
 
+import dev.cmartin.aerohex.adapter.http.error.HttpErrorResponse
 import dev.cmartin.aerohex.domain.country.*
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.shared.Pagination
@@ -36,7 +37,7 @@ object CountryEndpointsSpec extends ZIOSpecDefault:
     (cmd: CreateCountryCommand) => ZIO.fail(DomainError.CountryAlreadyExists(cmd.code.value))
 
   private val invalidCodeCreate: CreateCountryUseCase =
-    (cmd: CreateCountryCommand) => ZIO.fail(DomainError.InvalidCountryCode(cmd.code.value))
+    (cmd: CreateCountryCommand) => ZIO.fail(DomainError.InvalidCountryCode(List(s"${cmd.code.value} is not real")))
 
   private val defaultUpdate: UpdateCountryUseCase =
     (cmd: UpdateCountryCommand) => ZIO.succeed(spain.copy(name = cmd.name))
@@ -220,6 +221,35 @@ object CountryEndpointsSpec extends ZIOSpecDefault:
                           .contentType("application/json")
                           .send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
+        },
+        // Tapir's own minLength(2)/maxLength(2) schema validator on `code` already rejects any
+        // body whose code isn't exactly 2 characters *before* CreateCountryRequest.toCommand runs
+        // — so a blank or wrong-length code never reaches CountryCode.validateAll through this
+        // endpoint (that accumulation is instead covered directly by CountryCodeSpec). Only the
+        // "letters only" rule can ever surface here, since Tapir has no shape/alphabetic check of
+        // its own — this test proves the accumulated `errors` list reaches the JSON response body
+        // end-to-end, not just the domain layer.
+        // Tapir's own minLength(2)/maxLength(2) schema validator on `code` already rejects any
+        // body whose code isn't exactly 2 characters *before* CreateCountryRequest.toCommand runs
+        // — so a blank or wrong-length code never reaches CountryCode.validateAll through this
+        // endpoint (that accumulation is instead covered directly by CountryCodeSpec). Only the
+        // "letters only" rule can ever surface here, since Tapir has no shape/alphabetic check of
+        // its own — this test proves the accumulated `errors` list reaches the JSON response body
+        // end-to-end, not just the domain layer. asJsonAlways (not asJson) is required since sttp's
+        // asJson only decodes 2xx responses; a 400 body needs the "always decode" variant.
+        test("returns 400 with the accumulated errors list when the code is 2 chars but not alphabetic") {
+          for
+            response <- basicRequest
+                          .post(uri"https://test.com/api/v1/countries")
+                          .body("""{"code":"1A","name":"Nowhere"}""")
+                          .contentType("application/json")
+                          .response(asJsonAlways[HttpErrorResponse])
+                          .send(makeBackend())
+            body      = response.body.toOption
+          yield assertTrue(
+            response.code == StatusCode.BadRequest,
+            body.exists(_.errors == List("country code must contain only letters"))
+          )
         },
         test("returns 400 when name is empty") {
           for

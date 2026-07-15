@@ -1,7 +1,8 @@
 package dev.cmartin.aerohex.domain.airline
 
+import dev.cmartin.aerohex.domain.validation.FieldValidation
 import zio.prelude.Assertion.*
-import zio.prelude.{Assertion, Newtype}
+import zio.prelude.{Assertion, Newtype, Validation}
 
 /** An ICAO-issued airline code, e.g. `"IBE"`. A ZIO Prelude smart
   * [[https://zio.dev/zio-prelude/newtypes/ Newtype]] — `assertion` enforces the
@@ -12,12 +13,14 @@ import zio.prelude.{Assertion, Newtype}
   *
   *   - `AirlineIcaoCode("IBE")` — for compile-time-known literals; a malformed
   *     literal fails to compile.
-  *   - `AirlineIcaoCode.make(raw)` — for runtime strings that need validating,
-  *     bridged to `IO[DomainError, _]` via `.toZIO` (see
-  *     `CreateAirlineRequest.toCommand`, currently the only call site that
-  *     needs it — every cross-entity reference field still goes through
-  *     `unsafeMake`, matching `CountryCode`'s precedent of enforcing real
-  *     validation one entity's own natural key at a time).
+  *   - `AirlineIcaoCode.make(raw)` — for runtime strings, failing fast with a
+  *     single message from `assertion`.
+  *   - `AirlineIcaoCode.validateAll(raw)` — like `.make`, but accumulates every
+  *     failing rule instead of stopping at the first; currently the only call
+  *     site that needs it is `CreateAirlineRequest.toCommand` — every
+  *     cross-entity reference field still goes through `unsafeMake`, matching
+  *     `CountryCode`'s precedent of enforcing real validation one entity's own
+  *     natural key at a time.
   *   - `AirlineIcaoCode.unsafeMake(raw)` — for already-trusted data (DB reads,
   *     Tapir-already-validated path params, cross-entity reference fields).
   */
@@ -25,6 +28,13 @@ object AirlineIcaoCode extends Newtype[String]:
   override inline def assertion: Assertion[String] = matches("^[a-zA-Z]{3}$".r)
   extension (i: AirlineIcaoCode) def value: String = unwrap(i)
   def unsafeMake(value: String): AirlineIcaoCode   = wrap(value)
+
+  def validateAll(raw: String): Validation[String, AirlineIcaoCode] =
+    Validation.validateWith(
+      FieldValidation.notBlank("airline ICAO code", raw),
+      FieldValidation.exactLength("airline ICAO code", raw, 3),
+      FieldValidation.lettersOnly("airline ICAO code", raw)
+    )((_, _, _) => unsafeMake(raw))
 type AirlineIcaoCode = AirlineIcaoCode.Type
 
 /** An organization providing a regular public service of air transport on one

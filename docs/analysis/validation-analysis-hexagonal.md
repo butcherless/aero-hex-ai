@@ -465,3 +465,11 @@ this recommendation — this section's own tradeoffs (§6.4's integration cost,
   on the first problem rather than accumulating `code` and `name` errors
   together. Adopting `Newtype` didn't happen because that need showed up; it
   didn't yet.
+
+**`[SHIPPED]` — per-field accumulation has now landed** (not the cross-field case above, which
+remains unused): every natural-key type's `.validateAll(raw)` accumulates all of *that field's own*
+failing rules (blank / length / shape) via `Validation.validateWith`, instead of stopping at the
+first, with the resulting `DomainError.InvalidXxx(errors: List[String])` surfaced through
+`HttpErrorResponse.errors` end-to-end. See `domain/validation/FieldValidation.scala` and each
+Newtype's `validateAll`. Cross-field accumulation (validating `code` *and* `name` together in one
+request) is still exactly as described above — genuinely unused.

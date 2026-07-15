@@ -6,7 +6,7 @@ import dev.cmartin.aerohex.domain.airline.AirlineIcaoCode
 import dev.cmartin.aerohex.domain.error.DomainError
 import sttp.tapir.Schema
 import sttp.tapir.Validator
-import zio.IO
+import zio.{IO, ZIO}
 
 // Shared verbatim by AircraftDto/CreateAircraftRequest/UpdateAircraftRequest's airlineIcao field below.
 private val airlineIcaoSchema: Schema[String] => Schema[String] = _.description(
@@ -40,10 +40,12 @@ case class CreateAircraftRequest(registration: String, typeCode: String, descrip
 
 object CreateAircraftRequest {
   def toCommand(req: CreateAircraftRequest): IO[DomainError, CreateAircraftCommand] =
-    Registration
-      .make(req.registration)
-      .toZIO
-      .orElseFail(DomainError.InvalidRegistration(req.registration))
+    ZIO
+      .fromEither(
+        Registration.validateAll(req.registration).toEitherWith(errs =>
+          DomainError.InvalidRegistration(errs.toChunk.toList)
+        )
+      )
       .map(registration =>
         CreateAircraftCommand(
           registration = registration,

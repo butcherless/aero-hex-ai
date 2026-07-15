@@ -29,7 +29,10 @@ final class QuillCountryRepository(dataSource: DataSource) extends CountryReposi
       })
       .orDie
       .flatMap {
-        case Nil => ZIO.fail(DomainError.InvalidCountryCode(code.value))
+        case Nil =>
+          ZIO.fail(
+            DomainError.InvalidCountryCode(List(s"${code.value} is not a recognized ISO 3166-1 alpha-2 country code"))
+          )
         case _   => ZIO.unit
       }
 

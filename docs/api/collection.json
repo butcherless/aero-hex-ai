@@ -65,7 +65,7 @@
           },
           "response": [
             {
-              "id": "447bd8a1-9f7c-4dc0-892d-638943ac74d7",
+              "id": "74f64dbc-361b-406f-bde3-1490d48266ae",
               "name": "List of countries.",
               "originalRequest": {
                 "url": {
@@ -130,7 +130,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "c4626e1a-c96b-424f-99f4-7893150c1a51",
+              "id": "d903ba43-deab-4ab7-be9d-912ded64e3f0",
               "name": "Invalid query parameters.",
               "originalRequest": {
                 "url": {
@@ -190,12 +190,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "6b9ca88e-7a01-43af-a2a5-dcc6c5f013bd",
+              "id": "becdb63b-d7a3-4f27-bb3a-634c2c1bc6ac",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -253,7 +253,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -309,7 +309,7 @@
           },
           "response": [
             {
-              "id": "9387ac8a-357a-41aa-96d0-6fb80c9ed905",
+              "id": "f126c27e-4a8a-4159-8b30-6165d2fd7221",
               "name": "The created country.",
               "originalRequest": {
                 "url": {
@@ -368,7 +368,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "b3cb2706-fe9e-4314-9500-63d1c74655ca",
+              "id": "64f197dc-4099-49e5-a3e1-9b5ffb85f893",
               "name": "Not a real ISO 3166-1 alpha-2 country code.",
               "originalRequest": {
                 "url": {
@@ -413,12 +413,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "b0188337-6a53-416d-bf39-bbec7a1be736",
+              "id": "9605ee80-3a15-43cf-87e7-5116d57ef7b4",
               "name": "Country already exists.",
               "originalRequest": {
                 "url": {
@@ -463,12 +463,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "91f456c3-75a3-47d6-bf80-7a43cda51b09",
+              "id": "9390be04-b234-4d34-beec-39ba1cf97094",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -511,7 +511,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -544,7 +544,7 @@
               "variable": [
                 {
                   "type": "any",
-                  "value": "zv",
+                  "value": "IJ",
                   "key": "code",
                   "disabled": false,
                   "description": {
@@ -566,7 +566,7 @@
           },
           "response": [
             {
-              "id": "003c1a64-466c-483e-802c-6bb7e885aa9d",
+              "id": "4a138182-70d7-4edb-bcaa-bbf016cd9ff1",
               "name": "The requested country.",
               "originalRequest": {
                 "url": {
@@ -588,7 +588,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "zv",
+                      "value": "IJ",
                       "key": "code"
                     }
                   ]
@@ -615,7 +615,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "b796b999-1349-42e7-881e-e74e9f53048c",
+              "id": "f81d83bf-d60b-4196-b6a9-25701fa4face",
               "name": "Invalid value for: path parameter code",
               "originalRequest": {
                 "url": {
@@ -637,7 +637,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "zv",
+                      "value": "IJ",
                       "key": "code"
                     }
                   ]
@@ -664,7 +664,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "a8ae4907-a2b1-4a1f-9905-432cb6d03edd",
+              "id": "32992563-7aa9-49a6-8e3c-35fbb37a2ff6",
               "name": "Country not found.",
               "originalRequest": {
                 "url": {
@@ -686,7 +686,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "zv",
+                      "value": "IJ",
                       "key": "code"
                     }
                   ]
@@ -708,12 +708,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "768d1e83-876d-4fee-966a-093343735003",
+              "id": "fdbfd696-cbcd-4570-99c2-13ab376b0cb5",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -735,7 +735,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "zv",
+                      "value": "IJ",
                       "key": "code"
                     }
                   ]
@@ -755,7 +755,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -788,7 +788,7 @@
               "variable": [
                 {
                   "type": "any",
-                  "value": "zv",
+                  "value": "IJ",
                   "key": "code",
                   "disabled": false,
                   "description": {
@@ -823,7 +823,7 @@
           },
           "response": [
             {
-              "id": "c8b294bb-6999-4558-b141-8c58ac760512",
+              "id": "cd78cf4a-dd77-47bc-8494-9852874abf1c",
               "name": "The updated country.",
               "originalRequest": {
                 "url": {
@@ -845,7 +845,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "zv",
+                      "value": "IJ",
                       "key": "code"
                     }
                   ]
@@ -885,7 +885,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "b1629818-3b89-4a5d-988f-fa83837d5363",
+              "id": "99f0ef57-9399-4e3c-aefa-45e0fc1b6278",
               "name": "Invalid value for: path parameter code, Invalid value for: body",
               "originalRequest": {
                 "url": {
@@ -907,7 +907,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "zv",
+                      "value": "IJ",
                       "key": "code"
                     }
                   ]
@@ -947,7 +947,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "dfe6fad8-cd12-40fa-b43c-793024f1bc90",
+              "id": "769dc2ee-0f92-4432-9bfe-cc1b909130bb",
               "name": "Country not found.",
               "originalRequest": {
                 "url": {
@@ -969,7 +969,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "zv",
+                      "value": "IJ",
                       "key": "code"
                     }
                   ]
@@ -1004,12 +1004,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "24ec89e1-d7f2-4c30-8d36-f1d2a2df7ad9",
+              "id": "84dab530-6a9f-4a90-8848-8a0c674f7ace",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -1031,7 +1031,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "zv",
+                      "value": "IJ",
                       "key": "code"
                     }
                   ]
@@ -1064,7 +1064,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -1097,7 +1097,7 @@
               "variable": [
                 {
                   "type": "any",
-                  "value": "zv",
+                  "value": "IJ",
                   "key": "code",
                   "disabled": false,
                   "description": {
@@ -1119,7 +1119,7 @@
           },
           "response": [
             {
-              "id": "f738c5c3-a2f9-4d31-a7a4-4a898ddd9169",
+              "id": "3acc31d5-4c73-47e4-a07c-0256e377e656",
               "name": "204",
               "originalRequest": {
                 "url": {
@@ -1141,7 +1141,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "zv",
+                      "value": "IJ",
                       "key": "code"
                     }
                   ]
@@ -1156,7 +1156,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "29c2dc63-9a6b-4b3c-abd6-e663436226d8",
+              "id": "ceb84827-886e-4701-a710-768950665731",
               "name": "Invalid value for: path parameter code",
               "originalRequest": {
                 "url": {
@@ -1178,7 +1178,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "zv",
+                      "value": "IJ",
                       "key": "code"
                     }
                   ]
@@ -1205,7 +1205,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "a6ec897a-f13f-4650-aa0f-36ceacb9ba95",
+              "id": "b2497ffb-5f3a-4e11-aea1-7ea7898e7ad3",
               "name": "Country not found.",
               "originalRequest": {
                 "url": {
@@ -1227,7 +1227,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "zv",
+                      "value": "IJ",
                       "key": "code"
                     }
                   ]
@@ -1249,12 +1249,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "9d9d944b-e7d1-4ae1-86ee-25e7a0a2c7ec",
+              "id": "5e7113e8-424b-409f-8720-b40dab35a696",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -1276,7 +1276,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "zv",
+                      "value": "IJ",
                       "key": "code"
                     }
                   ]
@@ -1296,7 +1296,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -1364,7 +1364,7 @@
           },
           "response": [
             {
-              "id": "e5805e75-5b30-4cd5-bea7-a69ba6ca0e4d",
+              "id": "320f6f3b-ab17-4147-8df9-3533deff8e94",
               "name": "List of airports.",
               "originalRequest": {
                 "url": {
@@ -1420,7 +1420,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "f12b87ff-87f9-46ed-bc67-706e0c9a8ec5",
+              "id": "b4c238c8-82a3-41fb-acfe-50112384d0a1",
               "name": "Invalid value for: query parameter page, Invalid value for: query parameter pageSize",
               "originalRequest": {
                 "url": {
@@ -1476,7 +1476,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "9e315374-ee33-4f37-9c20-7c4759fa302d",
+              "id": "520a65b5-318f-411c-bb2a-4255a21bc718",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -1525,7 +1525,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -1569,7 +1569,7 @@
             "method": "POST",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"iata\": \"<string>\",\n  \"icaoCode\": \"<string>\",\n  \"name\": \"<string>\",\n  \"city\": \"<string>\",\n  \"countryCode\": \"lV\"\n}",
+              "raw": "{\n  \"iata\": \"<string>\",\n  \"icaoCode\": \"<string>\",\n  \"name\": \"<string>\",\n  \"city\": \"<string>\",\n  \"countryCode\": \"sc\"\n}",
               "options": {
                 "raw": {
                   "headerFamily": "json",
@@ -1581,7 +1581,7 @@
           },
           "response": [
             {
-              "id": "daac7f57-cbfb-4ebb-b68d-f72504630f61",
+              "id": "be897a31-911b-467a-bd90-efe0f65ae59b",
               "name": "The created airport.",
               "originalRequest": {
                 "url": {
@@ -1609,7 +1609,7 @@
                 "method": "POST",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"iata\": \"<string>\",\n  \"icaoCode\": \"<string>\",\n  \"name\": \"<string>\",\n  \"city\": \"<string>\",\n  \"countryCode\": \"lV\"\n}",
+                  "raw": "{\n  \"iata\": \"<string>\",\n  \"icaoCode\": \"<string>\",\n  \"name\": \"<string>\",\n  \"city\": \"<string>\",\n  \"countryCode\": \"sc\"\n}",
                   "options": {
                     "raw": {
                       "headerFamily": "json",
@@ -1640,7 +1640,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "a3a72de0-4b13-4104-9884-3a89c4e30e81",
+              "id": "98ebc97e-216c-475e-a004-dff37430301b",
               "name": "Invalid IATA or ICAO code.",
               "originalRequest": {
                 "url": {
@@ -1668,7 +1668,7 @@
                 "method": "POST",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"iata\": \"<string>\",\n  \"icaoCode\": \"<string>\",\n  \"name\": \"<string>\",\n  \"city\": \"<string>\",\n  \"countryCode\": \"lV\"\n}",
+                  "raw": "{\n  \"iata\": \"<string>\",\n  \"icaoCode\": \"<string>\",\n  \"name\": \"<string>\",\n  \"city\": \"<string>\",\n  \"countryCode\": \"sc\"\n}",
                   "options": {
                     "raw": {
                       "headerFamily": "json",
@@ -1685,12 +1685,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "54845ef9-443f-4843-bfb7-c383fe3ef958",
+              "id": "da00a8c3-d14e-46c9-a764-e86e6e835665",
               "name": "Referenced country not found.",
               "originalRequest": {
                 "url": {
@@ -1718,7 +1718,7 @@
                 "method": "POST",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"iata\": \"<string>\",\n  \"icaoCode\": \"<string>\",\n  \"name\": \"<string>\",\n  \"city\": \"<string>\",\n  \"countryCode\": \"lV\"\n}",
+                  "raw": "{\n  \"iata\": \"<string>\",\n  \"icaoCode\": \"<string>\",\n  \"name\": \"<string>\",\n  \"city\": \"<string>\",\n  \"countryCode\": \"sc\"\n}",
                   "options": {
                     "raw": {
                       "headerFamily": "json",
@@ -1735,12 +1735,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "dc6d7035-b6f4-4d5c-9a79-621513ca1945",
+              "id": "206fff7b-0428-4395-ae15-8f3fe2651be6",
               "name": "Airport already exists.",
               "originalRequest": {
                 "url": {
@@ -1768,7 +1768,7 @@
                 "method": "POST",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"iata\": \"<string>\",\n  \"icaoCode\": \"<string>\",\n  \"name\": \"<string>\",\n  \"city\": \"<string>\",\n  \"countryCode\": \"lV\"\n}",
+                  "raw": "{\n  \"iata\": \"<string>\",\n  \"icaoCode\": \"<string>\",\n  \"name\": \"<string>\",\n  \"city\": \"<string>\",\n  \"countryCode\": \"sc\"\n}",
                   "options": {
                     "raw": {
                       "headerFamily": "json",
@@ -1785,12 +1785,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "6c52c5f8-6fe7-4360-961a-7c46e7286da5",
+              "id": "c4cbac75-b266-43fa-950e-6ca3237a74ce",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -1818,7 +1818,7 @@
                 "method": "POST",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"iata\": \"<string>\",\n  \"icaoCode\": \"<string>\",\n  \"name\": \"<string>\",\n  \"city\": \"<string>\",\n  \"countryCode\": \"lV\"\n}",
+                  "raw": "{\n  \"iata\": \"<string>\",\n  \"icaoCode\": \"<string>\",\n  \"name\": \"<string>\",\n  \"city\": \"<string>\",\n  \"countryCode\": \"sc\"\n}",
                   "options": {
                     "raw": {
                       "headerFamily": "json",
@@ -1833,7 +1833,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -1887,7 +1887,7 @@
           },
           "response": [
             {
-              "id": "f816b771-ada3-4612-8df3-2264e561de3d",
+              "id": "cf3f8147-6b04-4414-affb-145433df3ed3",
               "name": "Matching airports.",
               "originalRequest": {
                 "url": {
@@ -1935,7 +1935,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "6fcf1ef9-ca9a-4bbf-8a43-4ea666575041",
+              "id": "867ce605-092c-4d90-8c06-7ba21c5fd630",
               "name": "Invalid search query.",
               "originalRequest": {
                 "url": {
@@ -1978,12 +1978,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "39b1123f-73ac-4fa6-a19a-cf18fb2b41cb",
+              "id": "179646ee-8567-4427-aca1-ba813980823c",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -2024,7 +2024,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -2057,7 +2057,7 @@
               "variable": [
                 {
                   "type": "any",
-                  "value": "LPC",
+                  "value": "nAu",
                   "key": "iata",
                   "disabled": false,
                   "description": {
@@ -2079,7 +2079,7 @@
           },
           "response": [
             {
-              "id": "769480ac-6c23-4eb1-9b2e-36ef14ae7399",
+              "id": "08d5f90b-2718-48b5-98f8-341d8a9dec6b",
               "name": "The requested airport.",
               "originalRequest": {
                 "url": {
@@ -2101,7 +2101,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "iata"
                     }
                   ]
@@ -2128,7 +2128,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "706c2393-aca7-4e3b-9a00-dec01e2e05a6",
+              "id": "06b6cb9e-fe16-4e35-96af-e3c75d398099",
               "name": "Invalid value for: path parameter iata",
               "originalRequest": {
                 "url": {
@@ -2150,7 +2150,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "iata"
                     }
                   ]
@@ -2177,7 +2177,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "990e4cf1-2832-41e2-9459-6539b9e8df85",
+              "id": "039e7c76-f071-452d-9bf3-da6793bc4be9",
               "name": "Airport not found.",
               "originalRequest": {
                 "url": {
@@ -2199,7 +2199,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "iata"
                     }
                   ]
@@ -2221,12 +2221,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "abad1c40-22e7-4f13-afe8-9ebe2c8abdef",
+              "id": "71c33c3e-26d6-4c8d-bceb-1c02bf532f9e",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -2248,7 +2248,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "iata"
                     }
                   ]
@@ -2268,7 +2268,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -2301,7 +2301,7 @@
               "variable": [
                 {
                   "type": "any",
-                  "value": "LPC",
+                  "value": "nAu",
                   "key": "iata",
                   "disabled": false,
                   "description": {
@@ -2324,7 +2324,7 @@
             "method": "PUT",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"icaoCode\": \"sZGS\",\n  \"name\": \"<string>\",\n  \"city\": \"<string>\",\n  \"countryCode\": \"ky\"\n}",
+              "raw": "{\n  \"icaoCode\": \"aABy\",\n  \"name\": \"<string>\",\n  \"city\": \"<string>\",\n  \"countryCode\": \"xV\"\n}",
               "options": {
                 "raw": {
                   "headerFamily": "json",
@@ -2336,7 +2336,7 @@
           },
           "response": [
             {
-              "id": "79fb8aab-b800-4a8b-b969-bf9482f5d980",
+              "id": "9a875cd0-8431-47d0-a1ff-4fd26d5fe343",
               "name": "The updated airport.",
               "originalRequest": {
                 "url": {
@@ -2358,7 +2358,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "iata"
                     }
                   ]
@@ -2376,7 +2376,7 @@
                 "method": "PUT",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"icaoCode\": \"sZGS\",\n  \"name\": \"<string>\",\n  \"city\": \"<string>\",\n  \"countryCode\": \"ky\"\n}",
+                  "raw": "{\n  \"icaoCode\": \"aABy\",\n  \"name\": \"<string>\",\n  \"city\": \"<string>\",\n  \"countryCode\": \"xV\"\n}",
                   "options": {
                     "raw": {
                       "headerFamily": "json",
@@ -2398,7 +2398,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "41692490-cb13-411c-86ee-027b927ebfa3",
+              "id": "3de147dc-d3b0-4f37-a888-bfe1d584ed5c",
               "name": "Invalid value for: path parameter iata, Invalid value for: body",
               "originalRequest": {
                 "url": {
@@ -2420,7 +2420,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "iata"
                     }
                   ]
@@ -2438,7 +2438,7 @@
                 "method": "PUT",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"icaoCode\": \"sZGS\",\n  \"name\": \"<string>\",\n  \"city\": \"<string>\",\n  \"countryCode\": \"ky\"\n}",
+                  "raw": "{\n  \"icaoCode\": \"aABy\",\n  \"name\": \"<string>\",\n  \"city\": \"<string>\",\n  \"countryCode\": \"xV\"\n}",
                   "options": {
                     "raw": {
                       "headerFamily": "json",
@@ -2460,7 +2460,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "875ce010-09f3-4120-a5ed-0075fe33a76f",
+              "id": "77e3d8b4-a307-41da-8eb5-a87b3e4643c5",
               "name": "Airport not found, or referenced country not found.",
               "originalRequest": {
                 "url": {
@@ -2482,7 +2482,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "iata"
                     }
                   ]
@@ -2500,7 +2500,7 @@
                 "method": "PUT",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"icaoCode\": \"sZGS\",\n  \"name\": \"<string>\",\n  \"city\": \"<string>\",\n  \"countryCode\": \"ky\"\n}",
+                  "raw": "{\n  \"icaoCode\": \"aABy\",\n  \"name\": \"<string>\",\n  \"city\": \"<string>\",\n  \"countryCode\": \"xV\"\n}",
                   "options": {
                     "raw": {
                       "headerFamily": "json",
@@ -2517,12 +2517,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "4d526de0-29c1-4bce-8969-c4735e139ac2",
+              "id": "7971a864-e60b-4de5-8274-e10c8f4c1f43",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -2544,7 +2544,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "iata"
                     }
                   ]
@@ -2562,7 +2562,7 @@
                 "method": "PUT",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"icaoCode\": \"sZGS\",\n  \"name\": \"<string>\",\n  \"city\": \"<string>\",\n  \"countryCode\": \"ky\"\n}",
+                  "raw": "{\n  \"icaoCode\": \"aABy\",\n  \"name\": \"<string>\",\n  \"city\": \"<string>\",\n  \"countryCode\": \"xV\"\n}",
                   "options": {
                     "raw": {
                       "headerFamily": "json",
@@ -2577,7 +2577,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -2610,7 +2610,7 @@
               "variable": [
                 {
                   "type": "any",
-                  "value": "LPC",
+                  "value": "nAu",
                   "key": "iata",
                   "disabled": false,
                   "description": {
@@ -2632,7 +2632,7 @@
           },
           "response": [
             {
-              "id": "7737ff38-c401-4c6b-81da-5569103cd90f",
+              "id": "a47736f4-398b-4efe-b269-f30456b8fa82",
               "name": "204",
               "originalRequest": {
                 "url": {
@@ -2654,7 +2654,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "iata"
                     }
                   ]
@@ -2669,7 +2669,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "64dedba3-4933-4785-b4b6-ea1589278f57",
+              "id": "e2f730ab-baa4-4441-bfbb-8ccdbfa2850e",
               "name": "Invalid value for: path parameter iata",
               "originalRequest": {
                 "url": {
@@ -2691,7 +2691,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "iata"
                     }
                   ]
@@ -2718,7 +2718,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "51ecb306-76f3-4bf6-9bca-7bec11075ffa",
+              "id": "aeec0ebe-02e3-4a11-8d20-504c91b373fd",
               "name": "Airport not found.",
               "originalRequest": {
                 "url": {
@@ -2740,7 +2740,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "iata"
                     }
                   ]
@@ -2762,12 +2762,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "e00f51a8-1286-4f5e-9172-10ead1148100",
+              "id": "0249d6d5-c666-4517-8807-52052f9cf9fa",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -2789,7 +2789,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "iata"
                     }
                   ]
@@ -2809,7 +2809,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -2843,7 +2843,7 @@
               "variable": [
                 {
                   "type": "any",
-                  "value": "LPC",
+                  "value": "nAu",
                   "key": "iata",
                   "disabled": false,
                   "description": {
@@ -2865,7 +2865,7 @@
           },
           "response": [
             {
-              "id": "bbc98c9e-e217-4e9b-a278-2c4678271202",
+              "id": "9d138572-f18e-4289-8476-546d2b673538",
               "name": "The airport's country.",
               "originalRequest": {
                 "url": {
@@ -2888,7 +2888,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "iata"
                     }
                   ]
@@ -2915,7 +2915,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "459820d0-79ae-4dd0-974e-eef941d73e09",
+              "id": "179f0626-537a-4728-b8e8-8759a2dacea3",
               "name": "Invalid value for: path parameter iata",
               "originalRequest": {
                 "url": {
@@ -2938,7 +2938,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "iata"
                     }
                   ]
@@ -2965,7 +2965,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "b4ba220d-4761-434a-8dfc-2a1e0914683e",
+              "id": "04680b62-b9d6-4a38-8d1a-a899957c7244",
               "name": "Airport not found.",
               "originalRequest": {
                 "url": {
@@ -2988,7 +2988,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "iata"
                     }
                   ]
@@ -3010,12 +3010,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "c2a488b1-8c9d-4b82-80b3-85f959121ebb",
+              "id": "7361416f-5b0c-4a0d-afb8-7885d4116c5f",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -3038,7 +3038,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "iata"
                     }
                   ]
@@ -3058,7 +3058,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -3111,7 +3111,7 @@
               "variable": [
                 {
                   "type": "any",
-                  "value": "zv",
+                  "value": "IJ",
                   "key": "code",
                   "disabled": false,
                   "description": {
@@ -3133,7 +3133,7 @@
           },
           "response": [
             {
-              "id": "e76409db-f945-43ff-8b2b-d3ff77fe1ae5",
+              "id": "370b62cb-8f31-4a8e-abf4-aceed05b2b73",
               "name": "Airports in the given country.",
               "originalRequest": {
                 "url": {
@@ -3175,7 +3175,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "zv",
+                      "value": "IJ",
                       "key": "code"
                     }
                   ]
@@ -3202,7 +3202,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "8173fd43-c286-4e0b-a3c9-962fdf97cefb",
+              "id": "47a898e5-937a-4982-bb99-68ce679e9297",
               "name": "Invalid value for: path parameter code, Invalid value for: query parameter page, Invalid value for: query parameter pageSize",
               "originalRequest": {
                 "url": {
@@ -3244,7 +3244,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "zv",
+                      "value": "IJ",
                       "key": "code"
                     }
                   ]
@@ -3271,7 +3271,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "c68d8697-3220-4f19-844e-0699243918d5",
+              "id": "07649851-8982-4c35-b7fc-54e7e18963a7",
               "name": "Country not found.",
               "originalRequest": {
                 "url": {
@@ -3313,7 +3313,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "zv",
+                      "value": "IJ",
                       "key": "code"
                     }
                   ]
@@ -3335,12 +3335,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "fbc82385-5e41-4698-9f21-df19e65275f2",
+              "id": "7efcc028-887f-4f5b-ac0f-969f59c20559",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -3382,7 +3382,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "zv",
+                      "value": "IJ",
                       "key": "code"
                     }
                   ]
@@ -3402,7 +3402,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -3470,7 +3470,7 @@
           },
           "response": [
             {
-              "id": "d8f94952-eb3c-429e-9777-edf770ca8c0b",
+              "id": "43c82afd-1366-496c-bd4d-8741b6e2e1ed",
               "name": "List of airlines.",
               "originalRequest": {
                 "url": {
@@ -3526,7 +3526,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "76a93527-371a-4976-be7b-48ac402da699",
+              "id": "f7d914ca-1cf5-4993-b82d-4717cd78b5e2",
               "name": "Invalid value for: query parameter page, Invalid value for: query parameter pageSize",
               "originalRequest": {
                 "url": {
@@ -3582,7 +3582,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "80802dd9-30ce-4299-9f5e-c31dc93e10b1",
+              "id": "491382bf-7aef-4832-af26-13d7c0d21ae8",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -3631,7 +3631,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -3675,7 +3675,7 @@
             "method": "POST",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"icao\": \"<string>\",\n  \"name\": \"<string>\",\n  \"foundationDate\": \"<string>\",\n  \"countryCode\": \"XQ\"\n}",
+              "raw": "{\n  \"icao\": \"<string>\",\n  \"name\": \"<string>\",\n  \"foundationDate\": \"<string>\",\n  \"countryCode\": \"ZY\"\n}",
               "options": {
                 "raw": {
                   "headerFamily": "json",
@@ -3687,7 +3687,7 @@
           },
           "response": [
             {
-              "id": "dd615775-b18b-4bd3-ad51-1d781504d590",
+              "id": "53c8020a-692f-43ca-8b4d-1000839c7fde",
               "name": "The created airline.",
               "originalRequest": {
                 "url": {
@@ -3715,7 +3715,7 @@
                 "method": "POST",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"icao\": \"<string>\",\n  \"name\": \"<string>\",\n  \"foundationDate\": \"<string>\",\n  \"countryCode\": \"XQ\"\n}",
+                  "raw": "{\n  \"icao\": \"<string>\",\n  \"name\": \"<string>\",\n  \"foundationDate\": \"<string>\",\n  \"countryCode\": \"ZY\"\n}",
                   "options": {
                     "raw": {
                       "headerFamily": "json",
@@ -3746,7 +3746,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "aca59383-6aeb-4fbe-92de-b9d0ddc4de08",
+              "id": "01272896-33d1-4770-9639-4b2be02cc646",
               "name": "Invalid ICAO code.",
               "originalRequest": {
                 "url": {
@@ -3774,7 +3774,7 @@
                 "method": "POST",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"icao\": \"<string>\",\n  \"name\": \"<string>\",\n  \"foundationDate\": \"<string>\",\n  \"countryCode\": \"XQ\"\n}",
+                  "raw": "{\n  \"icao\": \"<string>\",\n  \"name\": \"<string>\",\n  \"foundationDate\": \"<string>\",\n  \"countryCode\": \"ZY\"\n}",
                   "options": {
                     "raw": {
                       "headerFamily": "json",
@@ -3791,12 +3791,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "39b3d2a1-8e82-4dd8-a5a3-59319c53f9fa",
+              "id": "d0083f8e-5206-49eb-863c-c13bd7d97ea0",
               "name": "Referenced country not found.",
               "originalRequest": {
                 "url": {
@@ -3824,7 +3824,7 @@
                 "method": "POST",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"icao\": \"<string>\",\n  \"name\": \"<string>\",\n  \"foundationDate\": \"<string>\",\n  \"countryCode\": \"XQ\"\n}",
+                  "raw": "{\n  \"icao\": \"<string>\",\n  \"name\": \"<string>\",\n  \"foundationDate\": \"<string>\",\n  \"countryCode\": \"ZY\"\n}",
                   "options": {
                     "raw": {
                       "headerFamily": "json",
@@ -3841,12 +3841,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "de6b399a-ee86-4b64-b93e-7a0e41af6e6c",
+              "id": "9741385c-e7ce-48e2-88c0-0e4120347e41",
               "name": "Airline already exists.",
               "originalRequest": {
                 "url": {
@@ -3874,7 +3874,7 @@
                 "method": "POST",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"icao\": \"<string>\",\n  \"name\": \"<string>\",\n  \"foundationDate\": \"<string>\",\n  \"countryCode\": \"XQ\"\n}",
+                  "raw": "{\n  \"icao\": \"<string>\",\n  \"name\": \"<string>\",\n  \"foundationDate\": \"<string>\",\n  \"countryCode\": \"ZY\"\n}",
                   "options": {
                     "raw": {
                       "headerFamily": "json",
@@ -3891,12 +3891,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "57d30b25-3d8f-41c0-a69f-a0b8072d58ab",
+              "id": "a60337cd-0c73-46a5-9025-d989335dbc88",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -3924,7 +3924,7 @@
                 "method": "POST",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"icao\": \"<string>\",\n  \"name\": \"<string>\",\n  \"foundationDate\": \"<string>\",\n  \"countryCode\": \"XQ\"\n}",
+                  "raw": "{\n  \"icao\": \"<string>\",\n  \"name\": \"<string>\",\n  \"foundationDate\": \"<string>\",\n  \"countryCode\": \"ZY\"\n}",
                   "options": {
                     "raw": {
                       "headerFamily": "json",
@@ -3939,7 +3939,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -3972,7 +3972,7 @@
               "variable": [
                 {
                   "type": "any",
-                  "value": "LPC",
+                  "value": "nAu",
                   "key": "icao",
                   "disabled": false,
                   "description": {
@@ -3994,7 +3994,7 @@
           },
           "response": [
             {
-              "id": "e99f40fd-49aa-4eb4-ad6d-958c41424947",
+              "id": "7edbbf5a-8ce4-42d8-838e-c23e34a577bf",
               "name": "The requested airline.",
               "originalRequest": {
                 "url": {
@@ -4016,7 +4016,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "icao"
                     }
                   ]
@@ -4043,7 +4043,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "83c0e0c2-52e9-4931-9748-23ba7be5d27d",
+              "id": "f0c1f193-984b-4e50-82dd-29571cca5f78",
               "name": "Invalid value for: path parameter icao",
               "originalRequest": {
                 "url": {
@@ -4065,7 +4065,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "icao"
                     }
                   ]
@@ -4092,7 +4092,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "e65d8774-d329-4ec3-bcd1-2dbf6bb62f73",
+              "id": "2ebe0fbf-8932-4547-b6b2-072512a93c12",
               "name": "Airline not found.",
               "originalRequest": {
                 "url": {
@@ -4114,7 +4114,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "icao"
                     }
                   ]
@@ -4136,12 +4136,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "ca19e205-473f-4704-a5bc-ab8a118a0aa8",
+              "id": "e57329c0-ea67-463f-bef8-3c1d708cea7a",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -4163,7 +4163,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "icao"
                     }
                   ]
@@ -4183,7 +4183,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -4216,7 +4216,7 @@
               "variable": [
                 {
                   "type": "any",
-                  "value": "LPC",
+                  "value": "nAu",
                   "key": "icao",
                   "disabled": false,
                   "description": {
@@ -4239,7 +4239,7 @@
             "method": "PUT",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"<string>\",\n  \"foundationDate\": \"<string>\",\n  \"countryCode\": \"bx\"\n}",
+              "raw": "{\n  \"name\": \"<string>\",\n  \"foundationDate\": \"<string>\",\n  \"countryCode\": \"kv\"\n}",
               "options": {
                 "raw": {
                   "headerFamily": "json",
@@ -4251,7 +4251,7 @@
           },
           "response": [
             {
-              "id": "7227479e-1e83-405d-9c1d-c229bc029def",
+              "id": "b9cb619c-955e-4a83-8fa1-aab9803e61a1",
               "name": "The updated airline.",
               "originalRequest": {
                 "url": {
@@ -4273,7 +4273,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "icao"
                     }
                   ]
@@ -4291,7 +4291,7 @@
                 "method": "PUT",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"name\": \"<string>\",\n  \"foundationDate\": \"<string>\",\n  \"countryCode\": \"bx\"\n}",
+                  "raw": "{\n  \"name\": \"<string>\",\n  \"foundationDate\": \"<string>\",\n  \"countryCode\": \"kv\"\n}",
                   "options": {
                     "raw": {
                       "headerFamily": "json",
@@ -4313,7 +4313,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "2d43b827-9970-4c05-9cd4-73c40d6bede9",
+              "id": "4a80b9d6-36eb-43a8-b2d8-4d95b3e2c9d7",
               "name": "Invalid value for: path parameter icao, Invalid value for: body",
               "originalRequest": {
                 "url": {
@@ -4335,7 +4335,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "icao"
                     }
                   ]
@@ -4353,7 +4353,7 @@
                 "method": "PUT",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"name\": \"<string>\",\n  \"foundationDate\": \"<string>\",\n  \"countryCode\": \"bx\"\n}",
+                  "raw": "{\n  \"name\": \"<string>\",\n  \"foundationDate\": \"<string>\",\n  \"countryCode\": \"kv\"\n}",
                   "options": {
                     "raw": {
                       "headerFamily": "json",
@@ -4375,7 +4375,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "bd32494f-e2c2-4528-9950-163c2fd0e142",
+              "id": "41f1539f-1c3d-4cfa-a1c9-3d770cdd9dad",
               "name": "Airline not found, or referenced country not found.",
               "originalRequest": {
                 "url": {
@@ -4397,7 +4397,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "icao"
                     }
                   ]
@@ -4415,7 +4415,7 @@
                 "method": "PUT",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"name\": \"<string>\",\n  \"foundationDate\": \"<string>\",\n  \"countryCode\": \"bx\"\n}",
+                  "raw": "{\n  \"name\": \"<string>\",\n  \"foundationDate\": \"<string>\",\n  \"countryCode\": \"kv\"\n}",
                   "options": {
                     "raw": {
                       "headerFamily": "json",
@@ -4432,12 +4432,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "d2a9ce8e-adc9-4542-b9a8-c348c225c4ba",
+              "id": "c0112815-116a-4bfe-b78e-381935ba0420",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -4459,7 +4459,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "icao"
                     }
                   ]
@@ -4477,7 +4477,7 @@
                 "method": "PUT",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"name\": \"<string>\",\n  \"foundationDate\": \"<string>\",\n  \"countryCode\": \"bx\"\n}",
+                  "raw": "{\n  \"name\": \"<string>\",\n  \"foundationDate\": \"<string>\",\n  \"countryCode\": \"kv\"\n}",
                   "options": {
                     "raw": {
                       "headerFamily": "json",
@@ -4492,7 +4492,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -4525,7 +4525,7 @@
               "variable": [
                 {
                   "type": "any",
-                  "value": "LPC",
+                  "value": "nAu",
                   "key": "icao",
                   "disabled": false,
                   "description": {
@@ -4547,7 +4547,7 @@
           },
           "response": [
             {
-              "id": "aff09351-4ba9-4aaa-9498-bceea25a632e",
+              "id": "d7f1718d-e8d9-4fe9-95c1-135508fe0b02",
               "name": "204",
               "originalRequest": {
                 "url": {
@@ -4569,7 +4569,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "icao"
                     }
                   ]
@@ -4584,7 +4584,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "da59fa57-6ebf-4b7b-be68-6d9a0c68524e",
+              "id": "b7d7100c-a097-4f51-98fe-dcb7aad0276b",
               "name": "Invalid value for: path parameter icao",
               "originalRequest": {
                 "url": {
@@ -4606,7 +4606,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "icao"
                     }
                   ]
@@ -4633,7 +4633,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "58b5ae0e-bf22-45de-a1d8-e4200cca81b6",
+              "id": "b5346b24-09ed-4722-b365-59637fed1905",
               "name": "Airline not found.",
               "originalRequest": {
                 "url": {
@@ -4655,7 +4655,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "icao"
                     }
                   ]
@@ -4677,12 +4677,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "b20b9405-39db-47ab-bd3c-8c6637fed062",
+              "id": "26c2cc62-c276-49ae-8b95-11c0780c1a8c",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -4704,7 +4704,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "icao"
                     }
                   ]
@@ -4724,7 +4724,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -4777,7 +4777,7 @@
               "variable": [
                 {
                   "type": "any",
-                  "value": "zv",
+                  "value": "IJ",
                   "key": "code",
                   "disabled": false,
                   "description": {
@@ -4799,7 +4799,7 @@
           },
           "response": [
             {
-              "id": "c5f2271f-d05d-419c-b754-1b6738547f8f",
+              "id": "ad8681d7-2e55-4a75-b9f2-1c41d8673d1d",
               "name": "Airlines registered in the given country.",
               "originalRequest": {
                 "url": {
@@ -4841,7 +4841,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "zv",
+                      "value": "IJ",
                       "key": "code"
                     }
                   ]
@@ -4868,7 +4868,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "cc44d7c0-7d79-4c33-a922-101c025fd932",
+              "id": "26d107df-a64b-4171-a770-501040a071b9",
               "name": "Invalid value for: path parameter code, Invalid value for: query parameter page, Invalid value for: query parameter pageSize",
               "originalRequest": {
                 "url": {
@@ -4910,7 +4910,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "zv",
+                      "value": "IJ",
                       "key": "code"
                     }
                   ]
@@ -4937,7 +4937,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "9178f693-e8fb-4b66-8928-d636a1be1f5f",
+              "id": "45383a14-bcac-455d-a2d6-646b53fcca30",
               "name": "Country not found.",
               "originalRequest": {
                 "url": {
@@ -4979,7 +4979,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "zv",
+                      "value": "IJ",
                       "key": "code"
                     }
                   ]
@@ -5001,12 +5001,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "60efa706-4643-4bd5-a43b-b24aefd53eb5",
+              "id": "cd3a6040-cf91-4e98-9006-9129148a63a5",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -5048,7 +5048,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "zv",
+                      "value": "IJ",
                       "key": "code"
                     }
                   ]
@@ -5068,7 +5068,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -5103,7 +5103,7 @@
               "variable": [
                 {
                   "type": "any",
-                  "value": "LPC",
+                  "value": "nAu",
                   "key": "origin",
                   "disabled": false,
                   "description": {
@@ -5113,7 +5113,7 @@
                 },
                 {
                   "type": "any",
-                  "value": "LPC",
+                  "value": "nAu",
                   "key": "destination",
                   "disabled": false,
                   "description": {
@@ -5135,7 +5135,7 @@
           },
           "response": [
             {
-              "id": "165a7be5-72b1-4e32-8bd4-59655e3a6444",
+              "id": "3b1d5e60-2134-4164-b90e-1b0a9cce4b6c",
               "name": "Airlines operating the given route.",
               "originalRequest": {
                 "url": {
@@ -5159,7 +5159,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "origin"
                     },
                     {
@@ -5169,7 +5169,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "destination"
                     }
                   ]
@@ -5196,7 +5196,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "5db37afb-bdf4-4bcd-8396-7ee4ffdee179",
+              "id": "bd16bc5f-ac71-449a-b7df-4d2a894fc0a2",
               "name": "Invalid value for: path parameter origin, Invalid value for: path parameter destination",
               "originalRequest": {
                 "url": {
@@ -5220,7 +5220,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "origin"
                     },
                     {
@@ -5230,7 +5230,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "destination"
                     }
                   ]
@@ -5257,7 +5257,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "26e72d21-c42e-43c8-acfa-ae131d7d693f",
+              "id": "5e5acef4-6051-4094-9abf-3b906605f81f",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -5281,7 +5281,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "origin"
                     },
                     {
@@ -5291,7 +5291,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "destination"
                     }
                   ]
@@ -5311,7 +5311,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -5373,7 +5373,7 @@
           },
           "response": [
             {
-              "id": "8a0c8866-a0d7-4a84-b720-375929665863",
+              "id": "55a96429-07f3-4c71-9322-892086e3dff1",
               "name": "The created route.",
               "originalRequest": {
                 "url": {
@@ -5423,7 +5423,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "0ddffa90-a8a7-4705-9c63-a33b37b84f2f",
+              "id": "3a95bd9f-a88b-42b9-9064-12804dbcb1b4",
               "name": "Invalid route parameters.",
               "originalRequest": {
                 "url": {
@@ -5468,12 +5468,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "150cfe0e-31f2-4859-b59d-2ac92dfae380",
+              "id": "e61581bc-cf03-4920-8ef6-4ae50693fe67",
               "name": "Airport not found.",
               "originalRequest": {
                 "url": {
@@ -5518,12 +5518,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "e5918c21-7088-4167-8794-bcb94787ba06",
+              "id": "36ef1c1a-d0cd-4c15-802f-695d80ffbf59",
               "name": "A route between these airports already exists.",
               "originalRequest": {
                 "url": {
@@ -5568,12 +5568,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "d11ad88f-e1ed-4787-8600-b795b588ca46",
+              "id": "189e747d-080a-441d-95c3-5337c8db2f0f",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -5616,7 +5616,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -5652,7 +5652,7 @@
               "variable": [
                 {
                   "type": "any",
-                  "value": "LPC",
+                  "value": "nAu",
                   "key": "origin",
                   "disabled": false,
                   "description": {
@@ -5662,7 +5662,7 @@
                 },
                 {
                   "type": "any",
-                  "value": "LPC",
+                  "value": "nAu",
                   "key": "destination",
                   "disabled": false,
                   "description": {
@@ -5672,7 +5672,7 @@
                 },
                 {
                   "type": "any",
-                  "value": "LPC",
+                  "value": "nAu",
                   "key": "icao",
                   "disabled": false,
                   "description": {
@@ -5694,7 +5694,7 @@
           },
           "response": [
             {
-              "id": "29003f1b-0789-4815-9868-5d1b288b6b64",
+              "id": "6eed436f-32b9-48fd-bfd3-53599b03c7d4",
               "name": "204",
               "originalRequest": {
                 "url": {
@@ -5719,7 +5719,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "origin"
                     },
                     {
@@ -5729,7 +5729,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "destination"
                     },
                     {
@@ -5739,7 +5739,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "icao"
                     }
                   ]
@@ -5754,7 +5754,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "f5a63592-a1e5-4c10-bd96-579adea4fc88",
+              "id": "9456387f-f153-4770-ae7f-da87c28637ad",
               "name": "Invalid value for: path parameter origin, Invalid value for: path parameter destination, Invalid value for: path parameter icao",
               "originalRequest": {
                 "url": {
@@ -5779,7 +5779,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "origin"
                     },
                     {
@@ -5789,7 +5789,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "destination"
                     },
                     {
@@ -5799,7 +5799,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "icao"
                     }
                   ]
@@ -5826,7 +5826,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "b15c4ff6-9075-4072-acbf-17734b750f1d",
+              "id": "ee8555a9-d865-4108-a75f-ed39d236047a",
               "name": "Route or airline not found.",
               "originalRequest": {
                 "url": {
@@ -5851,7 +5851,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "origin"
                     },
                     {
@@ -5861,7 +5861,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "destination"
                     },
                     {
@@ -5871,7 +5871,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "icao"
                     }
                   ]
@@ -5893,12 +5893,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "3e8412e2-9049-4ad2-b9de-82baf9c0b1ab",
+              "id": "0867e0bc-5fb4-48fb-8818-d90a3c8e4fd1",
               "name": "Airline is already associated with this route.",
               "originalRequest": {
                 "url": {
@@ -5923,7 +5923,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "origin"
                     },
                     {
@@ -5933,7 +5933,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "destination"
                     },
                     {
@@ -5943,7 +5943,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "icao"
                     }
                   ]
@@ -5965,12 +5965,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "496d392c-7475-4323-a7d3-1137a66538ce",
+              "id": "1ba3e7f7-136f-4167-81cc-d1cff851d329",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -5995,7 +5995,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "origin"
                     },
                     {
@@ -6005,7 +6005,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "destination"
                     },
                     {
@@ -6015,7 +6015,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "icao"
                     }
                   ]
@@ -6035,7 +6035,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -6071,7 +6071,7 @@
               "variable": [
                 {
                   "type": "any",
-                  "value": "LPC",
+                  "value": "nAu",
                   "key": "origin",
                   "disabled": false,
                   "description": {
@@ -6081,7 +6081,7 @@
                 },
                 {
                   "type": "any",
-                  "value": "LPC",
+                  "value": "nAu",
                   "key": "destination",
                   "disabled": false,
                   "description": {
@@ -6091,7 +6091,7 @@
                 },
                 {
                   "type": "any",
-                  "value": "LPC",
+                  "value": "nAu",
                   "key": "icao",
                   "disabled": false,
                   "description": {
@@ -6113,7 +6113,7 @@
           },
           "response": [
             {
-              "id": "7a1a4a85-079e-4e16-b4dd-b11ec73523f6",
+              "id": "fad0e088-3d84-494a-b7a2-c231b4b22365",
               "name": "204",
               "originalRequest": {
                 "url": {
@@ -6138,7 +6138,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "origin"
                     },
                     {
@@ -6148,7 +6148,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "destination"
                     },
                     {
@@ -6158,7 +6158,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "icao"
                     }
                   ]
@@ -6173,7 +6173,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "16569186-8873-4577-ae13-75852d44dc3b",
+              "id": "4703b9d9-732d-4318-8285-95a3b7fa0664",
               "name": "Invalid value for: path parameter origin, Invalid value for: path parameter destination, Invalid value for: path parameter icao",
               "originalRequest": {
                 "url": {
@@ -6198,7 +6198,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "origin"
                     },
                     {
@@ -6208,7 +6208,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "destination"
                     },
                     {
@@ -6218,7 +6218,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "icao"
                     }
                   ]
@@ -6245,7 +6245,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "1d2544b5-01f3-4431-b7fb-00f9f77cd904",
+              "id": "23f166c2-f85b-4b26-9889-dfcc15bcfe3f",
               "name": "Route or airline not found.",
               "originalRequest": {
                 "url": {
@@ -6270,7 +6270,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "origin"
                     },
                     {
@@ -6280,7 +6280,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "destination"
                     },
                     {
@@ -6290,7 +6290,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "icao"
                     }
                   ]
@@ -6312,12 +6312,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "0082cf29-6ec1-4a86-854c-ae9f4d9fcef4",
+              "id": "77abb22d-cdc0-40e6-8316-bf1201812d71",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -6342,7 +6342,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "origin"
                     },
                     {
@@ -6352,7 +6352,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "destination"
                     },
                     {
@@ -6362,7 +6362,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "icao"
                     }
                   ]
@@ -6382,7 +6382,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -6435,7 +6435,7 @@
               "variable": [
                 {
                   "type": "any",
-                  "value": "LPC",
+                  "value": "nAu",
                   "key": "icao",
                   "disabled": false,
                   "description": {
@@ -6457,7 +6457,7 @@
           },
           "response": [
             {
-              "id": "d5878886-164b-400c-be39-ee2cb441e84d",
+              "id": "175aaca8-e68d-4d03-9f83-feb86c425dc2",
               "name": "Routes operated by the given airline.",
               "originalRequest": {
                 "url": {
@@ -6499,7 +6499,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "icao"
                     }
                   ]
@@ -6526,7 +6526,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "b13bd450-7fdc-4c06-bc74-4a3f65b0c13a",
+              "id": "ebe6eaa9-f8af-4da7-9eb8-d5b8b98bd222",
               "name": "Invalid value for: path parameter icao, Invalid value for: query parameter page, Invalid value for: query parameter pageSize",
               "originalRequest": {
                 "url": {
@@ -6568,7 +6568,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "icao"
                     }
                   ]
@@ -6595,7 +6595,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "bac51e75-db90-489f-81c7-8c30ecaf6102",
+              "id": "44437b1f-b617-427c-8be1-92ecd55fd733",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -6637,7 +6637,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "icao"
                     }
                   ]
@@ -6657,7 +6657,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -6725,7 +6725,7 @@
           },
           "response": [
             {
-              "id": "70971493-e6b4-40a8-a6e0-ba4b5c375f9b",
+              "id": "24066478-7f88-46f4-b726-6ca53a89ce1c",
               "name": "List of aircraft.",
               "originalRequest": {
                 "url": {
@@ -6781,7 +6781,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "f009ca12-57c8-40b2-ac96-c2df516c2599",
+              "id": "cffcdb53-5e79-4335-a382-b8a6c265a873",
               "name": "Invalid value for: query parameter page, Invalid value for: query parameter pageSize",
               "originalRequest": {
                 "url": {
@@ -6837,7 +6837,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "cf79ff7f-397c-462e-92c4-49b0460d7515",
+              "id": "7b8a7c36-5bfc-46a5-b2a6-8c37d1478a96",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -6886,7 +6886,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -6942,7 +6942,7 @@
           },
           "response": [
             {
-              "id": "f60bc647-9e99-4d60-a710-ac71501b9fd8",
+              "id": "5b50bdde-cf69-4d7f-b2bc-b4aa71b08f68",
               "name": "The created aircraft.",
               "originalRequest": {
                 "url": {
@@ -7001,7 +7001,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "076ee26e-8811-427d-898f-ff31317d000c",
+              "id": "16fb1d1f-7f4f-4dc8-8e31-b2662884bb33",
               "name": "Invalid registration.",
               "originalRequest": {
                 "url": {
@@ -7046,12 +7046,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "6f6aed47-1a78-4a38-acd1-1dc122ab26fd",
+              "id": "171c6749-1ae5-434e-ab8e-f9bee6f1886b",
               "name": "Referenced airline not found.",
               "originalRequest": {
                 "url": {
@@ -7096,12 +7096,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "f62965a6-334b-42af-9741-b6b80edfc49a",
+              "id": "06c70958-d9b7-49f4-a436-8b02185513e0",
               "name": "Aircraft already exists.",
               "originalRequest": {
                 "url": {
@@ -7146,12 +7146,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "1c45001f-a890-4b54-80a5-07def5594c5b",
+              "id": "be275bd6-d06c-4aa8-9fb1-97e18ee8c6bf",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -7194,7 +7194,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -7249,7 +7249,7 @@
           },
           "response": [
             {
-              "id": "e1bff52e-5843-4c3e-8427-7b1068d0090d",
+              "id": "b8e578fd-9dc2-4da3-b026-ed05dc72bb2a",
               "name": "The requested aircraft.",
               "originalRequest": {
                 "url": {
@@ -7298,7 +7298,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "18e4ec5b-c895-4bde-b3a4-fb4cb50bb80d",
+              "id": "9c7d520d-5f75-4831-ba3b-40f39ea48b5c",
               "name": "Invalid value for: path parameter registration",
               "originalRequest": {
                 "url": {
@@ -7347,7 +7347,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "315a4ebc-716e-4ccf-89ea-f29816a91177",
+              "id": "cb3ac721-9b81-4673-95c8-41ec1a0c8bb2",
               "name": "Aircraft not found.",
               "originalRequest": {
                 "url": {
@@ -7391,12 +7391,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "1c154ccf-34c3-4368-a16f-f52cc3918ccc",
+              "id": "024d01cb-a0bf-43a4-a402-cc72c7f2ee79",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -7438,7 +7438,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -7506,7 +7506,7 @@
           },
           "response": [
             {
-              "id": "cce7d719-e685-4fab-ade8-80364f752154",
+              "id": "7c02a07a-ffb5-4fdb-9f1a-7dc00571ccad",
               "name": "The updated aircraft.",
               "originalRequest": {
                 "url": {
@@ -7568,7 +7568,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "c2f9e1da-897c-4487-8379-50a962dbf60f",
+              "id": "a7e68267-8628-4809-8174-2077d1fe264c",
               "name": "Invalid value for: path parameter registration, Invalid value for: body",
               "originalRequest": {
                 "url": {
@@ -7630,7 +7630,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "dbb816f8-14c2-4c90-96de-42900a8caf3a",
+              "id": "e1e23c64-e512-4f78-8539-5eafee68ebfb",
               "name": "Aircraft not found, or referenced airline not found.",
               "originalRequest": {
                 "url": {
@@ -7687,12 +7687,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "24777bbc-ca1e-4b59-9fd7-77d7934724d2",
+              "id": "521cfa2d-de53-427b-badf-d6585a46290d",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -7747,7 +7747,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -7802,7 +7802,7 @@
           },
           "response": [
             {
-              "id": "9fffb2dc-db9c-42cb-930b-80e494ca0ea5",
+              "id": "274f1f60-7ae8-47ac-b8ee-14e8ae18a61f",
               "name": "204",
               "originalRequest": {
                 "url": {
@@ -7839,7 +7839,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "c128f535-e681-4532-b245-1adec1a7c135",
+              "id": "4b7e88db-526e-448a-97da-3a42efd81473",
               "name": "Invalid value for: path parameter registration",
               "originalRequest": {
                 "url": {
@@ -7888,7 +7888,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "88c80552-4ebc-4874-a14e-c98d14c14822",
+              "id": "5804b855-d46f-45fb-b912-39c8979acb11",
               "name": "Aircraft not found.",
               "originalRequest": {
                 "url": {
@@ -7932,12 +7932,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "eda1e05b-250b-40ba-a0b3-0ca2e35c9819",
+              "id": "16b8f884-dcba-4c3f-9077-f95a787bc7e3",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -7979,7 +7979,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -8047,7 +8047,7 @@
           },
           "response": [
             {
-              "id": "d6d64eef-0c22-47b0-8606-39c38cd4332c",
+              "id": "4b341434-d317-4d88-b063-417a860d8271",
               "name": "List of flights.",
               "originalRequest": {
                 "url": {
@@ -8103,7 +8103,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "e9e35840-b184-4a14-8553-66d1f232b385",
+              "id": "604b76c8-064b-4558-84fa-061606707931",
               "name": "Invalid value for: query parameter page, Invalid value for: query parameter pageSize",
               "originalRequest": {
                 "url": {
@@ -8159,7 +8159,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "b6186fb2-5995-4202-8c67-bc109895d720",
+              "id": "068d6990-ff20-4a2c-b9a5-1d69c9e94cb6",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -8208,7 +8208,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -8264,7 +8264,7 @@
           },
           "response": [
             {
-              "id": "610333b6-d11f-46c8-b78d-34b2f3e39aa4",
+              "id": "a48f6245-bb93-465e-8bca-f662a95697ca",
               "name": "The created flight.",
               "originalRequest": {
                 "url": {
@@ -8323,7 +8323,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "635165f5-c8ce-4c03-9467-2b292597a84f",
+              "id": "e03c1676-4522-4cdb-b4c2-01cdb53701b1",
               "name": "Invalid flight code.",
               "originalRequest": {
                 "url": {
@@ -8368,12 +8368,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "71782d94-4920-4542-8afb-cb8d75b3a3df",
+              "id": "838a52c3-7001-427a-8a89-490630ef2823",
               "name": "Referenced airport or airline not found.",
               "originalRequest": {
                 "url": {
@@ -8418,12 +8418,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "c56ffc4f-8125-4ac5-93ec-95ce2f6d7c86",
+              "id": "10004184-1244-4e80-9717-85201e20b21d",
               "name": "Flight already exists.",
               "originalRequest": {
                 "url": {
@@ -8468,12 +8468,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "2860c059-f8e8-452a-b575-4a355f8b1677",
+              "id": "e871ff75-bc45-445e-931a-7f9d068fa1ec",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -8516,7 +8516,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -8571,7 +8571,7 @@
           },
           "response": [
             {
-              "id": "4bab7d55-4861-475c-8df7-281507fd923a",
+              "id": "44eb4fd3-3eff-404a-bc28-d67e21711f43",
               "name": "The requested flight.",
               "originalRequest": {
                 "url": {
@@ -8620,7 +8620,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "9f923dcd-40e4-432a-8a88-e93d05b7096a",
+              "id": "5f533a9f-9a47-4d11-886c-4a9d86a60763",
               "name": "Invalid value for: path parameter code",
               "originalRequest": {
                 "url": {
@@ -8669,7 +8669,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "35789017-8db4-4f6c-b57e-76e374de6e28",
+              "id": "85fc391c-4a26-4416-ad6b-ee4209d5cd9e",
               "name": "Flight not found.",
               "originalRequest": {
                 "url": {
@@ -8713,12 +8713,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "d78ffe4f-4b68-4481-8ee3-bf07ffc4f9af",
+              "id": "4d801d14-6817-4b4f-b0cf-5aa148891f38",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -8760,7 +8760,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -8828,7 +8828,7 @@
           },
           "response": [
             {
-              "id": "2fe627ed-1c31-4c19-9d15-76e1c3a4843f",
+              "id": "39470a4c-eaba-4bff-bdc2-69fa48644aae",
               "name": "The updated flight.",
               "originalRequest": {
                 "url": {
@@ -8890,7 +8890,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "698782c6-6a6d-4adb-b1eb-cb4230a8c522",
+              "id": "d5a7648e-c8ec-4d04-b216-c1e62e54968f",
               "name": "Invalid value for: path parameter code, Invalid value for: body",
               "originalRequest": {
                 "url": {
@@ -8952,7 +8952,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "7c133907-4a4f-427f-a94b-c0bc8bdf487f",
+              "id": "b388bfe9-ce20-4d0d-9167-4d941d01f38f",
               "name": "Flight not found, or referenced airport/airline not found.",
               "originalRequest": {
                 "url": {
@@ -9009,12 +9009,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "d31f4855-1342-4eae-a939-20da8fefe7b4",
+              "id": "e3350d71-6c9b-4a33-a1c5-b9be08636b71",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -9069,7 +9069,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -9124,7 +9124,7 @@
           },
           "response": [
             {
-              "id": "4262a14e-5c01-42ab-98ea-65c33503ead1",
+              "id": "7962f1e9-f0c4-4661-9c62-b73fce3e94d3",
               "name": "204",
               "originalRequest": {
                 "url": {
@@ -9161,7 +9161,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "0379f485-bbcb-4682-b1ba-fcfa691962bd",
+              "id": "6cd6d31f-2591-412f-91b2-8f6d36f6917b",
               "name": "Invalid value for: path parameter code",
               "originalRequest": {
                 "url": {
@@ -9210,7 +9210,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "9655d0fb-8df7-496d-9a0c-6a5fe7f34927",
+              "id": "be173ec0-9252-4be6-8896-0289e0f462a6",
               "name": "Flight not found.",
               "originalRequest": {
                 "url": {
@@ -9254,12 +9254,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "e41e3343-2680-4e94-88c8-f7546fb5839b",
+              "id": "02866417-0b99-4c40-902e-2848da4a0385",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -9301,7 +9301,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -9357,7 +9357,7 @@
           },
           "response": [
             {
-              "id": "6657d2b3-8250-440c-8441-663fc3c0be17",
+              "id": "38b0ce08-29db-4a44-8e41-34e863e90735",
               "name": "The flight's operating airline.",
               "originalRequest": {
                 "url": {
@@ -9407,7 +9407,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "0f0fcd46-8901-4abd-b85d-4e867119c2dd",
+              "id": "4aa054d6-b198-436a-a6eb-6f40eed9c6e1",
               "name": "Invalid value for: path parameter code",
               "originalRequest": {
                 "url": {
@@ -9457,7 +9457,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "f25d93c0-173b-4bf8-850d-3964f6498edc",
+              "id": "9dd6cd0b-1fc9-41f9-853b-433319730acb",
               "name": "Flight not found.",
               "originalRequest": {
                 "url": {
@@ -9502,12 +9502,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "f402a5a0-ad3a-40e1-a556-dc468bbe39d7",
+              "id": "9d421a7d-0e79-4208-bb61-99c7fe3c7ad4",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -9550,7 +9550,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -9603,7 +9603,7 @@
               "variable": [
                 {
                   "type": "any",
-                  "value": "LPC",
+                  "value": "nAu",
                   "key": "icao",
                   "disabled": false,
                   "description": {
@@ -9625,7 +9625,7 @@
           },
           "response": [
             {
-              "id": "931c2d73-0003-4f09-829e-abe86678b82b",
+              "id": "626e308a-e32e-47da-82dd-abc173f0a23e",
               "name": "Flights operated by the given airline.",
               "originalRequest": {
                 "url": {
@@ -9667,7 +9667,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "icao"
                     }
                   ]
@@ -9694,7 +9694,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "514da5ef-2e49-498d-88fb-959a094d7ca0",
+              "id": "2da715db-276a-45a4-8a09-2d040d6a6848",
               "name": "Invalid value for: path parameter icao, Invalid value for: query parameter page, Invalid value for: query parameter pageSize",
               "originalRequest": {
                 "url": {
@@ -9736,7 +9736,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "icao"
                     }
                   ]
@@ -9763,7 +9763,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "6a0fd6fc-2a82-4369-be64-4ca3b48f5825",
+              "id": "77bc18ce-68ed-4c47-a7fb-5df705775fcf",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -9805,7 +9805,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "LPC",
+                      "value": "nAu",
                       "key": "icao"
                     }
                   ]
@@ -9825,7 +9825,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -9893,7 +9893,7 @@
           },
           "response": [
             {
-              "id": "af9c9fc3-15f4-4bef-927b-83c7fd864756",
+              "id": "6842465b-f704-4f63-a112-cabbc24c9b38",
               "name": "List of flight instances.",
               "originalRequest": {
                 "url": {
@@ -9949,7 +9949,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "7669edb8-21b3-4044-9b76-68ef2163baeb",
+              "id": "bc9756ea-047a-45d1-bdfe-c9e0fe1ada36",
               "name": "Invalid value for: query parameter page, Invalid value for: query parameter pageSize",
               "originalRequest": {
                 "url": {
@@ -10005,7 +10005,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "5a25f452-151f-4d4e-999c-97775a2333af",
+              "id": "070fb8af-bd25-48c3-b968-f80687bcd4ea",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -10054,7 +10054,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }
@@ -10087,7 +10087,7 @@
               "variable": [
                 {
                   "type": "any",
-                  "value": "61c4E6BC-8c8e-dae2-AD70-dEd7D546caC5",
+                  "value": "86D7EC86-EbF7-C1E8-8db7-8E00edFd8dCd",
                   "key": "id",
                   "disabled": false,
                   "description": {
@@ -10109,7 +10109,7 @@
           },
           "response": [
             {
-              "id": "47ce78eb-5b64-40ea-8b49-d97819ef8247",
+              "id": "95602642-6380-422d-aec7-593290178cec",
               "name": "The requested flight instance.",
               "originalRequest": {
                 "url": {
@@ -10131,7 +10131,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "61c4E6BC-8c8e-dae2-AD70-dEd7D546caC5",
+                      "value": "86D7EC86-EbF7-C1E8-8db7-8E00edFd8dCd",
                       "key": "id"
                     }
                   ]
@@ -10158,7 +10158,7 @@
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "82fcbc08-4b86-4fd1-876a-ec2128e5a7f2",
+              "id": "ae99ce9e-ff99-4cf3-a6df-84d3ae7d9c18",
               "name": "Invalid value for: path parameter id",
               "originalRequest": {
                 "url": {
@@ -10180,7 +10180,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "61c4E6BC-8c8e-dae2-AD70-dEd7D546caC5",
+                      "value": "86D7EC86-EbF7-C1E8-8db7-8E00edFd8dCd",
                       "key": "id"
                     }
                   ]
@@ -10207,7 +10207,7 @@
               "_postman_previewlanguage": "text"
             },
             {
-              "id": "89ac8044-8eec-4cac-a437-9e3d1f1f34b8",
+              "id": "cbd8bdaa-cfec-4c63-8e9c-4e9912e90632",
               "name": "Flight instance not found.",
               "originalRequest": {
                 "url": {
@@ -10229,7 +10229,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "61c4E6BC-8c8e-dae2-AD70-dEd7D546caC5",
+                      "value": "86D7EC86-EbF7-C1E8-8db7-8E00edFd8dCd",
                       "key": "id"
                     }
                   ]
@@ -10251,12 +10251,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             },
             {
-              "id": "9ff20b41-353a-4b3e-b80f-b570e6759370",
+              "id": "3cf06985-85d9-46d2-9f8f-03ce21648744",
               "name": "Unexpected error.",
               "originalRequest": {
                 "url": {
@@ -10278,7 +10278,7 @@
                         "type": "text/plain"
                       },
                       "type": "any",
-                      "value": "61c4E6BC-8c8e-dae2-AD70-dEd7D546caC5",
+                      "value": "86D7EC86-EbF7-C1E8-8db7-8E00edFd8dCd",
                       "key": "id"
                     }
                   ]
@@ -10298,7 +10298,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"message\": \"<string>\"\n}",
+              "body": "{\n  \"message\": \"<string>\",\n  \"errors\": [\n    \"<string>\",\n    \"<string>\"\n  ]\n}",
               "cookie": [],
               "_postman_previewlanguage": "json"
             }

@@ -7,7 +7,7 @@ import dev.cmartin.aerohex.domain.country.CountryCode
 import dev.cmartin.aerohex.domain.error.DomainError
 import sttp.tapir.Schema
 import sttp.tapir.Validator
-import zio.IO
+import zio.{IO, ZIO}
 
 // Shared verbatim by AirportDto/CreateAirportRequest's iata/icaoCode fields below. Not reused by
 // UpdateAirportRequest's icaoCode, which adds a pattern validator the other two don't have.
@@ -44,8 +44,15 @@ case class CreateAirportRequest(iata: String, icaoCode: String, name: String, ci
 object CreateAirportRequest {
   def toCommand(req: CreateAirportRequest): IO[DomainError, CreateAirportCommand] =
     for
-      iataCode <- IataCode.make(req.iata).toZIO.orElseFail(DomainError.InvalidIataCode(req.iata))
-      icaoCode <- AirportIcaoCode.make(req.icaoCode).toZIO.orElseFail(DomainError.InvalidAirportIcaoCode(req.icaoCode))
+      iataCode <-
+        ZIO.fromEither(
+          IataCode.validateAll(req.iata).toEitherWith(errs => DomainError.InvalidIataCode(errs.toChunk.toList))
+        )
+      icaoCode <- ZIO.fromEither(
+                    AirportIcaoCode
+                      .validateAll(req.icaoCode)
+                      .toEitherWith(errs => DomainError.InvalidAirportIcaoCode(errs.toChunk.toList))
+                  )
     yield CreateAirportCommand(
       iataCode = iataCode,
       icaoCode = icaoCode,

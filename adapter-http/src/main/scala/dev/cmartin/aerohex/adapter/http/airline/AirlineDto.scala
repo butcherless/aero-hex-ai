@@ -8,7 +8,7 @@ import dev.cmartin.aerohex.domain.error.DomainError
 import java.time.LocalDate
 import sttp.tapir.Schema
 import sttp.tapir.Validator
-import zio.IO
+import zio.{IO, ZIO}
 
 // Shared verbatim by AirlineDto/CreateAirlineRequest's icao field below.
 private val icaoSchema: Schema[String] => Schema[String] = _.description("3-letter ICAO airline code.")
@@ -36,10 +36,12 @@ case class CreateAirlineRequest(icao: String, name: String, foundationDate: Stri
 
 object CreateAirlineRequest {
   def toCommand(req: CreateAirlineRequest): IO[DomainError, CreateAirlineCommand] =
-    AirlineIcaoCode
-      .make(req.icao)
-      .toZIO
-      .orElseFail(DomainError.InvalidAirlineIcaoCode(req.icao))
+    ZIO
+      .fromEither(
+        AirlineIcaoCode.validateAll(req.icao).toEitherWith(errs =>
+          DomainError.InvalidAirlineIcaoCode(errs.toChunk.toList)
+        )
+      )
       .map(icao =>
         CreateAirlineCommand(
           icao = icao,

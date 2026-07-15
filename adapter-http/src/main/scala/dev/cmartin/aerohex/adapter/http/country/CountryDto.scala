@@ -4,7 +4,7 @@ import dev.cmartin.aerohex.domain.country.{Country, CountryCode}
 import dev.cmartin.aerohex.domain.country.{CreateCountryCommand, UpdateCountryCommand}
 import dev.cmartin.aerohex.domain.error.DomainError
 import sttp.tapir.{Schema, Validator}
-import zio.IO
+import zio.{IO, ZIO}
 
 case class CountryDto(code: String, name: String)
 
@@ -24,9 +24,12 @@ object CreateCountryRequest {
   // BR-01 (shape) enforced by CountryCode's own Newtype assertion, not a Tapir Validator here —
   // see domain/model/Country.scala. minLength/maxLength stay for OpenAPI-visible bounds; the alpha
   // check moves to the domain layer, the single source of truth for "what is a country code".
+  // validateAll accumulates every failing rule (blank/length/shape) instead of stopping at the first.
   def toCommand(req: CreateCountryRequest): IO[DomainError, CreateCountryCommand] =
-    CountryCode.make(req.code).toZIO
-      .orElseFail(DomainError.InvalidCountryCode(req.code))
+    ZIO
+      .fromEither(CountryCode.validateAll(req.code).toEitherWith(errs =>
+        DomainError.InvalidCountryCode(errs.toChunk.toList)
+      ))
       .map(CreateCountryCommand(_, req.name))
 
   given Schema[CreateCountryRequest] = Schema.derived[CreateCountryRequest]

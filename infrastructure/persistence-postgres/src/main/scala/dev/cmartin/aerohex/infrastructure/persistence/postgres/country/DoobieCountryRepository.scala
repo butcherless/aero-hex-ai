@@ -18,7 +18,10 @@ final class DoobieCountryRepository(xa: Transactor[Task]) extends CountryReposit
       .transact(xa)
       .orDie
       .flatMap {
-        case None    => ZIO.fail(DomainError.InvalidCountryCode(code.value))
+        case None    =>
+          ZIO.fail(
+            DomainError.InvalidCountryCode(List(s"${code.value} is not a recognized ISO 3166-1 alpha-2 country code"))
+          )
         case Some(_) => ZIO.unit
       }
 

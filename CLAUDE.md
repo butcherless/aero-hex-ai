@@ -155,13 +155,27 @@ are ZIO Prelude `Newtype[String]`s instead, each with a real, enforced `assertio
 `IataCode("MAD")` / `AirportIcaoCode("LEMD")` / `AirlineIcaoCode("IBE")` /
 `Registration("EC-MIG")` / `FlightCode("UX9117")`
 for compile-time-known literals (a malformed literal fails to compile),
-`.make(raw).toZIO` for runtime strings that need validating, `.unsafeMake(raw)`
-for already-trusted data (DB reads, Tapir-already-validated path params,
+`.make(raw).toZIO` for runtime strings that need a single fail-fast check,
+`.validateAll(raw)` for runtime strings that should accumulate *every* failing
+rule instead of stopping at the first (blank / length / shape are independent
+`zio.prelude.Validation`s combined with `Validation.validateWith`, bridged to
+`IO[DomainError, _]` via `.toEitherWith` + `ZIO.fromEither` — see
+`FieldValidation` in `domain/validation/`), and `.unsafeMake(raw)` for
+already-trusted data (DB reads, Tapir-already-validated path params,
 cross-entity reference fields). Real validation is wired into each type's
 *owning* entity's create path only (`CreateCountryRequest`/`CreateAirportRequest`/
-`CreateAirlineRequest`/`CreateAircraftRequest`/`CreateFlightRequest`.toCommand) — a
-reference field on another entity (e.g. `Aircraft.airlineIcao`, `Route.origin`,
-`Flight.origin`/`destination`/`airlineIcao`) always uses `unsafeMake`, never `.make`.
+`CreateAirlineRequest`/`CreateAircraftRequest`/`CreateFlightRequest`.toCommand,
+via `.validateAll`) — a reference field on another entity (e.g.
+`Aircraft.airlineIcao`, `Route.origin`, `Flight.origin`/`destination`/`airlineIcao`)
+always uses `unsafeMake`, never `.make`/`.validateAll`. The HTTP error response
+(`HttpErrorResponse`) carries both a short `message` and the full `errors: List[String]`
+so a client sees every violated rule in one round trip, not just the first —
+note that Tapir's own schema-level length `Validator`s (kept for OpenAPI-visible
+bounds) already reject a wrong-length body before `toCommand` runs, so in
+practice only the "letters only" rule is ever reachable through the live HTTP
+endpoint for the four exact-length types; full multi-rule accumulation is
+exercised directly against each type's `.validateAll` in `domain`'s test suite
+(e.g. `CountryCodeSpec`).
 `IataCode`'s assertion enforces both shape and its fixed 3-letter length. `AirportIcaoCode`
 (4 letters, e.g. `"LEMD"`) and `AirlineIcaoCode` (3 letters, e.g. `"IBE"`) used to be one shared
 `IcaoCode` type that could only enforce alphabetic shape, not length, since `Airline`'s own code

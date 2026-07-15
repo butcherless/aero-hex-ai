@@ -45,10 +45,11 @@ object CountryServiceSpec extends ZIOSpecDefault:
           yield assertTrue(error == DomainError.CountryAlreadyExists("ES"))
         },
         test("fails with InvalidCountryCode and never checks existence when the code isn't a real ISO code") {
-          val repo = stubCountryRepo(onValidateCode = _ => ZIO.fail(DomainError.InvalidCountryCode("ZZ")))
+          val repo =
+            stubCountryRepo(onValidateCode = _ => ZIO.fail(DomainError.InvalidCountryCode(List("ZZ is not real"))))
           for error <-
               new CreateCountryService(repo).create(CreateCountryCommand(CountryCode("ZZ"), "Nowhere")).flip
-          yield assertTrue(error == DomainError.InvalidCountryCode("ZZ"))
+          yield assertTrue(error == DomainError.InvalidCountryCode(List("ZZ is not real")))
         }
       ),
       suite("FindCountryService")(

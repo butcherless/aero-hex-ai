@@ -1,7 +1,8 @@
 package dev.cmartin.aerohex.domain.country
 
+import dev.cmartin.aerohex.domain.validation.FieldValidation
 import zio.prelude.Assertion.*
-import zio.prelude.{Assertion, Newtype}
+import zio.prelude.{Assertion, Newtype, Validation}
 
 /** ISO 3166-1 alpha-2 country code, e.g. `"ES"`. A ZIO Prelude smart
   * [[https://zio.dev/zio-prelude/newtypes/ Newtype]] — `assertion` enforces the
@@ -13,8 +14,12 @@ import zio.prelude.{Assertion, Newtype}
   *   - `CountryCode("ES")` — for compile-time-known literals; a malformed
   *     literal like `CountryCode("E")` fails to compile.
   *   - `CountryCode.make(raw)` — for runtime strings; returns
-  *     `Validation[String, CountryCode]`, bridged to this project's
-  *     `IO[DomainError, _]` convention via `.toZIO` (see
+  *     `Validation[String, CountryCode]`, failing fast with a single message
+  *     from `assertion`.
+  *   - `CountryCode.validateAll(raw)` — like `.make`, but accumulates every
+  *     failing rule (blank / length / shape) instead of stopping at the first;
+  *     bridged to this project's `IO[DomainError, _]` convention via
+  *     `.toEitherWith` + `ZIO.fromEither` (see
   *     `CreateCountryRequest.toCommand`, the only call site that actually needs
   *     runtime validation — every other constructor site rebuilds a
   *     `CountryCode` from data that was already validated once, either by this
@@ -25,6 +30,13 @@ object CountryCode extends Newtype[String]:
   override inline def assertion: Assertion[String] = matches("^[a-zA-Z]{2}$".r)
   extension (c: CountryCode) def value: String     = unwrap(c)
   def unsafeMake(value: String): CountryCode       = wrap(value)
+
+  def validateAll(raw: String): Validation[String, CountryCode] =
+    Validation.validateWith(
+      FieldValidation.notBlank("country code", raw),
+      FieldValidation.exactLength("country code", raw, 2),
+      FieldValidation.lettersOnly("country code", raw)
+    )((_, _, _) => unsafeMake(raw))
 type CountryCode = CountryCode.Type
 
 /** A nation with its own government, occupying a particular territory.

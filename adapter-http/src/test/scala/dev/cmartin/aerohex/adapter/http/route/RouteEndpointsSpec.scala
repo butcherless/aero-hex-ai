@@ -13,7 +13,7 @@ import sttp.client4.testing.BackendStub
 import sttp.model.StatusCode
 import sttp.tapir.server.stub4.TapirStubInterpreter
 import zio.test.*
-import zio.{IO, Scope, Task, ZIO, ZLayer}
+import zio.{Scope, Task, ZIO, ZLayer}
 
 object RouteEndpointsSpec extends ZIOSpecDefault:
 

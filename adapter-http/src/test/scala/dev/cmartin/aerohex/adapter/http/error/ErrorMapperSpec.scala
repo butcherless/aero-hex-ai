@@ -50,9 +50,14 @@ object ErrorMapperSpec extends ZIOSpecDefault:
           val (status, body) = ErrorMapper.toHttpError(DomainError.AircraftNotFound("EC-MIG"))
           assertTrue(status == StatusCode.NotFound, body.message.contains("EC-MIG"))
         },
-        test("maps InvalidRegistration to 400") {
-          val (status, body) = ErrorMapper.toHttpError(DomainError.InvalidRegistration(""))
-          assertTrue(status == StatusCode.BadRequest, body.message.contains("Invalid registration"))
+        test("maps InvalidRegistration to 400 with all accumulated errors") {
+          val (status, body) =
+            ErrorMapper.toHttpError(DomainError.InvalidRegistration(List("registration must not be empty")))
+          assertTrue(
+            status == StatusCode.BadRequest,
+            body.message.contains("Invalid registration"),
+            body.errors == List("registration must not be empty")
+          )
         },
         test("maps FlightNotFound to 404") {
           val (status, body) = ErrorMapper.toHttpError(DomainError.FlightNotFound("UX9117"))
@@ -62,9 +67,10 @@ object ErrorMapperSpec extends ZIOSpecDefault:
           val (status, body) = ErrorMapper.toHttpError(DomainError.FlightAlreadyExists("UX9117"))
           assertTrue(status == StatusCode.Conflict, body.message.contains("UX9117"))
         },
-        test("maps InvalidFlightCode to 400") {
-          val (status, _) = ErrorMapper.toHttpError(DomainError.InvalidFlightCode(""))
-          assertTrue(status == StatusCode.BadRequest)
+        test("maps InvalidFlightCode to 400 with all accumulated errors") {
+          val (status, body) =
+            ErrorMapper.toHttpError(DomainError.InvalidFlightCode(List("flight code must not be empty")))
+          assertTrue(status == StatusCode.BadRequest, body.errors == List("flight code must not be empty"))
         },
         test("maps FlightInstanceNotFound to 404") {
           val (status, body) = ErrorMapper.toHttpError(DomainError.FlightInstanceNotFound("fi-1"))

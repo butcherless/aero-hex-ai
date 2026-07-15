@@ -23,7 +23,7 @@ object CountryRepositoryContractSpec:
       for
         repo  <- ZIO.service[CountryRepository]
         error <- repo.validateCode(CountryCode("ZZ")).flip
-      yield assertTrue(error == DomainError.InvalidCountryCode("ZZ"))
+      yield assertTrue(error == DomainError.InvalidCountryCode(List("ZZ is not a recognized ISO 3166-1 alpha-2 country code")))
     },
     test("saves and finds a country by code") {
       for
