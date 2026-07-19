@@ -28,10 +28,44 @@ jobs:
           persist-credentials: false
       - name: Setup build environment
         uses: ./.github/actions/setup-build-env
-      - name: Report dependency updates
+      - name: Report library dependency updates
         run: |
           {
+            echo '## Library dependencies'
             echo '```'
-            sbt -no-colors dependencyUpdates
+            sbt -no-colors xdup
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Report SBT plugin updates
+        run: |
+          {
+            echo '## SBT plugins'
+            echo '```'
+            python3 .claude/skills/bump-versions/scripts/check_plugin_updates.py
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Report SBT / scalafmt formatter versions
+        # Not covered by `sbt xdup` (that's the main build's dependencies only) or by Dependabot's
+        # "sbt" ecosystem entry, as far as could be confirmed — these two need a direct GitHub
+        # releases check, same as the bump-versions skill's Step 2.
+        run: |
+          {
+            echo '## SBT itself'
+            echo '```'
+            echo "current: $(grep sbt.version project/build.properties)"
+            echo "latest:  $(curl -s https://api.github.com/repos/sbt/sbt/releases/latest | python3 -c 'import sys,json; print(json.load(sys.stdin)["tag_name"])')"
+            echo '```'
+            echo '## scalafmt formatter'
+            echo '```'
+            echo "current: $(grep '^version' .scalafmt.conf)"
+            echo "latest:  $(curl -s https://api.github.com/repos/scalameta/scalafmt/releases/latest | python3 -c 'import sys,json; print(json.load(sys.stdin)["tag_name"])')"
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Report GitHub Actions updates
+        run: |
+          {
+            echo '## GitHub Actions'
+            echo '```'
+            python3 .claude/skills/bump-versions/scripts/check_actions_updates.py
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"

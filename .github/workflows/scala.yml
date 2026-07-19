@@ -20,14 +20,14 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  SBT_OPTS: "-Xmx2g"
+
 jobs:
   build:
 
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
-
-    env:
-      SBT_OPTS: "-Xmx2g"
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -42,8 +42,13 @@ jobs:
         run: sbt test
       - name: Coverage report
         run: sbt coverageAggregate
-      - name: Assembly
-        run: sbt "bootstrap/assembly"
+      - name: Assembly (coverage-free artifact)
+        # -Dcoverage=false + clean: coverageEnabled is project-scoped in build.sbt, so the earlier
+        # `sbt test`/coverageAggregate steps left instrumented classes cached — a bare `coverageOff`
+        # can't override that (ThisBuild-scoped, loses to the project scope). Without this, the
+        # shipped jar bundles scoverage's Invoker calls with this runner's absolute .coverage-data
+        # path hardcoded into the bytecode. Forces a full recompile, hence the bumped timeout above.
+        run: sbt -Dcoverage=false clean "bootstrap/assembly"
 
   integration-tests:
     # Opt-in only: manually dispatched with the run_integration_tests input checked. Never runs
@@ -58,9 +63,6 @@ jobs:
     needs: build
     runs-on: ubuntu-24.04
     timeout-minutes: 15
-
-    env:
-      SBT_OPTS: "-Xmx2g"
 
     steps:
       - name: Checkout

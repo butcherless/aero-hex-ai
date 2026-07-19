@@ -25,8 +25,18 @@ ThisBuild / testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
 ThisBuild / libraryDependencies ++= commonTest
 
 // coverageDataDir outside target/ so sbt clean never deletes the statement catalog
+//
+// coverageEnabled defaults to true (unchanged local/CI test behavior) but can be forced off with
+// `-Dcoverage=false` — needed for `bootstrap/assembly`: coverageEnabled is set at *project* scope
+// here, which wins over the session-level `coverageOff` command's ThisBuild-scoped override under
+// sbt's scope-delegation rules, so `coverageOff` alone cannot produce an uninstrumented assembly.
+// Left instrumented, every business-logic call site is rewritten to call
+// `scala.runtime.coverage.Invoker.invoked(...)` with this build machine's absolute
+// `.coverage-data` path hardcoded into the bytecode — never appropriate for a shipped artifact.
+// (Unrelated: the assembly also bundles the ~34 MB scala3-compiler artifact regardless of this
+// setting — that's zio-http's own compiler-plugin dependency, excluded separately below.)
 val coverageSettings: Seq[Setting[?]] = Seq(
-  coverageEnabled := true,
+  coverageEnabled := sys.props.get("coverage").forall(_.toBoolean),
   coverageDataDir := baseDirectory.value / ".coverage-data",
   // No build-wide gate yet — flip coverageFailOnMinimum to true once the current
   // baseline is measured with `sbt coverageAggregate` (thresholds below are a
@@ -188,6 +198,15 @@ lazy val bootstrap = project
     ),
     Compile / mainClass   := Some("dev.cmartin.aerohex.bootstrap.Main"),
     assembly / mainClass  := Some("dev.cmartin.aerohex.bootstrap.OpenApiGenerator"),
+    // zio-http depends on com.lihaoyi:unroll-plugin (a Scala 3 compiler plugin it uses on its own
+    // source, confirmed via `sbt bootstrap/dependencyTree`), which transitively drags in the full
+    // scala3-compiler artifact (~34 MB) onto the runtime classpath — needed only to compile
+    // zio-http itself, already done when it was published; never needed to run this app. Drop it
+    // from the assembled jar specifically; it stays on the compile classpath.
+    assembly / assemblyExcludedJars := {
+      val cp = (assembly / fullClasspath).value
+      cp.filter(_.data.getName.startsWith("scala3-compiler"))
+    },
     assembly / assemblyMergeStrategy := {
       case PathList("module-info.class")                             => MergeStrategy.discard
       case PathList("META-INF", "versions", _, "module-info.class") => MergeStrategy.discard
