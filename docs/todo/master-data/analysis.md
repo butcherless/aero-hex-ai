@@ -1,6 +1,8 @@
 # Master Data Management — Download & Sync for Country / Airport / Airline
 
-> **Status:** Analysis — not yet implemented.
+> **Status:** Analysis — architecture decided; implementation started. The module scaffold (`Main` +
+> temp-dir create/delete lifecycle only) is built — see `plans/master-data-sync-scaffold.md`. The
+> download/parse/reconcile pipeline below is still design-only.
 > Covers data source selection, sync architecture, reconciliation algorithm, validation/error
 > handling, and open decisions for a low-frequency (~6-month) external master-data refresh.
 
@@ -147,6 +149,10 @@ like `adapter-http`, except its driver is an OS-scheduled process instead of an 
 | sbt project val / `name` | `masterDataSync` / `"master-data-sync"` |
 | Base package | `dev.cmartin.aerohex.infrastructure.masterdata` — one compact segment, same shape as `migration`'s single-segment package. This module is one specific tool, not a "capability + implementation choice" pair the way `messaging.kafka`/`persistence.quill` are (two dotted segments each), so it doesn't follow that half of the existing convention. |
 
+Target end state (the `.dependsOn`/CSV/HTTP-streaming deps land incrementally as the pipeline below
+gets built — the first slice actually in the build today has neither; see
+`plans/master-data-sync-scaffold.md`):
+
 ```scala
 // build.sbt — new project block, alongside migration/messagingKafka/persistenceQuill
 lazy val masterDataSync = project
@@ -158,6 +164,7 @@ lazy val masterDataSync = project
       zio,
       zioStreams,
       zioHttp,
+      zioNio, // dev.zio:zio-nio — §4.3, already added
       scalaCsv, // com.github.tototoshi:scala-csv — new dependency, §4.2
       zioLogging,
       zioLoggingSlf4j,
@@ -213,6 +220,7 @@ infrastructure/master-data-sync/
 |---|---|---|---|
 | CSV parsing (Airport, Airline only) | **`scala-csv`** (`com.github.tototoshi:scala-csv`, `_3` artifact) | `2.0.0` | See the comparison below. Country doesn't use this dependency — it's parsed with a regex instead (§2.1), simple enough not to need a library. |
 | Streaming to disk | **`zio-streams`** (`dev.zio:zio-streams`) | `2.1.26` (matches `zio`) | Needed for `ZSink.fromFile`/`ZStream` on the download path. Already declared as an unused `val` in `Dependencies.scala` — this would be its first real consumer. |
+| Temp directory (create + guaranteed cleanup) | **`zio-nio`** (`dev.zio:zio-nio`, `_3` artifact) | `2.0.2` | See §4.3 below. Replaces an earlier plan to hand-roll this on top of plain `java.nio.file.Files`. |
 | Logging | **zio-logging** + **zio-logging-slf4j2** + **logback** | `2.5.3` / `2.5.3` / `1.5.38` | Same trio `bootstrap` uses. A separate JVM entry point needs its own `logback.xml`, not a shared one. |
 
 #### CSV library comparison
@@ -234,11 +242,68 @@ maintenance risk for a marginal ergonomics win. Between the two mature options, 
 "reduce code": `.all()` returns rows directly, whereas Commons CSV needs a `CSVFormat` builder, a
 `CSVParser`, and index-based `CSVRecord` field access. (Rejected-alternatives summary: §10.)
 
-### 4.3 Deliberately not added
+### 4.3 Temporary directory — creation & cleanup
 
-| Concern | Choice | Rationale |
-|---|---|---|
-| Temp directory | `java.nio.file.Files.createTempDirectory`, wrapped in `ZIO.attempt` + `ZIO.acquireRelease` | JDK built-in, no dependency needed. Guarantees cleanup ("delete when done") even on failure partway through. |
+Same bar as §4.2's CSV comparison: least code, most ZIO-ecosystem fit, without dropping below this
+project's stability bar. Checked in the order asked — ZIO's own answer first, then the
+plain-Scala/JDK baseline, then other libraries.
+
+**Option 1 — ZIO-native: `zio-nio`**
+
+`zio-nio` (`dev.zio:zio-nio`, first-party ZIO ecosystem, same GitHub org as `zio`/`zio-http`) wraps
+`java.nio.file.Files` behind a ZIO-idiomatic `zio.nio.file.Files` object. Two building-block
+functions, confirmed from its source (`series/2.x` branch,
+`nio/shared/.../Files.scala` + `nio/jvm/.../FilesPlatformSpecific.scala`):
+
+```scala
+def createTempDirectory(prefix: Option[String], fileAttributes: Iterable[FileAttribute[_]])
+  (implicit trace: Trace): ZIO[Any, IOException, Path]
+
+def deleteRecursive(path: Path)(implicit trace: Trace): ZIO[Any, IOException, Long]
+```
+
+**Implemented as:** this project's own `TempDirectory.create`/`delete` (in
+`infrastructure/master-data-sync`) call these two directly and stay as two independently-testable
+functions — matching what was asked for — with `Main` composing them via `ZIO.acquireRelease` for
+guaranteed cleanup. (`zio-nio` also ships a `createTempDirectoryScoped` convenience wrapper doing
+the same `acquireRelease(create)(deleteRecursive(_).ignore)` composition internally, but exposing
+that single call wouldn't give two separately callable/testable functions.) Either way, the win over
+hand-rolling this on plain JDK is the same: `JFiles.delete` only removes an *empty* directory, so a
+hand-rolled release action would need its own recursive-walk-and-delete; `deleteRecursive` already
+does this.
+
+**Caveat:** `zio-nio`'s most recent commit and release (`v2.0.2`) are both from October 2023 — several
+years dormant, unlike the actively-released `zio`/`zio-http` core libraries this project already
+depends on. The surface used here is a thin, stable wrapper, which keeps the practical risk low — but
+it's a real gap worth the user's awareness rather than silently picked.
+
+**Option 2 — Scala/JDK core: `java.nio.file.Files.createTempDirectory`**
+
+Scala's own standard library (`scala-library`) has no dedicated temp-directory function — there's nothing
+under `scala.*` for this. The no-extra-dependency baseline is the JDK's `java.nio.file.Files`, already
+available to every Scala program since Scala runs on the JVM:
+
+```scala
+def createTempDirectory(prefix: String, attrs: FileAttribute[_]*): Path   // throws IOException
+```
+
+Usable from ZIO today as `ZIO.attempt(JFiles.createTempDirectory(prefix)).refineToOrDie[IOException]`, but
+cleanup is the gap noted above: `JFiles.delete` fails on a non-empty directory, so the release action needs
+a manual recursive walk (`JFiles.walk(dir).sorted(Comparator.reverseOrder()).forEach(JFiles.delete)`, or
+equivalent) — a small but real piece of code this project would otherwise have to write and test itself,
+and exactly what `zio-nio`'s `deleteRecursive` already provides.
+
+**Alternatives explored**
+
+| Library | ZIO fit | Maturity | Cleanup semantics | Verdict |
+|---|---|---|---|---|
+| `better-files` (`com.github.pathikrit:better-files`) | None — synchronous `File` API | 1,472 stars, last pushed Aug 2024 | `File.usingTemporaryDirectory(prefix)(f: File => U): Unit` — bracket-style, deletes after `f` returns (confirmed in `File.scala`) | Rejected — new general-purpose file-I/O dependency this project doesn't otherwise use; still needs `ZIO.attempt`/`ZIO.acquireRelease` wrapping to fit the effect system, same as Option 2 |
+| `os-lib` (`com.lihaoyi:os-lib`) | None — synchronous `os.Path` API | 740 stars, actively maintained (pushed Jun 2026) | `os.temp.dir(...)` defaults to `deleteOnExit = true` — a JVM-shutdown-hook, not a deterministic scope; wrong model for "delete once this entity's sync is done" | Rejected — cleanup timing doesn't match the required "delete when done" behavior without extra work to disable `deleteOnExit` and wire manual deletion anyway |
+| `scala.reflect.io.Directory.makeTemp` | None | Ships in `scala-reflect`, a Scala-2-era compiler-support artifact — confirmed present in `scala/scala`'s `2.13.x` branch, not part of Scala 3's toolchain this project already uses, and not added to this project's classpath today | Delegates to `Directory.createDirectory()`, no recursive-delete helper of its own | Rejected — wrong artifact for a Scala 3 project, and intended for compiler-internal use, not general application code |
+
+**Selected, with the caveat above:** `zio-nio` — see "Implemented as" note under Option 1. It's the
+only option that fits this module's effect system without a wrapper and closes the recursive-delete
+gap every other option leaves for this project to implement by hand.
 
 ---
 
@@ -262,7 +327,7 @@ Airline, Airport) follow this identical shape, just parameterized differently (`
 | `EntitySync` | `loadExisting(): UIO[Map[NaturalKey, Entity]]` | Gets everything currently stored — see §7.1 for why this isn't a plain call to the existing `FindAllUseCase` |
 | `EntitySync` | `reconcile(source, existing): SyncPlan` | Pure diff — buckets each key into `ToCreate`/`ToUpdate`/`ToDelete`/`Unchanged` (§7.2) |
 | `EntitySync` | `apply(plan): UIO[SyncReport]` | Calls the entity's existing `Create`/`Update`/`Delete` use cases for each bucket |
-| `Main` | cleanup | Deletes the temp dir (`ZIO.acquireRelease`, §4.3) once every entity has run |
+| `Main` | cleanup | Deletes the temp dir (`TempDirectory.create`/`delete` via `ZIO.acquireRelease`, §4.3 — already implemented) once every entity has run |
 | `SyncReport` | `log(): UIO[Unit]` | Emits the per-entity summary line |
 
 ### 5.2 Flow diagram
@@ -393,6 +458,7 @@ key + reason) to act on without re-running.
 | Airline `foundationDate` gap | Needs a decision, not a default — either relax `airlines.foundation_date` to nullable for sync-originated rows, or accept a documented sentinel and flag those rows for manual backfill | No source found in research supplies this field; either option touches an existing `NOT NULL` migration/domain invariant |
 | Airline `Country` (name, not code) | Build a small static name→`CountryCode` lookup table; log+skip unmatched names (or skip the whole row if Country is mandatory on create) | Country-name spelling varies across sources |
 | CSV library | **Decided.** `scala-csv` 2.0.0 (Country parses via regex instead, §2.1) | Full comparison and rejected alternatives: §4.2/§10 |
+| Temp directory library | **Decided, with a caveat.** `zio-nio` 2.0.2's `Files.createTempDirectoryScoped` | Closes a recursive-delete gap the plain-JDK baseline leaves unimplemented; caveat is the dependency's own last release/commit being from Oct 2023. Full comparison and rejected alternatives: §4.3/§10 |
 | Scheduling mechanism | **Decided.** Standalone `ZIOAppDefault` app, packaged like `bootstrap` (`sbt-assembly`), invoked by an OS-level (`crontab`) entry on whatever host runs it — `0 0 1 */6 *` for a "1st of the month, every 6 months" cadence, or similar | The app has no built-in scheduling awareness — the OS decides when to run `java -jar master-data-sync.jar`. Rejected alternative (GitHub Actions `schedule:`): §10 |
 | Dry-run mode | Recommend a `--dry-run` flag that logs the diff (create/update/delete counts + affected rows) without writing | Deletes are destructive and the Airline source has known gaps; a first run should be inspectable before it's trusted unattended |
 | "Different" comparison for updates | Field-by-field equality on the mapped subset of columns only, not a full-row hash | Avoids spurious updates from OurAirports/OpenFlights columns this project doesn't model |
@@ -410,3 +476,4 @@ key + reason) to act on without re-running.
 | GitHub Actions `schedule:` trigger | Would require the production Postgres reachable from CI runners — an assumption not made anywhere else in this repo; OS-level `crontab` on the host running the app needs no such exposure |
 | Hard delete with no conflict handling | Would let one dangling FK (a source-snapshot inconsistency) abort an entire sync run; per-row catch-and-log is more resilient for an unattended ~6-month cadence |
 | CSV libraries: `kantan.csv`, `csv3s`, `fs2-data-csv`, Apache Commons CSV | Full comparison and reasoning: §4.2. In short — `kantan.csv` has no Scala 3 build; `csv3s` is ZIO-native but too immature (7 GitHub stars); `fs2-data-csv` pulls in an effect ecosystem this project doesn't otherwise use; Commons CSV is mature but more boilerplate than `scala-csv` |
+| Temp directory: plain `java.nio.file.Files` + hand-rolled recursive delete, `better-files`, `os-lib`, `scala.reflect.io.Directory` | Full comparison and reasoning: §4.3. In short — the plain-JDK path needs a manually-written recursive-delete release action that `zio-nio` already provides; `better-files`/`os-lib` are mature but not ZIO-aware (still need the same wrapping, and `os-lib`'s default cleanup is JVM-shutdown-hook-based, not deterministic); `scala.reflect.io.Directory` is a Scala-2-era compiler-support artifact not on this project's Scala 3 classpath |

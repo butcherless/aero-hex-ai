@@ -59,12 +59,13 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 | Persistence (unwired alternate) | Doobie + zio-interop-cats | 1.0.0-RC9 / 23.1.0.13 |
 | Connection pooling | HikariCP | 7.1.0 |
 | Messaging | ZIO Kafka | 3.7.0 |
-| Migrations | Flyway | 12.11.0 |
+| Migrations | Flyway | 13.0.0 |
 | Database | PostgreSQL JDBC | 42.7.13 |
 | JSON | Circe | 0.14.16 |
 | Logging | ZIO Logging + SLF4J + Logback | 2.5.3 / 1.5.38 |
 | Integration testing | Testcontainers | 1.21.3 |
 | HTTP-adapter tests (test scope) | sttp-client4 + Tapir stub server | 4.0.26 |
+| Temp-dir lifecycle (`master-data-sync` only) | ZIO NIO | 2.0.2 |
 
 ## Module dependency graph
 
@@ -79,6 +80,7 @@ shared-kernel
                         └── bootstrap  (composition root: domain + application + adapter-http + persistence-quill + persistence-postgres + migration)
                 migration              (SQL + Flyway only; no domain dependency — wired into bootstrap for migrate-on-start)
                 integration-tests      (standalone — opt-in, real-Postgres tests; NOT in root's aggregate)
+                master-data-sync       (standalone — Main + temp-dir lifecycle only so far; NOT in root's aggregate; see plans/master-data-sync-scaffold.md)
 ```
 
 Rule: inner modules never depend on outer ones. `domain` has zero framework dependencies.

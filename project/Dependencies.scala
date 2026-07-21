@@ -6,6 +6,7 @@ object Dependencies {
   val zio            = "dev.zio" %% "zio"              % Versions.zio
   val zioPrelude     = "dev.zio" %% "zio-prelude"      % Versions.zioPrelude
   val zioStreams     = "dev.zio" %% "zio-streams"      % Versions.zio
+  val zioNio         = "dev.zio" %% "zio-nio"          % Versions.zioNio
   val zioTest        = "dev.zio" %% "zio-test"         % Versions.zio % Test
   val zioTestSbt     = "dev.zio" %% "zio-test-sbt"     % Versions.zio % Test
   val zioInteropCats = "dev.zio" %% "zio-interop-cats" % Versions.zioInteropCats

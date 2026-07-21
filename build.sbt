@@ -248,3 +248,25 @@ lazy val integrationTests = project
     libraryDependencies ++= Seq(testcontainersCore, testcontainersPostgres, logback % Test)
   )
   .disablePlugins(AssemblyPlugin)
+
+// Standalone entry point for the future master-data sync tool (docs/todo/master-data/analysis.md).
+// First slice: Main + temp-dir create/delete lifecycle only, so no .dependsOn(...) yet — the
+// download/parse/reconcile pipeline (needing domain/application/persistenceQuill + the CSV/HTTP
+// deps from the analysis doc's §3.1/§4.2) lands in a later increment. Deliberately NOT in root's
+// .aggregate(...) / coverageProjects — same rationale as integrationTests: a cron-triggered,
+// externally-invoked lifecycle, not "always compiled/tested with the HTTP server". sbt-assembly
+// stays enabled (like bootstrap) since this needs a runnable fat jar for eventual OS-cron use.
+lazy val masterDataSync = project
+  .in(file("infrastructure/master-data-sync"))
+  .settings(
+    name := "master-data-sync",
+    libraryDependencies ++= Seq(
+      zio,
+      zioNio,
+      zioLogging,
+      zioLoggingSlf4j,
+      logback
+    ),
+    Compile / mainClass := Some("dev.cmartin.aerohex.infrastructure.masterdata.Main")
+  )
+  .settings(coverageSettings*)
