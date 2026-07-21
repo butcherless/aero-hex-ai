@@ -39,10 +39,11 @@ much bigger piece of the analysis doc) gets built on top of it in later incremen
 
 ## Not in this slice
 
-Everything else in the analysis doc's design is still open: HTTP download, CSV/`.dat` parsing,
-reconciliation against Postgres, CLI `--entity=` argument handling, dry-run mode, and the
-`domain`/`application`/`persistenceQuill` dependencies those need. `Main.run` today only exercises
-the temp-dir lifecycle as a smoke test and logs a placeholder message.
+Everything else in the analysis doc's design is still open: CSV/`.dat` parsing, reconciliation
+against Postgres, CLI `--entity=` argument handling, dry-run mode, and the
+`domain`/`application`/`persistenceQuill` dependencies those need. `Main.run` at the time of this
+slice only exercised the temp-dir lifecycle as a smoke test — HTTP download (Country source only)
+was added next, in `plans/http-downloader-country.md`, which also wired `Main` to call it.
 
 ## Files touched
 
