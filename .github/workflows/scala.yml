@@ -21,7 +21,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  SBT_OPTS: "-Xmx2g"
+  SBT_OPTS: "-Xmx3g"
 
 jobs:
   build:
@@ -36,12 +36,29 @@ jobs:
           persist-credentials: false
       - name: Setup build environment
         uses: ./.github/actions/setup-build-env
+      - name: Cache incremental compilation state
+        # setup-build-env's actions/setup-java (cache: sbt) already caches resolved
+        # dependencies (~/.ivy2, ~/.sbt, the Coursier cache) keyed on build.sbt/plugins.sbt — this
+        # is the separate, much larger win: zinc's per-module target/ analysis, so an unchanged
+        # module across commits doesn't recompile from scratch. Keyed on the commit so each run
+        # saves its own state; restore-keys falls back to the most recent match (main branch's
+        # cache on a fresh PR branch, or the previous commit otherwise) so zinc only has to
+        # recompile what actually changed. A stale/bad cache can't silently ship a wrong result:
+        # the "Assembly" step below always starts from a real `clean`, independent of this cache.
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            **/target
+          key: ${{ runner.os }}-sbt-target-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-sbt-target-
       - name: Check formatting
         run: sbt scalafmtCheckAll
-      - name: Compile and unit tests
-        run: sbt test
-      - name: Coverage report
-        run: sbt coverageAggregate
+      - name: Compile, test, and aggregate coverage
+        # One sbt invocation instead of two: coverageAggregate only reads the statement data `test`
+        # already wrote to .coverage-data (see CLAUDE.md's Coverage section) — it needs no separate
+        # project reload, so combining avoids paying that ~11k-settings reload cost twice.
+        run: sbt test coverageAggregate
       - name: Assembly (coverage-free artifact)
         # -Dcoverage=false + clean: coverageEnabled is project-scoped in build.sbt, so the earlier
         # `sbt test`/coverageAggregate steps left instrumented classes cached — a bare `coverageOff`
@@ -71,5 +88,17 @@ jobs:
           persist-credentials: false
       - name: Setup build environment
         uses: ./.github/actions/setup-build-env
+      - name: Cache incremental compilation state
+        # Same key as the build job's cache above (this job only runs after it, via `needs: build`)
+        # — reuses the exact target/ state build already compiled this commit for the shared modules
+        # (domain, migration, persistenceQuill, persistencePostgres), so this job only compiles
+        # integrationTests itself instead of the whole dependency chain again.
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            **/target
+          key: ${{ runner.os }}-sbt-target-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-sbt-target-
       - name: Integration tests (real Postgres via Testcontainers)
         run: sbt integrationTests/test
