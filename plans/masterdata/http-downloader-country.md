@@ -7,7 +7,7 @@
 `docs/todo/master-data/analysis.md` sketched an `HttpDownloader` component for the future
 master-data sync pipeline but never verified its exact API against current `zio-http` docs, nor
 compared it against alternatives the way §4.3 did for the temp-directory choice
-(`plans/master-data-sync-scaffold.md`). This change repeats that process for the HTTP download
+(`plans/masterdata/master-data-sync-scaffold.md`). This change repeats that process for the HTTP download
 step — research ZIO's own answer first, compare against the plain-JDK baseline and other libraries,
 record the comparison in the analysis doc (new §4.4), then build the component and its tests.
 
@@ -15,7 +15,7 @@ record the comparison in the analysis doc (new §4.4), then build the component 
 (`https://datahub.io/core/country-list/_r/-/data.csv`, which redirects — a real reason to need
 redirect-following, not a hypothetical one). Airport/Airline downloads and CSV parsing/reconciliation
 are still later increments, continuing the incremental-slice pattern from
-`plans/master-data-sync-scaffold.md`. `HttpDownloader` was built and verified standalone first (unit
+`plans/masterdata/master-data-sync-scaffold.md`. `HttpDownloader` was built and verified standalone first (unit
 tests + a manual real-network check); `Main.scala` was then updated in the same change to actually
 call it — see "Main wiring" below — so `sbt masterDataSync/run` now performs a real download, not
 just the temp-dir smoke test the previous slice left it at.
@@ -66,7 +66,7 @@ recorded in the analysis doc's §2.1.
 - `infrastructure/master-data-sync/src/test/scala/dev/cmartin/aerohex/infrastructure/masterdata/HttpDownloaderSpec.scala`
   — `ZIOSpecDefault`, three tests: direct 200 download, redirect-following to the same content, and
   a 404 failure case. Reuses `TempDirectory.create`/`delete` (from
-  `plans/master-data-sync-scaffold.md`) for a scratch destination directory per test.
+  `plans/masterdata/master-data-sync-scaffold.md`) for a scratch destination directory per test.
 
 **Edited:**
 - `build.sbt` — added `zioHttp`, `zioStreams` to `masterDataSync`'s `libraryDependencies` (both

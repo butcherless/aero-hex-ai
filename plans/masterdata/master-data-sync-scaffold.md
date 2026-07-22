@@ -43,7 +43,7 @@ Everything else in the analysis doc's design is still open: CSV/`.dat` parsing, 
 against Postgres, CLI `--entity=` argument handling, dry-run mode, and the
 `domain`/`application`/`persistenceQuill` dependencies those need. `Main.run` at the time of this
 slice only exercised the temp-dir lifecycle as a smoke test — HTTP download (Country source only)
-was added next, in `plans/http-downloader-country.md`, which also wired `Main` to call it.
+was added next, in `plans/masterdata/http-downloader-country.md`, which also wired `Main` to call it.
 
 ## Files touched
 

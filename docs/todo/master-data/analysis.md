@@ -1,9 +1,11 @@
 # Master Data Management — Download & Sync for Country / Airport / Airline
 
 > **Status:** Analysis — architecture decided; implementation started. `Main` downloads the Country
-> source into a temp dir and cleans up after itself (temp-dir lifecycle + `HttpDownloader`, Country
-> only) — see `plans/master-data-sync-scaffold.md` and `plans/http-downloader-country.md`. CSV
-> parsing, reconciliation, and Airport/Airline downloads are still design-only.
+> source into a temp dir and cleans up after itself (temp-dir lifecycle + `HttpDownloader`); a
+> standalone `CountryCsvParser.parse` correctly parses the real 249-row source, including all 4
+> quoted-comma edge cases — see `plans/masterdata/master-data-sync-scaffold.md`, `plans/masterdata/http-downloader-country.md`,
+> and `plans/masterdata/country-csv-parser.md`. Mapping a parsed row to a domain `Country` (`toCommand`),
+> reconciliation, and Airport/Airline downloads/parsing are still design-only.
 > Covers data source selection, sync architecture, reconciliation algorithm, validation/error
 > handling, and open decisions for a low-frequency (~6-month) external master-data refresh.
 
@@ -152,7 +154,7 @@ like `adapter-http`, except its driver is an OS-scheduled process instead of an 
 
 Target end state (the `.dependsOn`/CSV/HTTP-streaming deps land incrementally as the pipeline below
 gets built — the first slice actually in the build today has neither; see
-`plans/master-data-sync-scaffold.md`):
+`plans/masterdata/master-data-sync-scaffold.md`):
 
 ```scala
 // build.sbt — new project block, alongside migration/messagingKafka/persistenceQuill
@@ -184,21 +186,25 @@ since this module — like `bootstrap` — needs a runnable fat jar for the OS-c
 
 ### 3.2 File layout
 
+Flat in the `masterdata` package root, not nested under `downloader/`/`parser/`/`sync/` subpackages
+as originally sketched here — settled once `TempDirectory`/`HttpDownloader`/`CountryCsvParser` were
+actually built (§4.3/§4.4/§4.5): a handful of files doesn't need subpackage navigation overhead, and
+matches this project's other small infrastructure modules (`migration`'s single-segment package).
+Revisit if the file count grows enough that a flat package stops being easy to scan.
+
 ```
 infrastructure/master-data-sync/
   src/main/scala/dev/cmartin/aerohex/infrastructure/masterdata/
     Main.scala                    ← ZIOAppDefault entry point, CLI arg parsing (--entity=country|airport|airline|all)
-    downloader/
-      HttpDownloader.scala        ← ZIO HTTP Client.streaming → temp file
-    parser/
-      CountryCsvParser.scala      ← regex-based, no CSV library — §2.1
-      AirportCsvParser.scala
-      AirlineCsvParser.scala      ← both: scala-csv → raw row → validated domain command, or a logged skip
-    sync/
-      EntitySync.scala            ← generic reconcile-and-apply algorithm (§7), parameterized per entity
-      CountrySync.scala
-      AirportSync.scala
-      AirlineSync.scala
+    TempDirectory.scala           ← create/delete lifecycle, §4.3 — implemented
+    HttpDownloader.scala          ← ZIO HTTP Client.streaming → file, §4.4 — implemented, Country source only
+    CountryCsvParser.scala        ← regex-based, no CSV library — §2.1/§4.5 — implemented, parse only
+    AirportCsvParser.scala
+    AirlineCsvParser.scala        ← both: scala-csv → raw row → validated domain command, or a logged skip
+    EntitySync.scala              ← generic reconcile-and-apply algorithm (§7), parameterized per entity
+    CountrySync.scala
+    AirportSync.scala
+    AirlineSync.scala
     SyncReport.scala              ← created/updated/deleted/skipped counters + per-row error log
 ```
 
@@ -310,7 +316,7 @@ gap every other option leaves for this project to implement by hand.
 
 Same bar as §4.2/§4.3. Checked in the order asked — ZIO's own answer first, then the plain-Scala/JDK
 baseline, then other libraries. Scope note: **implemented for the Country source only** (§2.1) — see
-`plans/http-downloader-country.md`.
+`plans/masterdata/http-downloader-country.md`.
 
 **Option 1 — ZIO-native: `zio-http` `Client`.** Unlike `zio-nio`, this is already a main-scope
 dependency of the overall build (used server-side in `adapter-http`) — adding it to
@@ -366,6 +372,45 @@ new dependency — vs. `zio-http-testkit`'s `TestServer` (nicer ergonomics, `Ser
 project's existing `ZClientAspect`/`ZLayer` idioms, and both real requirements it needs to satisfy —
 redirect-following and non-2xx detection — are confirmed, documented capabilities, not assumptions.
 
+### 4.5 File line reading — comparison
+
+Same bar as §4.3/§4.4. The regex itself, and the decision *not* to use `scala-csv` for Country's
+simple two-column shape, were already settled in §2.1/§4.2 — what's compared here is only the
+mechanism that reads the downloaded file's lines before each one is matched against that regex.
+
+**Option 1 — ZIO-native: `zio-nio`'s `Files.readAllLines`.** Already a dependency of this module
+(added for `TempDirectory`, §4.3) — zero new footprint, same as `zio-http` was for `HttpDownloader`.
+Confirmed from source (`nio/shared/.../Files.scala`):
+
+```scala
+def readAllLines(path: Path, charset: Charset = Charset.Standard.utf8): ZIO[Any, IOException, List[String]]
+```
+
+Eager — loads the whole file into a `List[String]`. Right-sized for Country's ~4 KB/249-row file
+(confirmed via a real download during implementation); `zio-nio`'s streaming alternative,
+`Files.lines: ZStream[Any, IOException, String]`, is the right tool for a much larger file (Airport's
+OurAirports source is "tens of MB") — deferred to that future increment, not needed here.
+
+**Option 2 — Scala core lib: `scala.io.Source`.** Unlike §4.3's temp-directory case (where
+`scala-library` had nothing and the "core" baseline fell straight through to the JDK), Scala's own
+standard library does have a line-reading function: `Source.fromFile(file)(codec).getLines():
+Iterator[String]` (confirmed in `scala/scala`'s `2.13.x` branch,
+`src/library/scala/io/Source.scala`). No new dependency either — but `Source` doesn't auto-close; the
+caller must call `.close()` explicitly (no try-with-resources / `Using` built in), extra lifecycle
+code `Files.readAllLines` doesn't need since the JDK call it wraps fully reads then closes before
+returning.
+
+**Alternatives explored**
+
+| Option | New dependency? | Verdict |
+|---|---|---|
+| Plain `java.nio.file.Files.readAllLines` (JDK) | No | Rejected — the exact function `zio-nio` wraps; calling it directly means a manual `ZIO.attempt(...).refineToOrDie[IOException]` plus a Java-`List`-to-Scala conversion by hand, for no benefit over calling `zio-nio`'s version |
+| `zio-streams`' `ZStream.fromFile` + `ZPipeline.splitLines` | Already a dependency (added for `HttpDownloader`'s `ZSink.fromFile`) | Rejected for now — more machinery than a 4 KB file needs; the right choice once the Airport parser (large file) is built |
+| `scala-csv` | Already a planned dependency (§4.2, Airport/Airline only) | Rejected for Country specifically — already decided in §2.1/§4.2, not re-litigated here |
+
+**Selected:** `zio-nio`'s `Files.readAllLines` — no new dependency, no manual resource lifecycle
+(unlike `scala.io.Source`), and the right-sized tool for a fully-known-size, small file.
+
 ---
 
 ## 5. Main flow (happy path)
@@ -382,7 +427,7 @@ Airline, Airport) follow this identical shape, just parameterized differently (`
 |---|---|---|
 | `Main` (`ZIOAppDefault`) | `run` | Orchestrates the three entity syncs in order (Country, then Airline/Airport), owns the temp-dir lifecycle |
 | `HttpDownloader` | `download(url: String, destFile: Path): ZIO[Client, Throwable, Path]` — implemented, Country source only | Streams the source URL to `destFile` (ZIO HTTP `Client.streaming` + redirect-following + non-2xx check, §4.4). `url: String`/`destFile` (a specific file, not a dir) — small deviations from this table's original sketch, settled once the component was actually built; logs start/success-with-size/failure (`ZIO.logInfo`/`logError`) |
-| `CountryCsvParser` | `parse(file: Path): Task[List[SourceRow]]` | Skips the header line, then matches each remaining line against the §2.1 regex — no CSV library. A non-matching line is a tolerated parse error: logged with the raw line, skipped, processing continues (§8) |
+| `CountryCsvParser` | `parse(file: Path): IO[IOException, List[CountryRow]]` — implemented | Skips the header line by position (never logged), then matches each remaining line against the §2.1 regex via `zio-nio`'s `Files.readAllLines` (§4.5) — no CSV library. A non-matching line is a tolerated parse error: logged at `WARN` with the raw line, skipped, processing continues (§8). `CountryRow`/`IOException`, not `SourceRow`/`Task` — settled once actually built, same as `HttpDownloader`'s deviations. `toCommand` (row → domain `Country`) is not yet built — needs `domain`'s `CountryCode.make`, a later increment |
 | `AirportCsvParser` / `AirlineCsvParser` | `parse(file: Path): Task[List[SourceRow]]` | Reads the downloaded file with `scala-csv` (`ZIO.attempt(CSVReader.open(file).all())`), yields one raw row per record |
 | same parser | `toCommand(row: SourceRow): Either[String, Command]` | Maps a raw row to the entity's create/update command, via the existing domain `Newtype.make`/`.validateAll` |
 | `EntitySync` | `loadExisting(): UIO[Map[NaturalKey, Entity]]` | Gets everything currently stored — see §7.1 for why this isn't a plain call to the existing `FindAllUseCase` |
@@ -521,6 +566,7 @@ key + reason) to act on without re-running.
 | CSV library | **Decided.** `scala-csv` 2.0.0 (Country parses via regex instead, §2.1) | Full comparison and rejected alternatives: §4.2/§10 |
 | Temp directory library | **Decided, with a caveat.** `zio-nio` 2.0.2 (`Files.createTempDirectory` + `deleteRecursive`, exposed as this project's own `TempDirectory.create`/`delete`) | Closes a recursive-delete gap the plain-JDK baseline leaves unimplemented; caveat is the dependency's own last release/commit being from Oct 2023. Full comparison and rejected alternatives: §4.3/§10 |
 | HTTP download client | **Decided.** `zio-http` `Client`, Country source only so far | Already a build dependency, no new artifact; needs redirect-following (Country's source URL redirects) and non-2xx detection, both confirmed capabilities. Full comparison and rejected alternatives: §4.4/§10 |
+| File line reading | **Decided.** `zio-nio`'s `Files.readAllLines` (Country's `parse` function only so far) | Already a build dependency; eager/in-memory is right-sized for Country's ~4 KB file, unlike Airport's later tens-of-MB source. Full comparison and rejected alternatives: §4.5/§10 |
 | Scheduling mechanism | **Decided.** Standalone `ZIOAppDefault` app, packaged like `bootstrap` (`sbt-assembly`), invoked by an OS-level (`crontab`) entry on whatever host runs it — `0 0 1 */6 *` for a "1st of the month, every 6 months" cadence, or similar | The app has no built-in scheduling awareness — the OS decides when to run `java -jar master-data-sync.jar`. Rejected alternative (GitHub Actions `schedule:`): §10 |
 | Dry-run mode | Recommend a `--dry-run` flag that logs the diff (create/update/delete counts + affected rows) without writing | Deletes are destructive and the Airline source has known gaps; a first run should be inspectable before it's trusted unattended |
 | "Different" comparison for updates | Field-by-field equality on the mapped subset of columns only, not a full-row hash | Avoids spurious updates from OurAirports/OpenFlights columns this project doesn't model |
@@ -540,3 +586,4 @@ key + reason) to act on without re-running.
 | CSV libraries: `kantan.csv`, `csv3s`, `fs2-data-csv`, Apache Commons CSV | Full comparison and reasoning: §4.2. In short — `kantan.csv` has no Scala 3 build; `csv3s` is ZIO-native but too immature (7 GitHub stars); `fs2-data-csv` pulls in an effect ecosystem this project doesn't otherwise use; Commons CSV is mature but more boilerplate than `scala-csv` |
 | Temp directory: plain `java.nio.file.Files` + hand-rolled recursive delete, `better-files`, `os-lib`, `scala.reflect.io.Directory` | Full comparison and reasoning: §4.3. In short — the plain-JDK path needs a manually-written recursive-delete release action that `zio-nio` already provides; `better-files`/`os-lib` are mature but not ZIO-aware (still need the same wrapping, and `os-lib`'s default cleanup is JVM-shutdown-hook-based, not deterministic); `scala.reflect.io.Directory` is a Scala-2-era compiler-support artifact not on this project's Scala 3 classpath |
 | HTTP download: `java.net.http.HttpClient`, `sttp-client4`, Apache HttpClient/OkHttp, `zio-http-testkit` (for testing) | Full comparison and reasoning: §4.4. In short — the JDK client is genuinely less code for the happy path but doesn't share this project's `ZClientAspect`/`ZLayer` idioms; `sttp-client4` is only a test-scope dependency today and would be redundant with `zio-http`, already main-scope; Apache HttpClient/OkHttp are new general-purpose dependencies with nothing `zio-http` doesn't cover; `zio-http-testkit` lags this project's `zio-http` version (`3.3.3` vs. `3.11.3`), so tests use a plain `Server` bound to port 0 instead |
+| File line reading: plain `java.nio.file.Files.readAllLines`, `zio-streams`' `ZStream.fromFile` + `ZPipeline.splitLines` | Full comparison and reasoning: §4.5. In short — the plain-JDK path is the exact function `zio-nio` already wraps, so calling it directly is strictly more code for no benefit; `zio-streams`' line-streaming is the right tool for Airport's much larger source file, not Country's small one |

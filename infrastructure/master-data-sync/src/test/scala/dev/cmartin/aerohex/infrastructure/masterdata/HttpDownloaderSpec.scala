@@ -14,9 +14,10 @@ object HttpDownloaderSpec extends ZIOSpecDefault:
   private val redirectTarget = URL.decode("/countries.csv").toOption.get
 
   private val routes = Routes(
-    Method.GET / "countries.csv" -> handler(Response.text(countryCsv)),
-    Method.GET / "redirect"      -> handler(Response.redirect(redirectTarget)),
-    Method.GET / "missing"       -> handler(Response.notFound)
+    Method.GET / "countries.csv"        -> handler(Response.text(countryCsv)),
+    Method.GET / "redirect"             -> handler(Response.redirect(redirectTarget)),
+    Method.GET / "redirect-no-location" -> handler(Response.status(Status.Found)),
+    Method.GET / "missing"              -> handler(Response.notFound)
   )
 
   private def readBackAsString(file: Path): Task[String] =
@@ -57,5 +58,21 @@ object HttpDownloaderSpec extends ZIOSpecDefault:
           exit   <- HttpDownloader.download(s"http://localhost:$port/missing", dest).exit
           _      <- TempDirectory.delete(tmpDir)
         yield assertTrue(exit.isFailure)
+      },
+      test("logs and fails when a redirect has no Location header") {
+        for
+          port   <- ZIO.service[Int]
+          tmpDir <- TempDirectory.create("http-downloader-spec-")
+          dest    = tmpDir / "broken-redirect.csv"
+          exit   <- HttpDownloader.download(s"http://localhost:$port/redirect-no-location", dest).exit
+          _      <- TempDirectory.delete(tmpDir)
+        yield assertTrue(exit.isFailure)
+      },
+      test("humanReadableSize formats bytes, kilobytes, and megabytes") {
+        assertTrue(
+          HttpDownloader.humanReadableSize(512) == "512 B",
+          HttpDownloader.humanReadableSize(4048) == "4.0 KB",
+          HttpDownloader.humanReadableSize(5 * 1024 * 1024) == "5.0 MB"
+        )
       }
     ).provideLayerShared(portLayer ++ Client.default)

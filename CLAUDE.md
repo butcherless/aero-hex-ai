@@ -80,7 +80,7 @@ shared-kernel
                         └── bootstrap  (composition root: domain + application + adapter-http + persistence-quill + persistence-postgres + migration)
                 migration              (SQL + Flyway only; no domain dependency — wired into bootstrap for migrate-on-start)
                 integration-tests      (standalone — opt-in, real-Postgres tests; NOT in root's aggregate)
-                master-data-sync       (standalone — Main + temp-dir lifecycle only so far; NOT in root's aggregate; see plans/master-data-sync-scaffold.md)
+                master-data-sync       (standalone — Main + temp-dir lifecycle only so far; NOT in root's aggregate; see plans/masterdata/master-data-sync-scaffold.md)
 ```
 
 Rule: inner modules never depend on outer ones. `domain` has zero framework dependencies.
@@ -382,6 +382,18 @@ validation (contract correctness, an independent axis from runtime behavior) →
 ## Documentation sources
 
 Always fetch current docs before writing or modifying library API calls — training data may be stale, especially for ZIO Kafka 3.x and Doobie 1.x (both have breaking changes from prior versions).
+
+**Choosing a library for a new capability** (not just calling an API on one already in use): check
+options in this order, verifying each against current docs/source rather than memory, and record the
+comparison the way `docs/todo/master-data/analysis.md` §4.3–§4.5 do (goal, an options table, a
+verdict): (1) ZIO core or an official ZIO-ecosystem library first — best effect-system fit and this
+project's own established preference (`zio-nio` over `better-files`/`os-lib`, `zio-http` over
+`sttp-client4`/Apache HttpClient, both picked over more "mature" non-ZIO options on ecosystem fit
+alone); (2) the Scala/JDK standard-library baseline second — no new dependency, but check `scala.*`
+too, not just `java.*` (`scala.io.Source` exists for some things `scala-library` covers that
+`scala-reflect`/JDK don't); (3) other third-party alternatives last, and only when neither of the
+first two clears this project's stability bar (`## Versioning policy`) or the actual required
+capability.
 
 1. **Context7 MCP** (`mcp__context7` tools) — preferred for quick lookups
 2. **Official sites** (WebFetch fallback):

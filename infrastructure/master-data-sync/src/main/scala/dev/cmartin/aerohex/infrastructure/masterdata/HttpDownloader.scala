@@ -12,7 +12,9 @@ object HttpDownloader:
 
   // Row/record counts are format-specific (CSV vs. .dat) and belong to whichever parser reads the
   // downloaded file next — HttpDownloader only ever sees an undifferentiated byte stream.
-  private def humanReadableSize(bytes: Long): String =
+  // package-private (not `private`) so HttpDownloaderSpec can exercise the MB branch directly,
+  // without needing an artificially large (and slow) test download.
+  private[masterdata] def humanReadableSize(bytes: Long): String =
     if bytes < 1024 then s"$bytes B"
     else if bytes < 1024 * 1024 then f"${bytes / 1024.0}%.1f KB"
     else f"${bytes / (1024.0 * 1024)}%.1f MB"

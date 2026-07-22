@@ -19,11 +19,12 @@ object Main extends ZIOAppDefault:
   override def run: ZIO[ZIOAppArgs & Scope, Any, Any] =
     ZIO.acquireRelease(TempDirectory.create(tempDirPrefix))(release).flatMap { dir =>
       for
-        _   <- ZIO.logInfo(s"Created temporary directory: $dir")
-        dest = dir / "countries.csv"
-        _   <- HttpDownloader.download(countryUrl, dest).provide(Client.default)
-        _   <- ZIO.logInfo(
-                 "master-data-sync: Country download complete — CSV parsing/reconciliation lands in a later increment."
-               )
+        _    <- ZIO.logInfo(s"Created temporary directory: $dir")
+        dest  = dir / "countries.csv"
+        _    <- HttpDownloader.download(countryUrl, dest).provide(Client.default)
+        rows <- CountryCsvParser.parse(dest)
+        _    <- ZIO.logInfo(
+                  s"master-data-sync: parsed ${rows.size} Country rows — reconciliation lands in a later increment."
+                )
       yield ()
     }
