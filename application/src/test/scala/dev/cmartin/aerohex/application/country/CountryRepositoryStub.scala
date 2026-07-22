@@ -18,6 +18,8 @@ private[application] object CountryRepositoryStub:
       ZIO.die(new NotImplementedError("findByCode"))
     def findAll(p: Pagination): UIO[List[Country]]                      =
       ZIO.die(new NotImplementedError("findAll"))
+    def findAllUnbounded: UIO[List[Country]]                            =
+      ZIO.die(new NotImplementedError("findAllUnbounded"))
     def searchByName(q: String): UIO[List[Country]]                     =
       ZIO.die(new NotImplementedError("searchByName"))
     def save(c: Country): IO[DomainError, Country]                      =
@@ -31,6 +33,7 @@ private[application] object CountryRepositoryStub:
       onValidateCode: CountryCode => IO[DomainError, Unit] = unimplementedCountryRepo.validateCode,
       onFindByCode: CountryCode => IO[DomainError, Option[Country]] = unimplementedCountryRepo.findByCode,
       onFindAll: Pagination => UIO[List[Country]] = unimplementedCountryRepo.findAll,
+      onFindAllUnbounded: UIO[List[Country]] = unimplementedCountryRepo.findAllUnbounded,
       onSearchByName: String => UIO[List[Country]] = unimplementedCountryRepo.searchByName,
       onSave: Country => IO[DomainError, Country] = unimplementedCountryRepo.save,
       onUpdate: Country => IO[DomainError, Country] = unimplementedCountryRepo.update,
@@ -39,6 +42,7 @@ private[application] object CountryRepositoryStub:
     def validateCode(code: CountryCode): IO[DomainError, Unit]          = onValidateCode(code)
     def findByCode(code: CountryCode): IO[DomainError, Option[Country]] = onFindByCode(code)
     def findAll(p: Pagination): UIO[List[Country]]                      = onFindAll(p)
+    def findAllUnbounded: UIO[List[Country]]                            = onFindAllUnbounded
     def searchByName(q: String): UIO[List[Country]]                     = onSearchByName(q)
     def save(c: Country): IO[DomainError, Country]                      = onSave(c)
     def update(c: Country): IO[DomainError, Country]                    = onUpdate(c)

@@ -41,6 +41,14 @@ final class DoobieCountryRepository(xa: Transactor[Task]) extends CountryReposit
       .map(_.map((c, n) => Country(CountryCode.unsafeMake(c), n)))
       .orDie
 
+  override def findAllUnbounded: UIO[List[Country]] =
+    sql"SELECT code, name FROM countries ORDER BY code"
+      .query[(String, String)]
+      .to[List]
+      .transact(xa)
+      .map(_.map((c, n) => Country(CountryCode.unsafeMake(c), n)))
+      .orDie
+
   override def searchByName(query: String): UIO[List[Country]] =
     sql"SELECT code, name FROM countries WHERE name ILIKE ${"%" + query + "%"} ORDER BY name"
       .query[(String, String)]

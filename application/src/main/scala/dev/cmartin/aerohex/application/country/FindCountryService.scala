@@ -18,6 +18,9 @@ final class FindCountryService(repo: CountryRepository) extends FindCountryUseCa
   override def findAll(pagination: Pagination): UIO[List[Country]] =
     ServiceAspect.logged("FindCountryService.findAll").apply(repo.findAll(pagination))
 
+  override def findAllUnbounded: UIO[List[Country]] =
+    ServiceAspect.logged("FindCountryService.findAllUnbounded").apply(repo.findAllUnbounded)
+
   override def searchByName(query: String): UIO[List[Country]] =
     ServiceAspect.logged(s"FindCountryService.searchByName($query)").apply(repo.searchByName(query))
 

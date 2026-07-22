@@ -23,9 +23,9 @@ just the temp-dir smoke test the previous slice left it at.
 ## Decisions
 
 - **`zio-http` `Client`, not a new dependency.** Already used server-side in `adapter-http`; adding
-  it to `master-data-sync` pulls in no new artifact for the whole build, unlike `zio-nio` was. Full
-  comparison against `java.net.http.HttpClient`, `sttp-client4`, and Apache HttpClient/OkHttp:
-  analysis doc §4.4 — not repeated here.
+  it to `master-data-sync` pulls in no new artifact for the whole build, unlike `zio-nio` was.
+  Rejected alternatives (`java.net.http.HttpClient`, `sttp-client4`, Apache HttpClient/OkHttp):
+  analysis doc §4.4/§10 — not repeated here.
 - **Redirect-following via `ZClientAspect.followRedirects`, composed with `ZIO#updateService`, not
   a fetched-and-transformed `client` value.** Calling the `ZClient` instance's own `.request(...)`
   directly is deprecated since `zio-http` 3.0.0 and produces a compiler warning; `updateService`

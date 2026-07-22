@@ -23,8 +23,8 @@ later increment; this module only builds commands so far, it doesn't call anythi
 ## Decisions
 
 - **`zio-nio`'s `Files.readAllLines`, no new dependency.** Already added to this module for
-  `TempDirectory`. Full comparison against `scala.io.Source`, plain JDK `Files.readAllLines`, and
-  `zio-streams`' line-streaming: analysis doc §4.5 — not repeated here. Eager/in-memory is
+  `TempDirectory`. Rejected alternatives (`scala.io.Source`, plain JDK `Files.readAllLines`,
+  `zio-streams`' line-streaming): analysis doc §4.5/§10 — not repeated here. Eager/in-memory is
   appropriate for Country's small (~4 KB) file; the streaming alternative is deferred to whenever the
   much-larger Airport parser is built.
 - **`IO[IOException, List[CountryRow]]`, not `Task[List[SourceRow]]`.** `Files.readAllLines`'s error

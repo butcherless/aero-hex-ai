@@ -63,6 +63,14 @@ final class QuillCountryRepository(dataSource: DataSource) extends CountryReposi
       .orDie
   }
 
+  override def findAllUnbounded: UIO[List[Country]] =
+    ctx
+      .run(quote {
+        querySchema[CountryRow]("countries").sortBy(_.code)
+      })
+      .map(_.map(toCountry))
+      .orDie
+
   override def searchByName(query: String): UIO[List[Country]] = {
     val pattern = "%" + query + "%"
     ctx

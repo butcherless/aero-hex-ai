@@ -7,5 +7,6 @@ import zio.{IO, UIO}
 trait FindCountryUseCase {
   def findByCode(code: CountryCode): IO[DomainError, Country]
   def findAll(pagination: Pagination): UIO[List[Country]]
+  def findAllUnbounded: UIO[List[Country]]
   def searchByName(query: String): UIO[List[Country]]
 }

@@ -13,9 +13,9 @@ much bigger piece of the analysis doc) gets built on top of it in later incremen
 
 ## Decisions
 
-- **Temp-directory library: `zio-nio` 2.0.2.** Already decided and fully compared against a
-  hand-rolled JDK wrapper, `better-files`, `os-lib`, and `scala.reflect.io.Directory` in the
-  analysis doc's §4.3 — not repeated here. This change is the first real consumer of that decision.
+- **Temp-directory library: `zio-nio` 2.0.2.** Already decided against a hand-rolled JDK wrapper,
+  `better-files`, `os-lib`, and `scala.reflect.io.Directory` — rejected alternatives in the analysis
+  doc's §4.3/§10, not repeated here. This change is the first real consumer of that decision.
 - **No `ZLayer` for `TempDirectory`** — it's two pure, stateless functions (`create`/`delete`), not
   a stateful service. Follows the precedent of
   `domain/src/main/scala/dev/cmartin/aerohex/domain/route/RouteValidator.scala`: a plain `object`

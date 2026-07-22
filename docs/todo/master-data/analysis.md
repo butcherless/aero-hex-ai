@@ -1,13 +1,17 @@
 # Master Data Management — Download & Sync for Country / Airport / Airline
 
-> **Status:** Analysis — architecture decided; implementation started. `Main` downloads the Country
-> source into a temp dir, parses all 249 real rows (including all 4 quoted-comma edge cases), and
-> builds a valid `CreateCountryCommand` for every one of them, then cleans up — temp-dir lifecycle,
-> `HttpDownloader`, and `CountryCsvParser.parse`/`.toCommand` are all implemented and verified against
-> the live source. See `plans/masterdata/master-data-sync-scaffold.md`,
-> `plans/masterdata/http-downloader-country.md`, and `plans/masterdata/country-csv-parser.md`.
-> Actually persisting a command (`CreateCountryService`), reconciliation, and Airport/Airline
-> downloads/parsing are still design-only.
+> **Status:** Analysis — architecture decided; **Country sync fully implemented and verified against a
+> real Postgres**. `Main` downloads the Country source into a temp dir, parses all 249 real rows
+> (including all 4 quoted-comma edge cases), reconciles them against `countries` via `CountrySync`
+> (`EntitySync.loadExisting`/`.reconcile`/`.apply`, backed by `FindCountryUseCase.findAllUnbounded` and
+> the real `Create`/`Update`/`DeleteCountryService`), then cleans up. Verified live: starting from 1
+> existing row (`ES, Spain`), a run created the other 248 and logged
+> `created: 248, updated: 0, deleted: 0, unchanged: 1`; a second run against the now-249-row table
+> reported `unchanged: 249` (idempotent, no writes). See `plans/masterdata/master-data-sync-scaffold.md`,
+> `plans/masterdata/http-downloader-country.md`, `plans/masterdata/country-csv-parser.md`,
+> `plans/masterdata/entity-sync.md`, and `plans/masterdata/country-sync-wiring.md`.
+> Airport/Airline downloads/parsing/sync are still design-only — Country is the only entity wired
+> end-to-end so far.
 > Covers data source selection, sync architecture, reconciliation algorithm, validation/error
 > handling, and open decisions for a low-frequency (~6-month) external master-data refresh.
 
@@ -199,17 +203,17 @@ Revisit if the file count grows enough that a flat package stops being easy to s
 ```
 infrastructure/master-data-sync/
   src/main/scala/dev/cmartin/aerohex/infrastructure/masterdata/
-    Main.scala                    ← ZIOAppDefault entry point, CLI arg parsing (--entity=country|airport|airline|all)
+    Main.scala                    ← ZIOAppDefault entry point — implemented for Country (no CLI arg parsing yet; Airport/Airline still hardcode-absent)
     TempDirectory.scala           ← create/delete lifecycle, §4.3 — implemented
     HttpDownloader.scala          ← ZIO HTTP Client.streaming → file, §4.4 — implemented, Country source only
-    CountryCsvParser.scala        ← regex-based, no CSV library — §2.1/§4.5 — implemented, parse only
+    CountryCsvParser.scala        ← regex-based, no CSV library — §2.1/§4.5 — implemented (parse + toCommand)
     AirportCsvParser.scala
     AirlineCsvParser.scala        ← both: scala-csv → raw row → validated domain command, or a logged skip
-    EntitySync.scala              ← generic reconcile-and-apply algorithm (§7), parameterized per entity
-    CountrySync.scala
+    EntitySync.scala              ← generic reconcile-and-apply algorithm (§7), parameterized per entity — implemented (loadExisting/reconcile/apply)
+    CountrySync.scala             ← implemented — parses, validates, reconciles, and applies real Create/Update/DeleteCountryService calls
     AirportSync.scala
     AirlineSync.scala
-    SyncReport.scala              ← created/updated/deleted/skipped counters + per-row error log
+    SyncReport.scala              ← created/updated/deleted/skipped counters + per-row error log — implemented
 ```
 
 ---
@@ -255,165 +259,45 @@ maintenance risk for a marginal ergonomics win. Between the two mature options, 
 
 ### 4.3 Temporary directory — creation & cleanup
 
-Same bar as §4.2's CSV comparison: least code, most ZIO-ecosystem fit, without dropping below this
-project's stability bar. Checked in the order asked — ZIO's own answer first, then the
-plain-Scala/JDK baseline, then other libraries.
+**Decided and implemented:** `zio-nio`'s `Files.createTempDirectory`/`deleteRecursive`, exposed as
+this module's own `TempDirectory.create`/`delete` (`infrastructure/master-data-sync`), composed via
+`ZIO.acquireRelease` in `Main` for guaranteed cleanup. Closes a recursive-delete gap a hand-rolled
+`java.nio.file.Files` wrapper would otherwise need to implement itself (`JFiles.delete` only removes
+an *empty* directory).
 
-**Option 1 — ZIO-native: `zio-nio`**
+**Caveat:** `zio-nio`'s most recent release (`v2.0.2`) is from October 2023 — dormant relative to this
+project's actively-released `zio`/`zio-http` core dependencies. The surface used here is a thin,
+stable wrapper, keeping the practical risk low.
 
-`zio-nio` (`dev.zio:zio-nio`, first-party ZIO ecosystem, same GitHub org as `zio`/`zio-http`) wraps
-`java.nio.file.Files` behind a ZIO-idiomatic `zio.nio.file.Files` object. Two building-block
-functions, confirmed from its source (`series/2.x` branch,
-`nio/shared/.../Files.scala` + `nio/jvm/.../FilesPlatformSpecific.scala`):
-
-```scala
-def createTempDirectory(prefix: Option[String], fileAttributes: Iterable[FileAttribute[_]])
-  (implicit trace: Trace): ZIO[Any, IOException, Path]
-
-def deleteRecursive(path: Path)(implicit trace: Trace): ZIO[Any, IOException, Long]
-```
-
-**Implemented as:** this project's own `TempDirectory.create`/`delete` (in
-`infrastructure/master-data-sync`) call these two directly and stay as two independently-testable
-functions — matching what was asked for — with `Main` composing them via `ZIO.acquireRelease` for
-guaranteed cleanup. (`zio-nio` also ships a `createTempDirectoryScoped` convenience wrapper doing
-the same `acquireRelease(create)(deleteRecursive(_).ignore)` composition internally, but exposing
-that single call wouldn't give two separately callable/testable functions.) Either way, the win over
-hand-rolling this on plain JDK is the same: `JFiles.delete` only removes an *empty* directory, so a
-hand-rolled release action would need its own recursive-walk-and-delete; `deleteRecursive` already
-does this.
-
-**Caveat:** `zio-nio`'s most recent commit and release (`v2.0.2`) are both from October 2023 — several
-years dormant, unlike the actively-released `zio`/`zio-http` core libraries this project already
-depends on. The surface used here is a thin, stable wrapper, which keeps the practical risk low — but
-it's a real gap worth the user's awareness rather than silently picked.
-
-**Option 2 — Scala/JDK core: `java.nio.file.Files.createTempDirectory`**
-
-Scala's own standard library (`scala-library`) has no dedicated temp-directory function — there's nothing
-under `scala.*` for this. The no-extra-dependency baseline is the JDK's `java.nio.file.Files`, already
-available to every Scala program since Scala runs on the JVM:
-
-```scala
-def createTempDirectory(prefix: String, attrs: FileAttribute[_]*): Path   // throws IOException
-```
-
-Usable from ZIO today as `ZIO.attempt(JFiles.createTempDirectory(prefix)).refineToOrDie[IOException]`, but
-cleanup is the gap noted above: `JFiles.delete` fails on a non-empty directory, so the release action needs
-a manual recursive walk (`JFiles.walk(dir).sorted(Comparator.reverseOrder()).forEach(JFiles.delete)`, or
-equivalent) — a small but real piece of code this project would otherwise have to write and test itself,
-and exactly what `zio-nio`'s `deleteRecursive` already provides.
-
-**Alternatives explored**
-
-| Library | ZIO fit | Maturity | Cleanup semantics | Verdict |
-|---|---|---|---|---|
-| `better-files` (`com.github.pathikrit:better-files`) | None — synchronous `File` API | 1,472 stars, last pushed Aug 2024 | `File.usingTemporaryDirectory(prefix)(f: File => U): Unit` — bracket-style, deletes after `f` returns (confirmed in `File.scala`) | Rejected — new general-purpose file-I/O dependency this project doesn't otherwise use; still needs `ZIO.attempt`/`ZIO.acquireRelease` wrapping to fit the effect system, same as Option 2 |
-| `os-lib` (`com.lihaoyi:os-lib`) | None — synchronous `os.Path` API | 740 stars, actively maintained (pushed Jun 2026) | `os.temp.dir(...)` defaults to `deleteOnExit = true` — a JVM-shutdown-hook, not a deterministic scope; wrong model for "delete once this entity's sync is done" | Rejected — cleanup timing doesn't match the required "delete when done" behavior without extra work to disable `deleteOnExit` and wire manual deletion anyway |
-| `scala.reflect.io.Directory.makeTemp` | None | Ships in `scala-reflect`, a Scala-2-era compiler-support artifact — confirmed present in `scala/scala`'s `2.13.x` branch, not part of Scala 3's toolchain this project already uses, and not added to this project's classpath today | Delegates to `Directory.createDirectory()`, no recursive-delete helper of its own | Rejected — wrong artifact for a Scala 3 project, and intended for compiler-internal use, not general application code |
-
-**Selected, with the caveat above:** `zio-nio` — see "Implemented as" note under Option 1. It's the
-only option that fits this module's effect system without a wrapper and closes the recursive-delete
-gap every other option leaves for this project to implement by hand.
+Rejected alternatives: hand-rolled `java.nio.file.Files` + manual recursive delete, `better-files`,
+`os-lib`, `scala.reflect.io.Directory` (§10).
 
 ### 4.4 HTTP download — client comparison
 
-Same bar as §4.2/§4.3. Checked in the order asked — ZIO's own answer first, then the plain-Scala/JDK
-baseline, then other libraries. Scope note: **implemented for the Country source only** (§2.1) — see
-`plans/masterdata/http-downloader-country.md`.
+**Decided and implemented** (Country source only, §2.1) — see `plans/masterdata/http-downloader-country.md`:
+`zio-http` `Client.streaming`, already a main-scope build dependency (used server-side in
+`adapter-http`), so no new artifact. Two requirements confirmed necessary, not hypothetical:
+redirect-following (Country's source URL redirects, `datahub.io/core/country-list/...` →
+`r2.datahub.io/...`, confirmed live) via `ZClientAspect.followRedirects` composed with
+`ZIO#updateService[Client]`; and an explicit `Status.isSuccess` check before writing, so a `404`/`500`
+error page's body never gets written to disk as if it were the real payload.
 
-**Option 1 — ZIO-native: `zio-http` `Client`.** Unlike `zio-nio`, this is already a main-scope
-dependency of the overall build (used server-side in `adapter-http`) — adding it to
-`master-data-sync` pulls in no new artifact. Confirmed from `zio-http`'s `main` branch source +
-official docs:
+Test approach: a plain `zio.http.Server` bound to port 0, routes installed once at shared-layer build
+time — no prior precedent in this codebase for testing an HTTP *client*.
 
-```scala
-// Company-object streaming sugar — non-deprecated, unlike the ZClient instance's own `.request`:
-Client.streaming(request: Request): ZIO[Client & Scope, Throwable, Response]
-response.body.asStream: ZStream[Any, Throwable, Byte]
-ZSink.fromFile(file: java.io.File, ...): ZSink[Any, Throwable, Byte, Byte, Long]  // in zio-streams
-```
-
-Two things confirmed necessary, not hypothetical:
-
-- **Redirect-following.** Country's own source URL redirects
-  (`datahub.io/core/country-list/...` → `r2.datahub.io/...`, §2.1) — confirmed live via `curl -I`
-  during implementation (`302`). `zio-http` doesn't follow redirects by default;
-  `ZClientAspect.followRedirects(max)((response, message) => ...)` applied via `@@` is the
-  documented way to opt in. Composing it onto the *ambient* `Client` service (via
-  `ZIO#updateService[Client](_ @@ followRedirects)`) rather than fetching-and-transforming a
-  `client` value keeps the call site on `Client.streaming`'s non-deprecated companion sugar — the
-  instance method it delegates to internally (`ZClient#request`) is deprecated since `zio-http`
-  3.0.0 in favor of `batched`/`streaming`, and calling it directly from application code triggers a
-  compiler warning this project's zero-warnings bar doesn't allow.
-- **Non-2xx handling.** `zio.http.Status.isSuccess: Boolean = code >= 200 && code < 300` (confirmed
-  in `Status.scala`) — an explicit check before writing, so a `404`/`500` error page's body never
-  gets written to disk as if it were the real payload.
-
-**Option 2 — Scala/JDK core: `java.net.http.HttpClient`** (JDK 11+, no new dependency at all).
-`HttpRequest.newBuilder(uri).build()` + `client.send(request, BodyHandlers.ofFile(path))` streams
-straight to disk in one call — genuinely less code than the ZIO-native path for the happy case, but
-synchronous (needs a `ZIO.attemptBlocking` wrap), and redirect-following/timeouts are configured on
-`HttpClient.newBuilder()` rather than composed via ZIO aspects — doesn't share this project's
-`ZClientAspect`/`ZLayer` idioms the way `zio-http` does everywhere else in this build.
-
-**Alternatives explored**
-
-| Library | ZIO fit | Status in this repo | Verdict |
-|---|---|---|---|
-| `sttp-client4` (`com.softwaremill.sttp.client4:zio`) | Real ZIO backend (`HttpClientZioBackend`) | Already a dependency, but **test-scope only** (`adapter-http`'s HTTP-adapter tests) | Rejected — would mean promoting a test-only dependency to main scope for a capability `zio-http`, an actively-released main-scope dependency of this exact repo, already provides natively |
-| Apache HttpClient / OkHttp | None | Not used anywhere in this repo | Rejected — new general-purpose HTTP dependency with no capability `zio-http` doesn't already cover |
-
-**Testing-approach sub-comparison** (no prior precedent in this codebase for testing an HTTP
-*client* — every existing test either stubs Tapir server-side or hits Testcontainers Postgres): a
-plain `zio.http.Server` bound to port 0 via `Server.defaultWithPort(0)`, with routes installed once
-at shared-layer build time (`Server.install(routes)` returns the bound port directly) — selected, no
-new dependency — vs. `zio-http-testkit`'s `TestServer` (nicer ergonomics, `Server.port: UIO[Int]`,
-`addRoute`) — rejected: its latest Maven Central release is `3.3.3` against this project's
-`zio-http` `3.11.3`, a real version gap unlike the core `zio-http` artifact itself.
-
-**Selected:** `zio-http` `Client`. Least new footprint (already a build dependency), matches this
-project's existing `ZClientAspect`/`ZLayer` idioms, and both real requirements it needs to satisfy —
-redirect-following and non-2xx detection — are confirmed, documented capabilities, not assumptions.
+Rejected alternatives: `java.net.http.HttpClient`, `sttp-client4`, Apache HttpClient/OkHttp,
+`zio-http-testkit` (for testing) (§10).
 
 ### 4.5 File line reading — comparison
 
-Same bar as §4.3/§4.4. The regex itself, and the decision *not* to use `scala-csv` for Country's
-simple two-column shape, were already settled in §2.1/§4.2 — what's compared here is only the
-mechanism that reads the downloaded file's lines before each one is matched against that regex.
+**Decided and implemented** (Country's `parse` only so far): `zio-nio`'s `Files.readAllLines` — already
+a dependency of this module (added for `TempDirectory`, §4.3), zero new footprint. Eager/in-memory,
+right-sized for Country's ~4 KB/249-row file; `zio-nio`'s streaming alternative, `Files.lines`, is the
+right tool for a much larger file (Airport's OurAirports source is "tens of MB") — deferred to that
+future increment.
 
-**Option 1 — ZIO-native: `zio-nio`'s `Files.readAllLines`.** Already a dependency of this module
-(added for `TempDirectory`, §4.3) — zero new footprint, same as `zio-http` was for `HttpDownloader`.
-Confirmed from source (`nio/shared/.../Files.scala`):
-
-```scala
-def readAllLines(path: Path, charset: Charset = Charset.Standard.utf8): ZIO[Any, IOException, List[String]]
-```
-
-Eager — loads the whole file into a `List[String]`. Right-sized for Country's ~4 KB/249-row file
-(confirmed via a real download during implementation); `zio-nio`'s streaming alternative,
-`Files.lines: ZStream[Any, IOException, String]`, is the right tool for a much larger file (Airport's
-OurAirports source is "tens of MB") — deferred to that future increment, not needed here.
-
-**Option 2 — Scala core lib: `scala.io.Source`.** Unlike §4.3's temp-directory case (where
-`scala-library` had nothing and the "core" baseline fell straight through to the JDK), Scala's own
-standard library does have a line-reading function: `Source.fromFile(file)(codec).getLines():
-Iterator[String]` (confirmed in `scala/scala`'s `2.13.x` branch,
-`src/library/scala/io/Source.scala`). No new dependency either — but `Source` doesn't auto-close; the
-caller must call `.close()` explicitly (no try-with-resources / `Using` built in), extra lifecycle
-code `Files.readAllLines` doesn't need since the JDK call it wraps fully reads then closes before
-returning.
-
-**Alternatives explored**
-
-| Option | New dependency? | Verdict |
-|---|---|---|
-| Plain `java.nio.file.Files.readAllLines` (JDK) | No | Rejected — the exact function `zio-nio` wraps; calling it directly means a manual `ZIO.attempt(...).refineToOrDie[IOException]` plus a Java-`List`-to-Scala conversion by hand, for no benefit over calling `zio-nio`'s version |
-| `zio-streams`' `ZStream.fromFile` + `ZPipeline.splitLines` | Already a dependency (added for `HttpDownloader`'s `ZSink.fromFile`) | Rejected for now — more machinery than a 4 KB file needs; the right choice once the Airport parser (large file) is built |
-| `scala-csv` | Already a planned dependency (§4.2, Airport/Airline only) | Rejected for Country specifically — already decided in §2.1/§4.2, not re-litigated here |
-
-**Selected:** `zio-nio`'s `Files.readAllLines` — no new dependency, no manual resource lifecycle
-(unlike `scala.io.Source`), and the right-sized tool for a fully-known-size, small file.
+Rejected alternatives: plain `java.nio.file.Files.readAllLines`, `scala.io.Source`, `zio-streams`'
+`ZStream.fromFile` + `ZPipeline.splitLines`, `scala-csv` (§10).
 
 ---
 
@@ -429,17 +313,17 @@ Airline, Airport) follow this identical shape, just parameterized differently (`
 
 | Component | Function | Responsibility |
 |---|---|---|
-| `Main` (`ZIOAppDefault`) | `run` | Orchestrates the three entity syncs in order (Country, then Airline/Airport), owns the temp-dir lifecycle |
+| `Main` (`ZIOAppDefault`) | `run` — implemented for Country | Orchestrates the three entity syncs in order (Country, then Airline/Airport), owns the temp-dir lifecycle. Country's real Quill-backed use-case layers are composed the same way `bootstrap`'s `WiringModule` does (`QuillDataSourceLayer.live >>> QuillCountryRepository.layer`, then `>>>` per service, combined with `++`); Airport/Airline orchestration not added yet |
 | `HttpDownloader` | `download(url: String, destFile: Path): ZIO[Client, Throwable, Path]` — implemented, Country source only | Streams the source URL to `destFile` (ZIO HTTP `Client.streaming` + redirect-following + non-2xx check, §4.4). `url: String`/`destFile` (a specific file, not a dir) — small deviations from this table's original sketch, settled once the component was actually built; logs start/success-with-size/failure (`ZIO.logInfo`/`logError`) |
 | `CountryCsvParser` | `parse(file: Path): IO[IOException, List[CountryRow]]` — implemented | Skips the header line by position (never logged), then matches each remaining line against the §2.1 regex via `zio-nio`'s `Files.readAllLines` (§4.5) — no CSV library. A non-matching line is a tolerated parse error: logged at `WARN` with the raw line, skipped, processing continues (§8). `CountryRow`/`IOException`, not `SourceRow`/`Task` — settled once actually built, same as `HttpDownloader`'s deviations |
 | same parser | `toCommand(row: CountryRow): IO[DomainError, CreateCountryCommand]` — implemented | Mirrors the existing HTTP create path exactly (`CreateCountryRequest.toCommand`, `adapter-http/.../CountryDto.scala`): `CountryCode.validateAll` (accumulating, not `.make`'s fail-fast), folded into `DomainError.InvalidCountryCode` via `.toEitherWith` + `ZIO.fromEither`. `IO[DomainError, CreateCountryCommand]`, not the sketch's `Either[String, Command]`. First function in this module needing `domain` — `master-data-sync` now has `.dependsOn(domain)` in `build.sbt` (§3.1); `application`/`persistenceQuill` still not needed, since this only builds a command, it doesn't persist one |
 | `AirportCsvParser` / `AirlineCsvParser` | `parse(file: Path): Task[List[SourceRow]]` | Reads the downloaded file with `scala-csv` (`ZIO.attempt(CSVReader.open(file).all())`), yields one raw row per record |
 | same parser | `toCommand(row: SourceRow): Either[String, Command]` | Maps a raw row to the entity's create/update command, via the existing domain `Newtype.make`/`.validateAll` |
-| `EntitySync` | `loadExisting(): UIO[Map[NaturalKey, Entity]]` | Gets everything currently stored — see §7.1 for why this isn't a plain call to the existing `FindAllUseCase` |
-| `EntitySync` | `reconcile(source, existing): SyncPlan` | Pure diff — buckets each key into `ToCreate`/`ToUpdate`/`ToDelete`/`Unchanged` (§7.2) |
-| `EntitySync` | `apply(plan): UIO[SyncReport]` | Calls the entity's existing `Create`/`Update`/`Delete` use cases for each bucket |
+| `EntitySync` | `loadExisting[K, E](findAll: UIO[List[E]], keyOf: E => K): UIO[Map[K, E]]` — implemented | Gets everything currently stored, keyed by natural key; takes the already-built `findAll` effect rather than a repository/use-case directly — each entity's `XxxSync` supplies its own unbounded read (§7.1) |
+| `EntitySync` | `reconcile[K, E](source: List[E], existing: Map[K, E], keyOf: E => K): SyncPlan[K, E]` — implemented | Pure diff, no I/O — buckets each source row into `toCreate`/`toUpdate`/`unchanged` (plain `==` equality, §9) and every leftover `existing` key into `toDelete` (§7.2). `SyncPlan[K, E](toCreate: List[E], toUpdate: List[E], toDelete: List[K], unchanged: Int)` |
+| `EntitySync` | `apply[K, E](plan, create, update, delete): UIO[SyncReport]` — implemented | Calls the entity's existing `Create`/`Update`/`Delete` use cases for each bucket, each via a caught effect — a failure is logged at `WARN` and counted as `skippedConflict`, never propagated (the generic mechanism behind §7.2's FK-violation-per-row handling) |
 | `Main` | cleanup | Deletes the temp dir (`TempDirectory.create`/`delete` via `ZIO.acquireRelease`, §4.3 — already implemented) once every entity has run |
-| `SyncReport` | `log(): UIO[Unit]` | Emits the per-entity summary line |
+| `SyncReport` | `log(): UIO[Unit]` — implemented | Emits one summary line (`ZIO.logInfo`) with all six counters; `created`/`updated`/`deleted`/`unchanged`/`skippedConflict` come from `EntitySync.apply`, `skippedInvalid` stays `0` until a future increment sums in the parse/`toCommand` stage's skip count |
 
 ### 5.2 Flow diagram
 
@@ -516,11 +400,12 @@ repository method behind it — takes a `Pagination` argument, clamped to a maxi
 for any of the three entities; getting a full table today would mean looping pages client-side.
 
 For **Country** — a fixed 249-row reference table — it's an accepted simplification to skip that loop:
-add one new unbounded read (`FindCountryUseCase.findAllUnbounded: UIO[List[Country]]`, delegating to a
-new `CountryRepository.findAllUnbounded` backed by an un-clamped `SELECT` in `QuillCountryRepository`).
-This is additive — Airport/Airline's paginated `findAll` and every HTTP-facing paginated behavior stay
-untouched. Whether the same bypass extends to **Airport**/**Airline** (plausibly thousands of rows each
-after the §2.2/§2.3 filters, not hundreds) is still open — see §9.
+**implemented.** `FindCountryUseCase.findAllUnbounded: UIO[List[Country]]` delegates to
+`CountryRepository.findAllUnbounded`, backed by an un-clamped `SELECT ... ORDER BY code` in
+`QuillCountryRepository` (and, kept schema-consistent, `DoobieCountryRepository`). This was additive —
+Airport/Airline's paginated `findAll` and every HTTP-facing paginated behavior are untouched. Whether
+the same bypass extends to **Airport**/**Airline** (plausibly thousands of rows each after the
+§2.2/§2.3 filters, not hundreds) is still open — see §9.
 
 ### 7.2 Reconciliation & delete ordering
 
@@ -569,13 +454,14 @@ key + reason) to act on without re-running.
 | Airline `foundationDate` gap | Needs a decision, not a default — either relax `airlines.foundation_date` to nullable for sync-originated rows, or accept a documented sentinel and flag those rows for manual backfill | No source found in research supplies this field; either option touches an existing `NOT NULL` migration/domain invariant |
 | Airline `Country` (name, not code) | Build a small static name→`CountryCode` lookup table; log+skip unmatched names (or skip the whole row if Country is mandatory on create) | Country-name spelling varies across sources |
 | CSV library | **Decided.** `scala-csv` 2.0.0 (Country parses via regex instead, §2.1) | Full comparison and rejected alternatives: §4.2/§10 |
-| Temp directory library | **Decided, with a caveat.** `zio-nio` 2.0.2 (`Files.createTempDirectory` + `deleteRecursive`, exposed as this project's own `TempDirectory.create`/`delete`) | Closes a recursive-delete gap the plain-JDK baseline leaves unimplemented; caveat is the dependency's own last release/commit being from Oct 2023. Full comparison and rejected alternatives: §4.3/§10 |
-| HTTP download client | **Decided.** `zio-http` `Client`, Country source only so far | Already a build dependency, no new artifact; needs redirect-following (Country's source URL redirects) and non-2xx detection, both confirmed capabilities. Full comparison and rejected alternatives: §4.4/§10 |
-| File line reading | **Decided.** `zio-nio`'s `Files.readAllLines` (Country's `parse` function only so far) | Already a build dependency; eager/in-memory is right-sized for Country's ~4 KB file, unlike Airport's later tens-of-MB source. Full comparison and rejected alternatives: §4.5/§10 |
+| Temp directory library | **Decided and implemented, with a caveat.** `zio-nio` 2.0.2 (`Files.createTempDirectory` + `deleteRecursive`, exposed as this project's own `TempDirectory.create`/`delete`) | Closes a recursive-delete gap the plain-JDK baseline leaves unimplemented; caveat is the dependency's own last release/commit being from Oct 2023. Rejected alternatives: §4.3/§10 |
+| HTTP download client | **Decided and implemented.** `zio-http` `Client`, Country source only so far | Already a build dependency, no new artifact; needs redirect-following (Country's source URL redirects) and non-2xx detection, both confirmed capabilities. Rejected alternatives: §4.4/§10 |
+| File line reading | **Decided and implemented.** `zio-nio`'s `Files.readAllLines` (Country's `parse` function only so far) | Already a build dependency; eager/in-memory is right-sized for Country's ~4 KB file, unlike Airport's later tens-of-MB source. Rejected alternatives: §4.5/§10 |
 | Scheduling mechanism | **Decided.** Standalone `ZIOAppDefault` app, packaged like `bootstrap` (`sbt-assembly`), invoked by an OS-level (`crontab`) entry on whatever host runs it — `0 0 1 */6 *` for a "1st of the month, every 6 months" cadence, or similar | The app has no built-in scheduling awareness — the OS decides when to run `java -jar master-data-sync.jar`. Rejected alternative (GitHub Actions `schedule:`): §10 |
 | Dry-run mode | Recommend a `--dry-run` flag that logs the diff (create/update/delete counts + affected rows) without writing | Deletes are destructive and the Airline source has known gaps; a first run should be inspectable before it's trusted unattended |
-| "Different" comparison for updates | Field-by-field equality on the mapped subset of columns only, not a full-row hash | Avoids spurious updates from OurAirports/OpenFlights columns this project doesn't model |
-| Bulk-read for `loadExisting` — Airport/Airline | Still open — Country's `findAllUnbounded` (§7.1) wasn't explicitly extended to these two | Twice-a-year batch job, so even a fully unbounded read of a few thousand rows is unlikely to be a real problem — but flagging rather than assuming |
+| "Different" comparison for updates | **Decided and implemented.** Field-by-field equality on the mapped subset of columns only — plain `==` on the case class, no custom typeclass (`EntitySync.reconcile`) | Avoids spurious updates from OurAirports/OpenFlights columns this project doesn't model; correct today since Country's case class already contains exactly the mapped fields — revisit if a future entity's case class carries fields the source doesn't supply |
+| Bulk-read for `loadExisting` — Country **done**, Airport/Airline still open | Country's `findAllUnbounded` (§7.1) is implemented and verified live; not yet extended to Airport/Airline | Twice-a-year batch job, so even a fully unbounded read of a few thousand rows is unlikely to be a real problem — but flagging rather than assuming |
+| Generic reconciliation algorithm (`EntitySync`) | **Decided and implemented, now wired end-to-end for Country.** Type-parameterized over `K`/`E`, fixed on `DomainError` as the create/update/delete error channel, never fails the fiber (caught + `WARN` log + counted as `skippedConflict`) | `CountrySync` drives it against the real `Create`/`Update`/`DeleteCountryService`, verified live against Postgres (created 248, then a second run reported 0 writes/249 unchanged — idempotent). The FK-violation-to-`DomainError` mapping gap in `QuillCountryRepository` (§7.2) is a separate, still-open problem — not a risk for Country alone (no FK references it), but relevant once Airport/Airline sync can delete a Country. See `plans/masterdata/entity-sync.md` and `plans/masterdata/country-sync-wiring.md` |
 
 ---
 
@@ -584,11 +470,11 @@ key + reason) to act on without re-running.
 | Rejected | Why |
 |---|---|
 | OpenFlights `airports.dat` for Airport data | Same OpenFlights staleness issue as Airlines; OurAirports (PDDL, regenerated daily) is a strictly better-maintained superset for this use case |
-| ISO's own official 3166 data | Paywalled; the `datasets/country-list` derivative (same lineage already used by `V12`'s seeding precedent) is free and sufficient for `code` + `name` |
+| ISO's own official 3166 data | Rejected — see §2.1 |
 | In-app scheduled job (a ZIO fiber, like `OutboxRelay`) | The explicit choice was a standalone, externally-scheduled process, not an always-running poller inside `bootstrap` |
 | GitHub Actions `schedule:` trigger | Would require the production Postgres reachable from CI runners — an assumption not made anywhere else in this repo; OS-level `crontab` on the host running the app needs no such exposure |
-| Hard delete with no conflict handling | Would let one dangling FK (a source-snapshot inconsistency) abort an entire sync run; per-row catch-and-log is more resilient for an unattended ~6-month cadence |
+| Hard delete with no conflict handling | Rejected — `EntitySync.apply` catches and logs per-row instead (§7.2) |
 | CSV libraries: `kantan.csv`, `csv3s`, `fs2-data-csv`, Apache Commons CSV | Full comparison and reasoning: §4.2. In short — `kantan.csv` has no Scala 3 build; `csv3s` is ZIO-native but too immature (7 GitHub stars); `fs2-data-csv` pulls in an effect ecosystem this project doesn't otherwise use; Commons CSV is mature but more boilerplate than `scala-csv` |
-| Temp directory: plain `java.nio.file.Files` + hand-rolled recursive delete, `better-files`, `os-lib`, `scala.reflect.io.Directory` | Full comparison and reasoning: §4.3. In short — the plain-JDK path needs a manually-written recursive-delete release action that `zio-nio` already provides; `better-files`/`os-lib` are mature but not ZIO-aware (still need the same wrapping, and `os-lib`'s default cleanup is JVM-shutdown-hook-based, not deterministic); `scala.reflect.io.Directory` is a Scala-2-era compiler-support artifact not on this project's Scala 3 classpath |
-| HTTP download: `java.net.http.HttpClient`, `sttp-client4`, Apache HttpClient/OkHttp, `zio-http-testkit` (for testing) | Full comparison and reasoning: §4.4. In short — the JDK client is genuinely less code for the happy path but doesn't share this project's `ZClientAspect`/`ZLayer` idioms; `sttp-client4` is only a test-scope dependency today and would be redundant with `zio-http`, already main-scope; Apache HttpClient/OkHttp are new general-purpose dependencies with nothing `zio-http` doesn't cover; `zio-http-testkit` lags this project's `zio-http` version (`3.3.3` vs. `3.11.3`), so tests use a plain `Server` bound to port 0 instead |
-| File line reading: plain `java.nio.file.Files.readAllLines`, `zio-streams`' `ZStream.fromFile` + `ZPipeline.splitLines` | Full comparison and reasoning: §4.5. In short — the plain-JDK path is the exact function `zio-nio` already wraps, so calling it directly is strictly more code for no benefit; `zio-streams`' line-streaming is the right tool for Airport's much larger source file, not Country's small one |
+| Temp directory: plain `java.nio.file.Files` + hand-rolled recursive delete, `better-files`, `os-lib`, `scala.reflect.io.Directory` | Rejected — see §4.3 |
+| HTTP download: `java.net.http.HttpClient`, `sttp-client4`, Apache HttpClient/OkHttp, `zio-http-testkit` (for testing) | Rejected — see §4.4 |
+| File line reading: plain `java.nio.file.Files.readAllLines`, `zio-streams`' `ZStream.fromFile` + `ZPipeline.splitLines` | Rejected — see §4.5 |
