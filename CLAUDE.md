@@ -50,11 +50,11 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 |---|---|---|
 | Runtime | Java LTS | 21 |
 | Language | Scala 3 LTS | 3.3.8 |
-| Build | SBT | 1.12.13 |
+| Build | SBT | 1.12.14 |
 | Effect | ZIO | 2.1.26 |
 | Smart constructors (`CountryCode`/`IataCode`/`AirportIcaoCode`/`AirlineIcaoCode`/`Registration`) | ZIO Prelude | 1.0.0-RC47 |
 | HTTP server | ZIO HTTP | 3.11.3 |
-| HTTP endpoints | Tapir | 1.13.26 |
+| HTTP endpoints | Tapir | 1.13.28 |
 | Persistence (wired default) | Quill | 4.8.6 |
 | Persistence (unwired alternate) | Doobie + zio-interop-cats | 1.0.0-RC9 / 23.1.0.13 |
 | Connection pooling | HikariCP | 7.1.0 |
@@ -65,7 +65,7 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 | Logging | ZIO Logging + SLF4J + Logback | 2.5.3 / 1.5.38 |
 | Integration testing | Testcontainers | 1.21.3 |
 | HTTP-adapter tests (test scope) | sttp-client4 + Tapir stub server | 4.0.26 |
-| Temp-dir lifecycle (`master-data-sync` only) | ZIO NIO | 2.0.2 |
+| Temp-dir lifecycle + file reading (`master-data-sync` only) | ZIO NIO | 2.0.2 |
 
 ## Module dependency graph
 
@@ -79,8 +79,8 @@ shared-kernel
             └── adapter-http
                         └── bootstrap  (composition root: domain + application + adapter-http + persistence-quill + persistence-postgres + migration)
                 migration              (SQL + Flyway only; no domain dependency — wired into bootstrap for migrate-on-start)
-                integration-tests      (standalone — opt-in, real-Postgres tests; NOT in root's aggregate)
-                master-data-sync       (standalone — Main + temp-dir lifecycle only so far; NOT in root's aggregate; see plans/masterdata/master-data-sync-scaffold.md)
+                integration-tests      (opt-in — domain + migration + persistence-postgres + persistence-quill, real-Postgres tests; NOT in root's aggregate)
+                master-data-sync       (opt-in — domain + application + persistence-quill; downloads/parses/syncs Country against real Postgres so far; NOT in root's aggregate; see plans/masterdata/)
 ```
 
 Rule: inner modules never depend on outer ones. `domain` has zero framework dependencies.
@@ -123,7 +123,7 @@ master table), Airport (`DoobieAirportRepositoryItSpec` +
 FKs to `airlines.id`), Flight (`DoobieFlightRepositoryItSpec` + `QuillFlightRepositoryItSpec`, seeding a
 `Country`, two `Airport`s (origin + destination), and an `Airline` first since `flights.origin_airport_id`/
 `destination_airport_id`/`airline_id` FK to `airports.id`/`airlines.id`) — each seeding its own `Country`
-row first since `airports.country_id`/`airlines.country_id` FK to `countries.id` — 106 tests total, all
+row first since `airports.country_id`/`airlines.country_id` FK to `countries.id` — 112 tests total, all
 green. Route is not implemented yet.
 See `plans/add-persistence-integration-tests.md` for the full scope table and design rationale (why a
 plain subproject instead of sbt's deprecated `IntegrationTest` config, why one module instead of
@@ -152,43 +152,35 @@ Remaining plain opaque types: `FlightInstanceId`, `OutboxEventId`, `NonEmptyStri
 
 `CountryCode`, `IataCode`, `AirportIcaoCode`, `AirlineIcaoCode`, `Registration`, and `FlightCode`
 are ZIO Prelude `Newtype[String]`s instead, each with a real, enforced `assertion` (see
-`docs/analysis/validation-analysis-hexagonal.md` §2/§6 for why). Same
-`.value` unwrap convention either way; construct via `CountryCode("ES")` /
-`IataCode("MAD")` / `AirportIcaoCode("LEMD")` / `AirlineIcaoCode("IBE")` /
-`Registration("EC-MIG")` / `FlightCode("UX9117")`
-for compile-time-known literals (a malformed literal fails to compile),
-`.make(raw).toZIO` for runtime strings that need a single fail-fast check,
-`.validateAll(raw)` for runtime strings that should accumulate *every* failing
-rule instead of stopping at the first (blank / length / shape are independent
-`zio.prelude.Validation`s combined with `Validation.validateWith`, bridged to
-`IO[DomainError, _]` via `.toEitherWith` + `ZIO.fromEither` — see
-`FieldValidation` in `domain/validation/`), and `.unsafeMake(raw)` for
-already-trusted data (DB reads, Tapir-already-validated path params,
-cross-entity reference fields). Real validation is wired into each type's
-*owning* entity's create path only (`CreateCountryRequest`/`CreateAirportRequest`/
-`CreateAirlineRequest`/`CreateAircraftRequest`/`CreateFlightRequest`.toCommand,
-via `.validateAll`) — a reference field on another entity (e.g.
-`Aircraft.airlineIcao`, `Route.origin`, `Flight.origin`/`destination`/`airlineIcao`)
-always uses `unsafeMake`, never `.make`/`.validateAll`. The HTTP error response
-(`HttpErrorResponse`) carries both a short `message` and the full `errors: List[String]`
-so a client sees every violated rule in one round trip, not just the first —
-note that Tapir's own schema-level length `Validator`s (kept for OpenAPI-visible
-bounds) already reject a wrong-length body before `toCommand` runs, so in
-practice only the "letters only" rule is ever reachable through the live HTTP
-endpoint for the four exact-length types; full multi-rule accumulation is
-exercised directly against each type's `.validateAll` in `domain`'s test suite
-(e.g. `CountryCodeSpec`).
-`IataCode`'s assertion enforces both shape and its fixed 3-letter length. `AirportIcaoCode`
-(4 letters, e.g. `"LEMD"`) and `AirlineIcaoCode` (3 letters, e.g. `"IBE"`) used to be one shared
-`IcaoCode` type that could only enforce alphabetic shape, not length, since `Airline`'s own code
-is 3 letters and `Airport`'s is 4; they're now two distinct types, each enforcing its own exact
-length — closing that gap without needing any DB migration (`airlines.icao_code VARCHAR(3)` /
-`airports.icao_code VARCHAR(4)` already matched). The HTTP-layer path-param/schema `Validator`s
-for both were already correctly scoped to 3/4 letters and needed no change.
-`Registration`'s assertion (non-blank, ≤10 chars) and `FlightCode`'s (non-blank,
-≤8 chars) are both bound-for-bound identical to their HTTP `Validator`s, since
-real-world registrations/flight designators have no fixed shape to check — reviewed and confirmed
-still generous enough (real-world registrations/designators top out around 7-8 chars).
+`docs/analysis/validation-analysis-hexagonal.md` §2/§6 for why). Same `.value` unwrap convention
+either way. Four ways to construct, by use case:
+- A compile-time-known literal — `CountryCode("ES")` / `IataCode("MAD")` /
+  `AirportIcaoCode("LEMD")` / `AirlineIcaoCode("IBE")` / `Registration("EC-MIG")` /
+  `FlightCode("UX9117")` — a malformed literal fails to compile.
+- `.make(raw).toZIO` — a runtime string that needs a single fail-fast check.
+- `.validateAll(raw)` — a runtime string that should accumulate *every* failing rule instead of
+  stopping at the first (blank / length / shape are independent `zio.prelude.Validation`s combined
+  with `Validation.validateWith`, bridged to `IO[DomainError, _]` via `.toEitherWith` +
+  `ZIO.fromEither` — see `FieldValidation` in `domain/validation/`).
+- `.unsafeMake(raw)` — already-trusted data (DB reads, Tapir-already-validated path params,
+  cross-entity reference fields).
+
+Real validation (`.validateAll`) is wired into each type's *owning* entity's create path only
+(`CreateCountryRequest`/`CreateAirportRequest`/`CreateAirlineRequest`/`CreateAircraftRequest`/
+`CreateFlightRequest`.toCommand) — a reference field on another entity (e.g. `Aircraft.airlineIcao`,
+`Route.origin`, `Flight.origin`/`destination`/`airlineIcao`) always uses `unsafeMake`, never
+`.make`/`.validateAll`. The HTTP error response (`HttpErrorResponse`) carries both a short `message`
+and the full `errors: List[String]` so a client sees every violated rule in one round trip — though
+Tapir's own schema-level length `Validator`s (kept for OpenAPI-visible bounds) already reject a
+wrong-length body before `toCommand` runs, so in practice only the "letters only" rule is ever
+reachable through the live HTTP endpoint for the four exact-length types; full multi-rule
+accumulation is exercised directly against `.validateAll` in `domain`'s test suite (e.g.
+`CountryCodeSpec`).
+
+Per-type shape: `IataCode` (3 letters), `AirportIcaoCode` (4 letters), `AirlineIcaoCode` (3
+letters) — each enforces its own exact length, matching its column's `VARCHAR` bound.
+`Registration` (non-blank, ≤10 chars) and `FlightCode` (non-blank, ≤8 chars) have no fixed shape,
+only a length cap, bound-identical to their HTTP `Validator`s.
 
 **ZLayer wiring** — every infrastructure class exposes a companion `val layer`:
 ```scala
@@ -211,57 +203,20 @@ object QuillAirportRepository:
 |---|---|
 | `RouteEventCodec.routeCreatedSerde` | `???` — needs ZIO Kafka 3.x `Serde` with Circe JSON |
 | `RouteEventProducer.publish` | compiles, but only logs the event — doesn't call `Producer.produce` |
-| `WiringModule.appLayer` | wires Quill `CountryRepository`, Quill `AirportRepository`, Quill `AirlineRepository`, Quill `AircraftRepository`, and in-memory stubs for everything else |
+| `WiringModule.appLayer` | wires Quill `CountryRepository`, Quill `AirportRepository`, Quill `AirlineRepository`, Quill `AircraftRepository`, Quill `FlightRepository`, and in-memory stubs for everything else (Route/RouteAirline/FlightInstance) |
+| `bootstrap/src/main/resources/application.conf`'s `kafka.group-id` | missing a `${?KAFKA_GROUP_ID}` override (every other setting in that file has one) — harmless today since Kafka isn't wired into `Main`, but a silent no-op once it is; see "## Local infrastructure" |
 
 ## Database schema
 
-Flyway migrations in `infrastructure/migration/src/main/resources/db/migration/`:
-
-```
-V1 — countries     (PK: code VARCHAR(2))
-V2 — airports      (PK: iata_code VARCHAR(3), FK → countries)
-V3 — airlines      (PK: icao_code VARCHAR(3), FK → countries)
-V4 — routes        (PK: UUID, FK → airports × 2 + airlines; UNIQUE origin+dest+airline)
-V5 — outbox_events (PK: UUID, JSONB payload, published BOOLEAN, partial index on unpublished)
-V6 — airports      adds icao_code VARCHAR(4) NOT NULL — V2 never had this column even though
-                    the Airport domain model/DTO/DoobieAirportRepository always required it;
-                    caught only once persistence-postgres was actually wired into bootstrap.
-V7 — countries/airports/airlines: PK → surrogate `id BIGINT GENERATED ALWAYS AS IDENTITY`; natural
-     key (`code`/`iata_code`/`icao_code`) becomes a UNIQUE NOT NULL column for business lookups.
-     Every FK now targets the parent's surrogate id instead of its natural key (`country_code` →
-     `country_id`; `origin_iata`/`destination_iata`/`airline_icao` → `origin_airport_id`/
-     `destination_airport_id`/`airline_id`). `routes.id`/`outbox_events.id` stay UUID (nothing FKs
-     to them). Adds `pg_trgm` GIN indexes for the ILIKE `searchByName` finders (no index before).
-     Surrogate id is persistence-only — domain/ports untouched. See
-     `plans/surrogate-long-keys-country-airport.md`.
-V8 — airports      adds `idx_airports_icao_code` — previously unindexed.
-V9 — airlines      adds `foundation_date DATE NOT NULL` — the domain model's `Airline.foundationDate`
-     always required this column, but no earlier migration created it; only latent because Airline
-     was find-only at the time (no write path existed to insert a row missing the column).
-V10 — airlines     adds `idx_airlines_name_trgm` — same ILIKE-search index pattern as V7 gave
-      countries/airports, added even though no `searchByName` endpoint exists for Airline yet.
-V11 — aircraft     new table (PK: surrogate `id BIGINT GENERATED ALWAYS AS IDENTITY`, natural key
-      `registration VARCHAR(10)` UNIQUE NOT NULL, `type_code`/`description VARCHAR`, FK →
-      `airlines.id`). Designed with a surrogate id from creation (unlike V1-V3, which needed V7 to
-      retrofit one) since the surrogate-key convention was already established by the time this
-      table was added.
-V12 — country_codes new table (PK: `code VARCHAR(2)`, no other columns). A standalone master
-      reference of all 249 current ISO 3166-1 alpha-2 codes, populated in the same migration.
-      Deliberately **not** FK'd to `countries` — used only by `CountryRepository.isValidCode`
-      to validate a new `Country`'s code on creation (`CreateCountryService`); `countries`
-      itself still accepts whatever code a caller supplies at the schema level, same as before.
-V13 — routes/route_airlines: drops `routes.airline_id`/its FK/index and the old 3-column
-      `uq_route_segment`; replaces it with a 2-column `UNIQUE (origin_airport_id,
-      destination_airport_id)` (Route is now airline-agnostic infrastructure). Sets
-      `routes.id DEFAULT gen_random_uuid()` since the domain no longer generates it
-      (`RouteId` was removed). Adds `route_airlines(route_id, airline_id)` — a new join table
-      modeling Route↔Airline as many-to-many, composite PK, indexed on `airline_id` for the
-      reverse lookup direction.
-V14 — flights      new table (PK: surrogate `id BIGINT GENERATED ALWAYS AS IDENTITY`, natural key
-      `code VARCHAR(8)` UNIQUE NOT NULL, `alias VARCHAR(8)`, `sched_departure`/`sched_arrival TIME`,
-      FK → `origin_airport_id`/`destination_airport_id` (`airports.id`, ×2) and `airline_id`
-      (`airlines.id`). Designed with a surrogate id from creation, like V11.
-```
+Flyway migrations in `infrastructure/migration/src/main/resources/db/migration/` (currently
+V1–V14) are the source of truth for the schema — read them directly rather than looking for
+columns/constraints duplicated here. Two behavioral gotchas worth knowing without reading every
+migration:
+- Every FK targets the parent's surrogate `id BIGINT`, not its natural key (`code`/`iata_code`/
+  `icao_code`/etc.) — the surrogate id is persistence-only, domain/ports never see it. See
+  `plans/surrogate-long-keys-country-airport.md`.
+- `country_codes` is a standalone reference of all 249 ISO 3166-1 alpha-2 codes, deliberately
+  **not** FK'd to `countries` — used only by `CountryRepository.isValidCode`.
 
 **Flyway runs at application startup**: `Main` executes `FlywayMigration.migrateFromEnv` before
 the HTTP server binds (disable with `FLYWAY_MIGRATE_ON_START=false`; a failure aborts startup).
@@ -285,8 +240,7 @@ FLYWAY_MIGRATE_ON_START  (default true; "false" skips the startup migration)
 ```
 `bootstrap/src/main/resources/application.conf`'s `kafka.group-id` has no `${?KAFKA_GROUP_ID}`
 override (unlike every other setting in that file) — setting the env var has no effect on the
-running bootstrap app today. Harmless in practice since Kafka isn't wired into `Main` yet, but
-worth fixing (add the override line) before Kafka wiring lands, to avoid a silent no-op.
+running bootstrap app today. Tracked in "## Pending implementations".
 
 ## REST API
 
@@ -300,7 +254,9 @@ endpoint moves from stub to implemented, or a new one is added.
 Non-trivial changes (new endpoints, schema/persistence migrations, test refactors) get a design doc
 in `plans/` before implementation: goal, decisions with a recommendation + rejected alternatives,
 steps, files touched. Keep docs after their work lands — they're the record of *why* — and update
-one instead of duplicating it if a later change revises the same decision.
+one instead of duplicating it if a later change revises the same decision. Most plans are flat
+`plans/*.md` files; a multi-increment effort gets its own subdirectory instead — one doc per
+increment (e.g. `plans/masterdata/`, built up over the master-data-sync module's rollout).
 
 ## Docs directory
 
@@ -311,6 +267,8 @@ one instead of duplicating it if a later change revises the same decision.
 - `docs/analysis/entity-relationship-draft.md` — working notes on entity relationships and
   cardinalities; a scratch space, **not** a source of truth — conclusions get promoted into
   `01-domain-model.md`.
+- `docs/analysis/validation-analysis-hexagonal.md` — the validation-design rationale behind
+  `## Key patterns`' opaque-types convention (why smart constructors, why accumulate-vs-fail-fast).
 - `docs/analysis-plan.md` — the task plan that drives the analysis docs (glossary → use cases → ADR).
 - `docs/api/collection.json` + `environment.json` — Postman collection kept in sync with the
   Tapir-generated OpenAPI spec via the `sync-postman-collection` skill; regenerate after any
@@ -318,8 +276,10 @@ one instead of duplicating it if a later change revises the same decision.
   via the `run-e2e-tests` skill — see `## Validation` below.
 - `docs/api/endpoint-status.md` — per-endpoint implementation status table (see `## REST API`
   above); update whenever an endpoint's status changes.
-- `docs/todo/` — analysis for future work not yet implemented (e.g. `auth-jwt.md`, JWT auth with
-  Tapir + ZIO).
+- `docs/todo/` — analysis for future work. `auth-jwt.md` (JWT auth with Tapir + ZIO) is still
+  idea-stage; `master-data/analysis.md` is further along — architecture decided and partially
+  implemented (Country sync end-to-end against real Postgres), with its own `plans/masterdata/`
+  subdirectory of implementation-increment docs.
 
 ## Coverage
 
@@ -346,8 +306,8 @@ sbt coverageAggregate
 Four independent layers, each catching a different class of problem — run the ones relevant to
 what changed, not always all four:
 
-1. **Local build** — `sbt clean` → `compile` → `test` (281 unit tests, in-memory stubs / Tapir
-   stub server) → `integrationTests/test` (106 tests, real Postgres via Testcontainers, needs
+1. **Local build** — `sbt clean` → `compile` → `test` (343 unit tests, in-memory stubs / Tapir
+   stub server) → `integrationTests/test` (112 tests, real Postgres via Testcontainers, needs
    Docker — see `## Integration tests` above) → `bootstrap/assembly` (package) →
    `coverageAggregate` (see `## Coverage` above for the `mkdir -p .coverage-data/...` step first).
 2. **OpenAPI spec** — `/validate-openapi` skill (`bash .claude/skills/validate-openapi/scripts/run.sh`).
@@ -368,7 +328,9 @@ what changed, not always all four:
    `integration-tests` job runs `sbt integrationTests/test` (real Postgres via Testcontainers,
    no `services:` container needed — ubuntu-24.04 runners already have Docker), but only when the
    workflow is manually dispatched with the `run_integration_tests` input checked — it never runs
-   on a plain push/PR, matching `integrationTests`' own opt-in convention.
+   on a plain push/PR, matching `integrationTests`' own opt-in convention. The workflow files' own
+   design decisions (SHA-pinning every action, the shared composite `setup-build-env` action, why
+   `Checkout` can't live inside it) are recorded in `plans/refactor-github-actions-workflows.md`.
 
 Layering, cheapest/narrowest first: unit tests (stubs) → integration tests (real Postgres,
 opt-in module) → E2E (real server + real dev Postgres, closest to production) → OpenAPI
@@ -385,7 +347,7 @@ Always fetch current docs before writing or modifying library API calls — trai
 
 **Choosing a library for a new capability** (not just calling an API on one already in use): check
 options in this order, verifying each against current docs/source rather than memory, and record the
-comparison the way `docs/todo/master-data/analysis.md` §4.3–§4.5 do (goal, an options table, a
+comparison the way `docs/todo/master-data/analysis.md` §4.2 does (goal, an options table, a
 verdict): (1) ZIO core or an official ZIO-ecosystem library first — best effect-system fit and this
 project's own established preference (`zio-nio` over `better-files`/`os-lib`, `zio-http` over
 `sttp-client4`/Apache HttpClient, both picked over more "mature" non-ZIO options on ecosystem fit
@@ -394,6 +356,12 @@ too, not just `java.*` (`scala.io.Source` exists for some things `scala-library`
 `scala-reflect`/JDK don't); (3) other third-party alternatives last, and only when neither of the
 first two clears this project's stability bar (`## Versioning policy`) or the actual required
 capability.
+
+**Once a decision is actually implemented**, collapse that comparison down to a one-line decision
+plus a bare list of the rejected alternatives (a reference, not the reasoning) — don't keep
+maintaining a full options table for something already settled and shipped. Compare
+`docs/todo/master-data/analysis.md` §4.3–§4.5 (implemented — trimmed) against §4.2 (still open —
+full table) to see the same doc showing both states.
 
 1. **Context7 MCP** (`mcp__context7` tools) — preferred for quick lookups
 2. **Official sites** (WebFetch fallback):
