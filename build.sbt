@@ -250,15 +250,17 @@ lazy val integrationTests = project
   .disablePlugins(AssemblyPlugin)
 
 // Standalone entry point for the future master-data sync tool (docs/todo/master-data/analysis.md).
-// Still no .dependsOn(...) — Main/TempDirectory/HttpDownloader only need zio/zio-nio/zio-http/
-// zio-streams/logging, not domain/application/persistenceQuill. CSV parsing + reconciliation
-// (needing those + scala-csv, per the analysis doc's §3.1/§4.2) land in a later increment.
-// Deliberately NOT in root's .aggregate(...) / coverageProjects — same rationale as
-// integrationTests: a cron-triggered, externally-invoked lifecycle, not "always compiled/tested
-// with the HTTP server". sbt-assembly stays enabled (like bootstrap) since this needs a runnable
-// fat jar for eventual OS-cron use.
+// First project dependency: domain, for CountryCode/CreateCountryCommand/DomainError
+// (CountryCsvParser.toCommand). application/persistenceQuill still not needed — this module only
+// builds commands, it doesn't invoke a service to persist them. CSV parsing for Airport/Airline and
+// reconciliation (needing scala-csv/persistenceQuill, per the analysis doc's §3.1/§4.2) land in a
+// later increment. Deliberately NOT in root's .aggregate(...) / coverageProjects — same rationale as
+// integrationTests: a cron-triggered, externally-invoked lifecycle, not "always compiled/tested with
+// the HTTP server". sbt-assembly stays enabled (like bootstrap) since this needs a runnable fat jar
+// for eventual OS-cron use.
 lazy val masterDataSync = project
   .in(file("infrastructure/master-data-sync"))
+  .dependsOn(domain)
   .settings(
     name := "master-data-sync",
     libraryDependencies ++= Seq(

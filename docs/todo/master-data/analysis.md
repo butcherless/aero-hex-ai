@@ -1,11 +1,13 @@
 # Master Data Management — Download & Sync for Country / Airport / Airline
 
 > **Status:** Analysis — architecture decided; implementation started. `Main` downloads the Country
-> source into a temp dir and cleans up after itself (temp-dir lifecycle + `HttpDownloader`); a
-> standalone `CountryCsvParser.parse` correctly parses the real 249-row source, including all 4
-> quoted-comma edge cases — see `plans/masterdata/master-data-sync-scaffold.md`, `plans/masterdata/http-downloader-country.md`,
-> and `plans/masterdata/country-csv-parser.md`. Mapping a parsed row to a domain `Country` (`toCommand`),
-> reconciliation, and Airport/Airline downloads/parsing are still design-only.
+> source into a temp dir, parses all 249 real rows (including all 4 quoted-comma edge cases), and
+> builds a valid `CreateCountryCommand` for every one of them, then cleans up — temp-dir lifecycle,
+> `HttpDownloader`, and `CountryCsvParser.parse`/`.toCommand` are all implemented and verified against
+> the live source. See `plans/masterdata/master-data-sync-scaffold.md`,
+> `plans/masterdata/http-downloader-country.md`, and `plans/masterdata/country-csv-parser.md`.
+> Actually persisting a command (`CreateCountryService`), reconciliation, and Airport/Airline
+> downloads/parsing are still design-only.
 > Covers data source selection, sync architecture, reconciliation algorithm, validation/error
 > handling, and open decisions for a low-frequency (~6-month) external master-data refresh.
 
@@ -152,9 +154,11 @@ like `adapter-http`, except its driver is an OS-scheduled process instead of an 
 | sbt project val / `name` | `masterDataSync` / `"master-data-sync"` |
 | Base package | `dev.cmartin.aerohex.infrastructure.masterdata` — one compact segment, same shape as `migration`'s single-segment package. This module is one specific tool, not a "capability + implementation choice" pair the way `messaging.kafka`/`persistence.quill` are (two dotted segments each), so it doesn't follow that half of the existing convention. |
 
-Target end state (the `.dependsOn`/CSV/HTTP-streaming deps land incrementally as the pipeline below
-gets built — the first slice actually in the build today has neither; see
-`plans/masterdata/master-data-sync-scaffold.md`):
+Target end state (the `.dependsOn`/CSV deps land incrementally as the pipeline below gets built).
+Current state: `.dependsOn(domain)` is real (added for `CountryCsvParser.toCommand`,
+`plans/masterdata/country-csv-parser.md`) — `application`/`persistenceQuill` and `scalaCsv` are
+still not needed, since nothing in this module persists a command yet or parses Airport/Airline's
+files:
 
 ```scala
 // build.sbt — new project block, alongside migration/messagingKafka/persistenceQuill
@@ -427,7 +431,8 @@ Airline, Airport) follow this identical shape, just parameterized differently (`
 |---|---|---|
 | `Main` (`ZIOAppDefault`) | `run` | Orchestrates the three entity syncs in order (Country, then Airline/Airport), owns the temp-dir lifecycle |
 | `HttpDownloader` | `download(url: String, destFile: Path): ZIO[Client, Throwable, Path]` — implemented, Country source only | Streams the source URL to `destFile` (ZIO HTTP `Client.streaming` + redirect-following + non-2xx check, §4.4). `url: String`/`destFile` (a specific file, not a dir) — small deviations from this table's original sketch, settled once the component was actually built; logs start/success-with-size/failure (`ZIO.logInfo`/`logError`) |
-| `CountryCsvParser` | `parse(file: Path): IO[IOException, List[CountryRow]]` — implemented | Skips the header line by position (never logged), then matches each remaining line against the §2.1 regex via `zio-nio`'s `Files.readAllLines` (§4.5) — no CSV library. A non-matching line is a tolerated parse error: logged at `WARN` with the raw line, skipped, processing continues (§8). `CountryRow`/`IOException`, not `SourceRow`/`Task` — settled once actually built, same as `HttpDownloader`'s deviations. `toCommand` (row → domain `Country`) is not yet built — needs `domain`'s `CountryCode.make`, a later increment |
+| `CountryCsvParser` | `parse(file: Path): IO[IOException, List[CountryRow]]` — implemented | Skips the header line by position (never logged), then matches each remaining line against the §2.1 regex via `zio-nio`'s `Files.readAllLines` (§4.5) — no CSV library. A non-matching line is a tolerated parse error: logged at `WARN` with the raw line, skipped, processing continues (§8). `CountryRow`/`IOException`, not `SourceRow`/`Task` — settled once actually built, same as `HttpDownloader`'s deviations |
+| same parser | `toCommand(row: CountryRow): IO[DomainError, CreateCountryCommand]` — implemented | Mirrors the existing HTTP create path exactly (`CreateCountryRequest.toCommand`, `adapter-http/.../CountryDto.scala`): `CountryCode.validateAll` (accumulating, not `.make`'s fail-fast), folded into `DomainError.InvalidCountryCode` via `.toEitherWith` + `ZIO.fromEither`. `IO[DomainError, CreateCountryCommand]`, not the sketch's `Either[String, Command]`. First function in this module needing `domain` — `master-data-sync` now has `.dependsOn(domain)` in `build.sbt` (§3.1); `application`/`persistenceQuill` still not needed, since this only builds a command, it doesn't persist one |
 | `AirportCsvParser` / `AirlineCsvParser` | `parse(file: Path): Task[List[SourceRow]]` | Reads the downloaded file with `scala-csv` (`ZIO.attempt(CSVReader.open(file).all())`), yields one raw row per record |
 | same parser | `toCommand(row: SourceRow): Either[String, Command]` | Maps a raw row to the entity's create/update command, via the existing domain `Newtype.make`/`.validateAll` |
 | `EntitySync` | `loadExisting(): UIO[Map[NaturalKey, Entity]]` | Gets everything currently stored — see §7.1 for why this isn't a plain call to the existing `FindAllUseCase` |
