@@ -26,11 +26,13 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
   private val defaultFind: FindAirportUseCase = new FindAirportUseCase:
     def findByIata(iata: String): IO[DomainError, Airport]      = ZIO.succeed(madrid)
     def findAll(p: Pagination): IO[DomainError, List[Airport]]  = ZIO.succeed(List(madrid, barcelona))
+    def findAllUnbounded: IO[DomainError, List[Airport]]        = ZIO.succeed(List(madrid, barcelona))
     def searchByName(q: String): IO[DomainError, List[Airport]] = ZIO.succeed(List(madrid))
 
   private val notFoundFind: FindAirportUseCase = new FindAirportUseCase:
     def findByIata(iata: String): IO[DomainError, Airport]      = ZIO.fail(DomainError.AirportNotFound(iata))
     def findAll(p: Pagination): IO[DomainError, List[Airport]]  = ZIO.fail(DomainError.AirportNotFound("n/a"))
+    def findAllUnbounded: IO[DomainError, List[Airport]]        = ZIO.fail(DomainError.AirportNotFound("n/a"))
     def searchByName(q: String): IO[DomainError, List[Airport]] = ZIO.fail(DomainError.AirportNotFound("n/a"))
 
   private val defaultCreate: CreateAirportUseCase = (_: CreateAirportCommand) => ZIO.succeed(madrid)

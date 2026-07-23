@@ -7,5 +7,6 @@ import zio.IO
 trait FindAirportUseCase {
   def findByIata(iata: String): IO[DomainError, Airport]
   def findAll(pagination: Pagination): IO[DomainError, List[Airport]]
+  def findAllUnbounded: IO[DomainError, List[Airport]]
   def searchByName(query: String): IO[DomainError, List[Airport]]
 }

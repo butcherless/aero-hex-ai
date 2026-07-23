@@ -7,7 +7,7 @@ import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.flight.*
 import dev.cmartin.aerohex.shared.Pagination
 import io.circe.generic.auto.*
-import java.time.{LocalDate, LocalTime}
+import java.time.LocalTime
 import sttp.client4.*
 import sttp.client4.circe.*
 import sttp.client4.impl.zio.RIOMonadAsyncError
@@ -60,7 +60,7 @@ object FlightEndpointsSpec extends ZIOSpecDefault:
   private val failingFindByAirline: FindFlightsByAirlineUseCase =
     (icao: AirlineIcaoCode, _: Pagination) => ZIO.fail(DomainError.AirlineNotFound(icao.value))
 
-  private val airEuropa = Airline(AirlineIcaoCode("AEA"), "Air Europa", LocalDate.of(1986, 11, 21))
+  private val airEuropa = Airline(AirlineIcaoCode("AEA"), "Air Europa", None, Some("AIR EUROPA"))
 
   private val defaultFindAirline: FindAirlineForFlightUseCase = (_: FlightCode) => ZIO.succeed(airEuropa)
 

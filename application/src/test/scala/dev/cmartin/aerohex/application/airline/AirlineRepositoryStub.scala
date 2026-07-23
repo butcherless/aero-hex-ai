@@ -17,6 +17,8 @@ private[application] object AirlineRepositoryStub:
       ZIO.die(new NotImplementedError("findByIcao"))
     def findAll(p: Pagination): IO[DomainError, List[Airline]]                       =
       ZIO.die(new NotImplementedError("findAll"))
+    def findAllUnbounded: IO[DomainError, List[Airline]]                             =
+      ZIO.die(new NotImplementedError("findAllUnbounded"))
     def findByCountry(c: CountryCode, p: Pagination): IO[DomainError, List[Airline]] =
       ZIO.die(new NotImplementedError("findByCountry"))
     def save(a: Airline, c: CountryCode): IO[DomainError, Airline]                   =
@@ -29,6 +31,7 @@ private[application] object AirlineRepositoryStub:
   def stubAirlineRepo(
       onFindByIcao: AirlineIcaoCode => IO[DomainError, Option[Airline]] = unimplementedAirlineRepo.findByIcao,
       onFindAll: Pagination => IO[DomainError, List[Airline]] = unimplementedAirlineRepo.findAll,
+      onFindAllUnbounded: IO[DomainError, List[Airline]] = unimplementedAirlineRepo.findAllUnbounded,
       onFindByCountry: (CountryCode, Pagination) => IO[DomainError, List[Airline]] =
         unimplementedAirlineRepo.findByCountry,
       onSave: (Airline, CountryCode) => IO[DomainError, Airline] = unimplementedAirlineRepo.save,
@@ -37,6 +40,7 @@ private[application] object AirlineRepositoryStub:
   ): AirlineRepository = new AirlineRepository:
     def findByIcao(icao: AirlineIcaoCode): IO[DomainError, Option[Airline]]          = onFindByIcao(icao)
     def findAll(p: Pagination): IO[DomainError, List[Airline]]                       = onFindAll(p)
+    def findAllUnbounded: IO[DomainError, List[Airline]]                             = onFindAllUnbounded
     def findByCountry(c: CountryCode, p: Pagination): IO[DomainError, List[Airline]] = onFindByCountry(c, p)
     def save(a: Airline, c: CountryCode): IO[DomainError, Airline]                   = onSave(a, c)
     def update(a: Airline, c: CountryCode): IO[DomainError, Airline]                 = onUpdate(a, c)

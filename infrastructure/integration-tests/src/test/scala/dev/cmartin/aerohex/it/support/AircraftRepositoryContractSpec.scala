@@ -1,14 +1,12 @@
 package dev.cmartin.aerohex.it.support
 
-import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.aircraft.{Aircraft, AircraftRepository, Registration}
-import dev.cmartin.aerohex.domain.airline.{Airline, AirlineRepository, AirlineIcaoCode}
+import dev.cmartin.aerohex.domain.airline.{Airline, AirlineIcaoCode, AirlineRepository}
 import dev.cmartin.aerohex.domain.country.{Country, CountryCode, CountryRepository}
+import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.shared.Pagination
 import zio.ZIO
 import zio.test.*
-
-import java.time.LocalDate
 
 // Behavior contract shared by QuillAircraftRepositoryItSpec and DoobieAircraftRepositoryItSpec — both
 // adapters must satisfy the same AircraftRepository port and behave identically here, so the test
@@ -21,18 +19,18 @@ object AircraftRepositoryContractSpec:
 
   private def seedAirline(icao: String, name: String, countryCode: String): ZIO[AirlineRepository, DomainError, Unit] =
     ZIO.serviceWithZIO[AirlineRepository](
-      _.save(Airline(AirlineIcaoCode.unsafeMake(icao), name, LocalDate.of(2000, 1, 1)), CountryCode.unsafeMake(countryCode)).unit
+      _.save(Airline(AirlineIcaoCode.unsafeMake(icao), name, None, None), CountryCode.unsafeMake(countryCode)).unit
     )
 
   def tests: List[Spec[AircraftRepository & AirlineRepository & CountryRepository, Any]] = List(
     test("saves and finds an aircraft by registration") {
       for
-        _      <- seedCountry("ES", "Spain")
-        _      <- seedAirline("IBE", "Iberia", "ES")
-        repo   <- ZIO.service[AircraftRepository]
-        ecMig   = Aircraft(Registration("EC-MIG"), "B788", "Boeing 787-8", AirlineIcaoCode("IBE"))
-        saved  <- repo.save(ecMig)
-        found  <- repo.findByRegistration(Registration("EC-MIG"))
+        _     <- seedCountry("ES", "Spain")
+        _     <- seedAirline("IBE", "Iberia", "ES")
+        repo  <- ZIO.service[AircraftRepository]
+        ecMig  = Aircraft(Registration("EC-MIG"), "B788", "Boeing 787-8", AirlineIcaoCode("IBE"))
+        saved <- repo.save(ecMig)
+        found <- repo.findByRegistration(Registration("EC-MIG"))
       yield assertTrue(saved == ecMig, found.contains(ecMig))
     },
     test("findAll includes saved aircraft") {
@@ -46,14 +44,14 @@ object AircraftRepositoryContractSpec:
     },
     test("update changes the type code, description, and airline of an existing aircraft") {
       for
-        _       <- seedCountry("PT", "Portugal")
-        _       <- seedAirline("TAP", "TAP", "PT")
-        _       <- seedAirline("PGA", "Portugalia", "PT")
-        repo    <- ZIO.service[AircraftRepository]
-        _       <- repo.save(Aircraft(Registration("CS-TUA"), "A319", "Airbus A319", AirlineIcaoCode("TAP")))
-        updated  = Aircraft(Registration("CS-TUA"), "A320", "Airbus A320", AirlineIcaoCode("PGA"))
-        saved   <- repo.update(updated)
-        found   <- repo.findByRegistration(Registration("CS-TUA"))
+        _      <- seedCountry("PT", "Portugal")
+        _      <- seedAirline("TAP", "TAP", "PT")
+        _      <- seedAirline("PGA", "Portugalia", "PT")
+        repo   <- ZIO.service[AircraftRepository]
+        _      <- repo.save(Aircraft(Registration("CS-TUA"), "A319", "Airbus A319", AirlineIcaoCode("TAP")))
+        updated = Aircraft(Registration("CS-TUA"), "A320", "Airbus A320", AirlineIcaoCode("PGA"))
+        saved  <- repo.update(updated)
+        found  <- repo.findByRegistration(Registration("CS-TUA"))
       yield assertTrue(saved == updated, found.contains(updated))
     },
     test("update fails with AircraftNotFound for an unknown registration") {

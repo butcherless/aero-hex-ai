@@ -1,7 +1,7 @@
 package dev.cmartin.aerohex.it.support
 
-import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.country.{Country, CountryCode, CountryRepository}
+import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.shared.Pagination
 import zio.ZIO
 import zio.test.*
@@ -23,7 +23,8 @@ object CountryRepositoryContractSpec:
       for
         repo  <- ZIO.service[CountryRepository]
         error <- repo.validateCode(CountryCode("ZZ")).flip
-      yield assertTrue(error == DomainError.InvalidCountryCode(List("ZZ is not a recognized ISO 3166-1 alpha-2 country code")))
+      yield assertTrue(error ==
+        DomainError.InvalidCountryCode(List("ZZ is not a recognized ISO 3166-1 alpha-2 country code")))
     },
     test("saves and finds a country by code") {
       for

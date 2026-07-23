@@ -2,11 +2,10 @@ package dev.cmartin.aerohex.it.migration
 
 import dev.cmartin.aerohex.infrastructure.migration.FlywayMigration
 import dev.cmartin.aerohex.it.support.PostgresContainerSupport
+import java.sql.DriverManager
 import org.testcontainers.containers.PostgreSQLContainer
 import zio.*
 import zio.test.*
-
-import java.sql.DriverManager
 
 object FlywayMigrationItSpec extends ZIOSpecDefault {
 
@@ -24,12 +23,12 @@ object FlywayMigrationItSpec extends ZIOSpecDefault {
 
   override def spec: Spec[TestEnvironment & Scope, Any] =
     suite("FlywayMigration")(
-      test("applies all migrations up to V14 against a fresh container") {
+      test("applies all migrations up to V15 against a fresh container") {
         for
           container <- ZIO.service[PostgreSQLContainer[?]]
           _         <- FlywayMigration.migrate(container.getJdbcUrl, container.getUsername, container.getPassword)
           version   <- latestSchemaVersion(container)
-        yield assertTrue(version == "14")
+        yield assertTrue(version == "15")
       }
     ).provideLayerShared(PostgresContainerSupport.containerLayer)
 }

@@ -56,6 +56,14 @@ final class QuillAirportRepository(dataSource: DataSource) extends AirportReposi
       .orDie
   }
 
+  override def findAllUnbounded: IO[DomainError, List[Airport]] =
+    ctx
+      .run(quote {
+        querySchema[AirportRow]("airports").sortBy(_.iataCode)
+      })
+      .map(_.map(toAirport))
+      .orDie
+
   override def searchByName(query: String): IO[DomainError, List[Airport]] = {
     val pattern = "%" + query + "%"
     ctx

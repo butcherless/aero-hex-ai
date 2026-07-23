@@ -10,7 +10,7 @@ import doobie.Transactor
 import doobie.implicits.*
 import doobie.postgres.*
 import doobie.postgres.implicits.*
-import java.time.{LocalDate, LocalTime}
+import java.time.LocalTime
 import zio.interop.catz.*
 import zio.{IO, Task, URLayer, ZIO, ZLayer}
 
@@ -89,13 +89,13 @@ final class DoobieFlightRepository(protected val xa: Transactor[Task]) extends F
       .orDie
 
   override def findAirlineByCode(code: FlightCode): IO[DomainError, Option[Airline]] =
-    sql"""SELECT l.icao_code, l.name, l.foundation_date
+    sql"""SELECT l.icao_code, l.name, l.alias, l.callsign
           FROM flights f JOIN airlines l ON f.airline_id = l.id
           WHERE f.code = ${code.value}"""
-      .query[(String, String, LocalDate)]
+      .query[(String, String, Option[String], Option[String])]
       .option
       .transact(xa)
-      .map(_.map((icao, name, foundationDate) => Airline(AirlineIcaoCode.unsafeMake(icao), name, foundationDate)))
+      .map(_.map((icao, name, alias, callsign) => Airline(AirlineIcaoCode.unsafeMake(icao), name, alias, callsign)))
       .orDie
 
   override def save(flight: Flight): IO[DomainError, Flight] =

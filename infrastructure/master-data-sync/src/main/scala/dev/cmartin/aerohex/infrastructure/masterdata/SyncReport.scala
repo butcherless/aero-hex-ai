@@ -3,12 +3,12 @@ package dev.cmartin.aerohex.infrastructure.masterdata
 import zio.*
 
 final case class SyncReport(
-  created: Int,
-  updated: Int,
-  deleted: Int,
-  unchanged: Int,
-  skippedInvalid: Int,
-  skippedConflict: Int
+    created: Int,
+    updated: Int,
+    deleted: Int,
+    unchanged: Int,
+    skippedInvalid: Int,
+    skippedConflict: Int
 ):
 
   def log(): UIO[Unit] =

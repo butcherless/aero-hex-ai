@@ -1,8 +1,8 @@
 package dev.cmartin.aerohex.it.support
 
-import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.airport.{Airport, AirportIcaoCode, AirportRepository, IataCode}
 import dev.cmartin.aerohex.domain.country.{Country, CountryCode, CountryRepository}
+import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.shared.Pagination
 import zio.ZIO
 import zio.test.*
@@ -30,7 +30,8 @@ object AirportRepositoryContractSpec:
       for
         _    <- seedCountry("FR", "France")
         repo <- ZIO.service[AirportRepository]
-        _    <- repo.save(Airport(IataCode("CDG"), AirportIcaoCode("LFPG"), "Charles de Gaulle", "Paris"), CountryCode("FR"))
+        _    <-
+          repo.save(Airport(IataCode("CDG"), AirportIcaoCode("LFPG"), "Charles de Gaulle", "Paris"), CountryCode("FR"))
         all  <- repo.findAll(Pagination(page = 1, pageSize = 100))
       yield assertTrue(all.exists(_.iataCode.value == "CDG"))
     },
@@ -50,16 +51,22 @@ object AirportRepositoryContractSpec:
       for
         _    <- seedCountry("DE", "Germany")
         repo <- ZIO.service[AirportRepository]
-        _    <- repo.save(Airport(IataCode("FRA"), AirportIcaoCode("EDDF"), "Frankfurt am Main", "Frankfurt"), CountryCode("DE"))
+        _    <- repo.save(
+                  Airport(IataCode("FRA"), AirportIcaoCode("EDDF"), "Frankfurt am Main", "Frankfurt"),
+                  CountryCode("DE")
+                )
         list <- repo.findByCountry(CountryCode("DE"), Pagination(page = 1, pageSize = 100))
       yield assertTrue(list.exists(_.iataCode.value == "FRA"))
     },
     test("findCountryByIata returns the country for that airport") {
       for
-        _        <- seedCountry("JP", "Japan")
-        repo     <- ZIO.service[AirportRepository]
-        _        <- repo.save(Airport(IataCode("NRT"), AirportIcaoCode("RJAA"), "Narita International", "Narita"), CountryCode("JP"))
-        country  <- repo.findCountryByIata(IataCode("NRT"))
+        _       <- seedCountry("JP", "Japan")
+        repo    <- ZIO.service[AirportRepository]
+        _       <- repo.save(
+                     Airport(IataCode("NRT"), AirportIcaoCode("RJAA"), "Narita International", "Narita"),
+                     CountryCode("JP")
+                   )
+        country <- repo.findCountryByIata(IataCode("NRT"))
       yield assertTrue(country.contains(Country(CountryCode("JP"), "Japan")))
     },
     test("findCountryByIata returns None for an unknown iata code") {
@@ -82,7 +89,8 @@ object AirportRepositoryContractSpec:
       for
         _     <- seedCountry("LU", "Luxembourg")
         repo  <- ZIO.service[AirportRepository]
-        error <- repo.update(Airport(IataCode("ZZZ"), AirportIcaoCode("ZZZZ"), "Nowhere", "Nowhere"), CountryCode("LU")).flip
+        error <-
+          repo.update(Airport(IataCode("ZZZ"), AirportIcaoCode("ZZZZ"), "Nowhere", "Nowhere"), CountryCode("LU")).flip
       yield assertTrue(error == DomainError.AirportNotFound("ZZZ"))
     },
     test("update fails with CountryNotFound when the new country code does not exist") {
@@ -90,13 +98,15 @@ object AirportRepositoryContractSpec:
         _     <- seedCountry("BE", "Belgium")
         repo  <- ZIO.service[AirportRepository]
         _     <- repo.save(Airport(IataCode("BRU"), AirportIcaoCode("EBBR"), "Brussels", "Brussels"), CountryCode("BE"))
-        error <- repo.update(Airport(IataCode("BRU"), AirportIcaoCode("EBBR"), "Brussels", "Brussels"), CountryCode("YY")).flip
+        error <-
+          repo.update(Airport(IataCode("BRU"), AirportIcaoCode("EBBR"), "Brussels", "Brussels"), CountryCode("YY")).flip
       yield assertTrue(error == DomainError.CountryNotFound("YY"))
     },
     test("save fails with CountryNotFound for an unknown country code") {
       for
         repo  <- ZIO.service[AirportRepository]
-        error <- repo.save(Airport(IataCode("XXX"), AirportIcaoCode("XXXX"), "Nowhere", "Nowhere"), CountryCode("XX")).flip
+        error <-
+          repo.save(Airport(IataCode("XXX"), AirportIcaoCode("XXXX"), "Nowhere", "Nowhere"), CountryCode("XX")).flip
       yield assertTrue(error == DomainError.CountryNotFound("XX"))
     },
     test("save fails with AirportAlreadyExists on a duplicate iata code") {
@@ -104,7 +114,8 @@ object AirportRepositoryContractSpec:
         _     <- seedCountry("NL", "Netherlands")
         repo  <- ZIO.service[AirportRepository]
         _     <- repo.save(Airport(IataCode("AMS"), AirportIcaoCode("EHAM"), "Schiphol", "Amsterdam"), CountryCode("NL"))
-        error <- repo.save(Airport(IataCode("AMS"), AirportIcaoCode("EHAM"), "Schiphol", "Amsterdam"), CountryCode("NL")).flip
+        error <-
+          repo.save(Airport(IataCode("AMS"), AirportIcaoCode("EHAM"), "Schiphol", "Amsterdam"), CountryCode("NL")).flip
       yield assertTrue(error == DomainError.AirportAlreadyExists("AMS"))
     },
     test("delete removes an existing airport") {

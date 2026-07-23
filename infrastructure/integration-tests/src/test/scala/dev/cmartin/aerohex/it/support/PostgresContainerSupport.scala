@@ -4,12 +4,11 @@ import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
 import dev.cmartin.aerohex.infrastructure.migration.FlywayMigration
 import doobie.hikari.HikariTransactor
 import doobie.util.transactor.Transactor
+import javax.sql.DataSource
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
 import zio.interop.catz.*
 import zio.{Task, TaskLayer, ZIO, ZLayer}
-
-import javax.sql.DataSource
 
 object PostgresContainerSupport {
 

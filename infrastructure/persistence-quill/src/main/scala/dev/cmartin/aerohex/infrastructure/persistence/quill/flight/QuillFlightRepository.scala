@@ -10,7 +10,7 @@ import dev.cmartin.aerohex.infrastructure.persistence.quill.common.QuillSqlState
 import dev.cmartin.aerohex.shared.Pagination
 import io.getquill.*
 import io.getquill.jdbczio.Quill
-import java.time.{LocalDate, LocalTime}
+import java.time.LocalTime
 import javax.sql.DataSource
 import zio.{IO, URLayer, ZLayer}
 
@@ -29,8 +29,14 @@ final class QuillFlightRepository(dataSource: DataSource) extends FlightReposito
   )
 
   // Full airline row, not QuillAirlineIdResolver's AirlineRef (id/icaoCode only) —
-  // findAirlineByCode needs to materialize a complete Airline, including name/foundationDate.
-  private case class AirlineRow(id: Long, icaoCode: String, name: String, foundationDate: LocalDate)
+  // findAirlineByCode needs to materialize a complete Airline, including name/alias/callsign.
+  private case class AirlineRow(
+      id: Long,
+      icaoCode: String,
+      name: String,
+      alias: Option[String],
+      callsign: Option[String]
+  )
 
   protected val ctx = new Quill.Postgres(SnakeCase, dataSource)
 
@@ -107,7 +113,7 @@ final class QuillFlightRepository(dataSource: DataSource) extends FlightReposito
           l <- querySchema[AirlineRow]("airlines").join(l => l.id == f.airlineId)
         } yield l
       })
-      .map(_.headOption.map(l => Airline(AirlineIcaoCode.unsafeMake(l.icaoCode), l.name, l.foundationDate)))
+      .map(_.headOption.map(l => Airline(AirlineIcaoCode.unsafeMake(l.icaoCode), l.name, l.alias, l.callsign)))
       .orDie
 
   override def save(flight: Flight): IO[DomainError, Flight] =

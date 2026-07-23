@@ -270,6 +270,7 @@ lazy val masterDataSync = project
       zioNio,
       zioHttp,
       zioStreams,
+      scalaCsv,
       zioLogging,
       zioLoggingSlf4j,
       logback

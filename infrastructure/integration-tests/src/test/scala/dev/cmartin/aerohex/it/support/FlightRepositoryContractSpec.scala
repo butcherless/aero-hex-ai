@@ -1,12 +1,12 @@
 package dev.cmartin.aerohex.it.support
 
-import dev.cmartin.aerohex.domain.airline.{Airline, AirlineRepository, AirlineIcaoCode}
+import dev.cmartin.aerohex.domain.airline.{Airline, AirlineIcaoCode, AirlineRepository}
 import dev.cmartin.aerohex.domain.airport.{Airport, AirportIcaoCode, AirportRepository, IataCode}
 import dev.cmartin.aerohex.domain.country.{Country, CountryCode, CountryRepository}
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.flight.{Flight, FlightCode, FlightRepository}
 import dev.cmartin.aerohex.shared.Pagination
-import java.time.{LocalDate, LocalTime}
+import java.time.LocalTime
 import zio.ZIO
 import zio.test.*
 
@@ -40,7 +40,7 @@ object FlightRepositoryContractSpec:
       countryCode: String
   ): ZIO[AirlineRepository, DomainError, Unit] =
     ZIO.serviceWithZIO[AirlineRepository](
-      _.save(Airline(AirlineIcaoCode.unsafeMake(icao), name, LocalDate.of(2000, 1, 1)), CountryCode.unsafeMake(countryCode)).unit
+      _.save(Airline(AirlineIcaoCode.unsafeMake(icao), name, None, None), CountryCode.unsafeMake(countryCode)).unit
     )
 
   def tests: List[Spec[FlightRepository & AirportRepository & AirlineRepository & CountryRepository, Any]] = List(
@@ -90,9 +90,9 @@ object FlightRepositoryContractSpec:
         _      <- seedCountry("GR", "Greece")
         _      <- seedAirport("ATH", "LGAV", "Eleftherios Venizelos", "Athens", "GR")
         _      <- seedAirport("SKG", "LGTS", "Macedonia", "Thessaloniki", "GR")
-        // seedAirline always persists LocalDate.of(2000, 1, 1) regardless of the real founding
-        // date, so the expected fixture must match that, not Olympic Air's actual 1957 founding.
-        airline = Airline(AirlineIcaoCode("OAL"), "Olympic Air", LocalDate.of(2000, 1, 1))
+        // seedAirline always persists alias/callsign as None, so the expected fixture must match
+        // that rather than any real-world alias/callsign for Olympic Air.
+        airline = Airline(AirlineIcaoCode("OAL"), "Olympic Air", None, None)
         _      <- seedAirline("OAL", "Olympic Air", "GR")
         repo   <- ZIO.service[FlightRepository]
         _      <- repo.save(
@@ -117,67 +117,67 @@ object FlightRepositoryContractSpec:
     },
     test("findByAirline returns only flights operated by that airline") {
       for
-        _      <- seedCountry("IT", "Italy")
-        _      <- seedAirport("FCO", "LIRF", "Fiumicino", "Rome", "IT")
-        _      <- seedAirport("MXP", "LIMC", "Malpensa", "Milan", "IT")
-        _      <- seedAirline("AZA", "ITA Airways", "IT")
-        _      <- seedAirline("RYR", "Ryanair", "IT")
-        repo   <- ZIO.service[FlightRepository]
-        _      <- repo.save(
-                    Flight(
-                      FlightCode("AZ100"),
-                      None,
-                      LocalTime.of(6, 0),
-                      LocalTime.of(7, 10),
-                      IataCode("FCO"),
-                      IataCode("MXP"),
-                      AirlineIcaoCode("AZA")
-                    )
-                  )
-        _      <- repo.save(
-                    Flight(
-                      FlightCode("FR200"),
-                      None,
-                      LocalTime.of(8, 0),
-                      LocalTime.of(9, 10),
-                      IataCode("FCO"),
-                      IataCode("MXP"),
-                      AirlineIcaoCode("RYR")
-                    )
-                  )
-        byAza  <- repo.findByAirline(AirlineIcaoCode("AZA"), Pagination(page = 1, pageSize = 100))
+        _     <- seedCountry("IT", "Italy")
+        _     <- seedAirport("FCO", "LIRF", "Fiumicino", "Rome", "IT")
+        _     <- seedAirport("MXP", "LIMC", "Malpensa", "Milan", "IT")
+        _     <- seedAirline("AZA", "ITA Airways", "IT")
+        _     <- seedAirline("RYR", "Ryanair", "IT")
+        repo  <- ZIO.service[FlightRepository]
+        _     <- repo.save(
+                   Flight(
+                     FlightCode("AZ100"),
+                     None,
+                     LocalTime.of(6, 0),
+                     LocalTime.of(7, 10),
+                     IataCode("FCO"),
+                     IataCode("MXP"),
+                     AirlineIcaoCode("AZA")
+                   )
+                 )
+        _     <- repo.save(
+                   Flight(
+                     FlightCode("FR200"),
+                     None,
+                     LocalTime.of(8, 0),
+                     LocalTime.of(9, 10),
+                     IataCode("FCO"),
+                     IataCode("MXP"),
+                     AirlineIcaoCode("RYR")
+                   )
+                 )
+        byAza <- repo.findByAirline(AirlineIcaoCode("AZA"), Pagination(page = 1, pageSize = 100))
       yield assertTrue(byAza.map(_.code.value) == List("AZ100"))
     },
     test("update changes the schedule, alias, and airline of an existing flight") {
       for
-        _       <- seedCountry("PT", "Portugal")
-        _       <- seedAirport("LIS", "LPPT", "Humberto Delgado", "Lisbon", "PT")
-        _       <- seedAirport("OPO", "LPPR", "Sa Carneiro", "Porto", "PT")
-        _       <- seedAirline("TAP", "TAP", "PT")
-        _       <- seedAirline("PGA", "Portugalia", "PT")
-        repo    <- ZIO.service[FlightRepository]
-        _       <- repo.save(
-                     Flight(
-                       FlightCode("TP1234"),
-                       None,
-                       LocalTime.of(9, 0),
-                       LocalTime.of(9, 50),
-                       IataCode("LIS"),
-                       IataCode("OPO"),
-                       AirlineIcaoCode("TAP")
-                     )
-                   )
-        updated  = Flight(
-                     FlightCode("TP1234"),
-                     Some("PGA1234"),
-                     LocalTime.of(9, 30),
-                     LocalTime.of(10, 20),
-                     IataCode("LIS"),
-                     IataCode("OPO"),
-                     AirlineIcaoCode("PGA")
-                   )
-        saved   <- repo.update(updated)
-        found   <- repo.findByCode(FlightCode("TP1234"))
+        _      <- seedCountry("PT", "Portugal")
+        _      <- seedAirport("LIS", "LPPT", "Humberto Delgado", "Lisbon", "PT")
+        _      <- seedAirport("OPO", "LPPR", "Sa Carneiro", "Porto", "PT")
+        _      <- seedAirline("TAP", "TAP", "PT")
+        _      <- seedAirline("PGA", "Portugalia", "PT")
+        repo   <- ZIO.service[FlightRepository]
+        _      <- repo.save(
+                    Flight(
+                      FlightCode("TP1234"),
+                      None,
+                      LocalTime.of(9, 0),
+                      LocalTime.of(9, 50),
+                      IataCode("LIS"),
+                      IataCode("OPO"),
+                      AirlineIcaoCode("TAP")
+                    )
+                  )
+        updated = Flight(
+                    FlightCode("TP1234"),
+                    Some("PGA1234"),
+                    LocalTime.of(9, 30),
+                    LocalTime.of(10, 20),
+                    IataCode("LIS"),
+                    IataCode("OPO"),
+                    AirlineIcaoCode("PGA")
+                  )
+        saved  <- repo.update(updated)
+        found  <- repo.findByCode(FlightCode("TP1234"))
       yield assertTrue(saved == updated, found.contains(updated))
     },
     test("update fails with FlightNotFound for an unknown code") {

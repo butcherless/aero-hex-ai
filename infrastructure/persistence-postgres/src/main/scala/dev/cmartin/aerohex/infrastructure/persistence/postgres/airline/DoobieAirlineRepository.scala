@@ -9,8 +9,6 @@ import dev.cmartin.aerohex.shared.Pagination
 import doobie.Transactor
 import doobie.implicits.*
 import doobie.postgres.*
-import doobie.postgres.implicits.*
-import java.time.LocalDate
 import zio.interop.catz.*
 import zio.{IO, Task, URLayer, ZIO, ZLayer}
 
@@ -24,37 +22,45 @@ final class DoobieAirlineRepository(protected val xa: Transactor[Task]) extends 
     )
 
   override def findByIcao(icao: AirlineIcaoCode): IO[DomainError, Option[Airline]] =
-    sql"SELECT icao_code, name, foundation_date FROM airlines WHERE icao_code = ${icao.value}"
-      .query[(String, String, LocalDate)]
+    sql"SELECT icao_code, name, alias, callsign FROM airlines WHERE icao_code = ${icao.value}"
+      .query[(String, String, Option[String], Option[String])]
       .option
       .transact(xa)
-      .map(_.map((i, n, fd) => Airline(AirlineIcaoCode.unsafeMake(i), n, fd)))
+      .map(_.map((i, n, alias, callsign) => Airline(AirlineIcaoCode.unsafeMake(i), n, alias, callsign)))
       .orDie
 
   override def findAll(pagination: Pagination): IO[DomainError, List[Airline]] =
-    sql"""SELECT icao_code, name, foundation_date FROM airlines
+    sql"""SELECT icao_code, name, alias, callsign FROM airlines
           ORDER BY icao_code LIMIT ${pagination.pageSize} OFFSET ${pagination.offset}"""
-      .query[(String, String, LocalDate)]
+      .query[(String, String, Option[String], Option[String])]
       .to[List]
       .transact(xa)
-      .map(_.map((i, n, fd) => Airline(AirlineIcaoCode.unsafeMake(i), n, fd)))
+      .map(_.map((i, n, alias, callsign) => Airline(AirlineIcaoCode.unsafeMake(i), n, alias, callsign)))
+      .orDie
+
+  override def findAllUnbounded: IO[DomainError, List[Airline]] =
+    sql"SELECT icao_code, name, alias, callsign FROM airlines ORDER BY icao_code"
+      .query[(String, String, Option[String], Option[String])]
+      .to[List]
+      .transact(xa)
+      .map(_.map((i, n, alias, callsign) => Airline(AirlineIcaoCode.unsafeMake(i), n, alias, callsign)))
       .orDie
 
   override def findByCountry(code: CountryCode, pagination: Pagination): IO[DomainError, List[Airline]] =
-    sql"""SELECT a.icao_code, a.name, a.foundation_date
+    sql"""SELECT a.icao_code, a.name, a.alias, a.callsign
           FROM airlines a JOIN countries c ON a.country_id = c.id
           WHERE c.code = ${code.value} ORDER BY a.icao_code LIMIT ${pagination.pageSize} OFFSET ${pagination.offset}"""
-      .query[(String, String, LocalDate)]
+      .query[(String, String, Option[String], Option[String])]
       .to[List]
       .transact(xa)
-      .map(_.map((i, n, fd) => Airline(AirlineIcaoCode.unsafeMake(i), n, fd)))
+      .map(_.map((i, n, alias, callsign) => Airline(AirlineIcaoCode.unsafeMake(i), n, alias, callsign)))
       .orDie
 
   override def save(airline: Airline, countryCode: CountryCode): IO[DomainError, Airline] =
     resolveCountryId(countryCode).flatMap { countryId =>
       sql"""
-        INSERT INTO airlines (icao_code, name, foundation_date, country_id)
-        VALUES (${airline.icao.value}, ${airline.name}, ${airline.foundationDate}, $countryId)
+        INSERT INTO airlines (icao_code, name, alias, callsign, country_id)
+        VALUES (${airline.icao.value}, ${airline.name}, ${airline.alias}, ${airline.callsign}, $countryId)
       """.update.run
         .attemptSomeSqlState {
           case sqlstate.class23.UNIQUE_VIOLATION      => DomainError.AirlineAlreadyExists(airline.icao.value)
@@ -71,7 +77,7 @@ final class DoobieAirlineRepository(protected val xa: Transactor[Task]) extends 
   override def update(airline: Airline, countryCode: CountryCode): IO[DomainError, Airline] =
     resolveCountryId(countryCode).flatMap { countryId =>
       sql"""
-        UPDATE airlines SET name = ${airline.name}, foundation_date = ${airline.foundationDate},
+        UPDATE airlines SET name = ${airline.name}, alias = ${airline.alias}, callsign = ${airline.callsign},
           country_id = $countryId
         WHERE icao_code = ${airline.icao.value}
       """.update.run

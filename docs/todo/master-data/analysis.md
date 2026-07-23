@@ -1,17 +1,26 @@
 # Master Data Management — Download & Sync for Country / Airport / Airline
 
-> **Status:** Analysis — architecture decided; **Country sync fully implemented and verified against a
-> real Postgres**. `Main` downloads the Country source into a temp dir, parses all 249 real rows
-> (including all 4 quoted-comma edge cases), reconciles them against `countries` via `CountrySync`
-> (`EntitySync.loadExisting`/`.reconcile`/`.apply`, backed by `FindCountryUseCase.findAllUnbounded` and
-> the real `Create`/`Update`/`DeleteCountryService`), then cleans up. Verified live: starting from 1
-> existing row (`ES, Spain`), a run created the other 248 and logged
+> **Status:** Analysis — architecture decided; **all three in-scope entities (Country, Airport,
+> Airline) fully implemented and verified against a real Postgres.** `Main` downloads each source into
+> a temp dir, parses it, reconciles it against the corresponding table via the entity's own `XxxSync`
+> (`EntitySync.loadExisting`/`.reconcile`/`.apply`, backed by `findAllUnbounded` and the real
+> `Create`/`Update`/`DeleteXxxService`), then cleans up. Country verified live: starting from 1 existing
+> row (`ES, Spain`), a run created the other 248 and logged
 > `created: 248, updated: 0, deleted: 0, unchanged: 1`; a second run against the now-249-row table
-> reported `unchanged: 249` (idempotent, no writes). See `plans/masterdata/master-data-sync-scaffold.md`,
-> `plans/masterdata/http-downloader-country.md`, `plans/masterdata/country-csv-parser.md`,
-> `plans/masterdata/entity-sync.md`, and `plans/masterdata/country-sync-wiring.md`.
-> Airport/Airline downloads/parsing/sync are still design-only — Country is the only entity wired
-> end-to-end so far.
+> reported `unchanged: 249` (idempotent, no writes). Airport verified live: starting from 0 rows, a run
+> created 4,534 and logged `created: 4534, updated: 0, deleted: 0, unchanged: 0, skippedConflict: 1`
+> (the one skip is Priština's airport — OurAirports tags it `iso_country = "XK"` for Kosovo, not a real
+> ISO 3166-1 alpha-2 code); a second run reported `unchanged: 4534` (idempotent, no writes). Airline
+> verified live: starting from 0 rows, a run created 1,009 and logged
+> `created: 1009, updated: 0, deleted: 0, unchanged: 0, skippedInvalid: 17, skippedConflict: 7`; a
+> second run reported `unchanged: 1009` (row count stable — see §9 for the 7-row duplicate-ICAO nuance,
+> a source-data quirk, not a correctness problem). Airline's redesign (dropped `foundationDate`, added
+> `alias`/`callsign` — `plans/redesign-airline-drop-foundation-date.md`) resolved its two structural
+> gaps before the sync tool was built, rather than working around them. See
+> `plans/masterdata/master-data-sync-scaffold.md`, `plans/masterdata/http-downloader-country.md`,
+> `plans/masterdata/country-csv-parser.md`, `plans/masterdata/entity-sync.md`,
+> `plans/masterdata/country-sync-wiring.md`, `plans/masterdata/airport-sync.md`, and
+> `plans/masterdata/airline-sync.md`.
 > Covers data source selection, sync architecture, reconciliation algorithm, validation/error
 > handling, and open decisions for a low-frequency (~6-month) external master-data refresh.
 
@@ -97,7 +106,7 @@ itself).
 | Column | Domain mapping | Notes |
 |---|---|---|
 | `iata_code` | `Airport.iataCode` | **Filter**: skip rows with a blank `iata_code` — most of the ~80k rows (heliports, closed strips, ultralight fields) have none |
-| `ident` | `Airport.icaoCode` | OurAirports' `ident` is the ICAO code for most entries but falls back to a locally-generated code for airports without one; **filter**: keep only rows matching `AirportIcaoCode`'s `^[A-Za-z]{4}$` shape, log+skip the rest |
+| `icao_code`, falling back to `ident` | `Airport.icaoCode` | **Implemented, corrected from the original sketch below.** Confirmed against the live 85,797-row file: `icao_code` is a *dedicated* column, separate from `ident` (OurAirports' own row identifier) — `icao_code` holds the real ICAO code when present, while `ident` is a non-ICAO-shaped internal id for ~126 large/medium airports (e.g. `"AE-0221"`) whose `icao_code` still has the real 4-letter code. Preferring `icao_code`, falling back to `ident` only when `icao_code` is blank, recovered 4,535 of 5,276 large/medium rows vs. ~4,294 using `ident` alone. **Filter**: keep only rows where the chosen value matches `AirportIcaoCode`'s `^[A-Za-z]{4}$` shape, log+skip the rest. (Original sketch, superseded: "`ident` → `Airport.icaoCode` ... falls back to a locally-generated code for airports without one" — written before the dedicated `icao_code` column was confirmed live.) |
 | `name` | `Airport.name` | |
 | `municipality` | `Airport.city` | |
 | `iso_country` | Country relationship (`AirportRepository.save`'s separate `countryCode` param) | Already ISO 3166-1 alpha-2, same code space as `Country.code` |
@@ -114,18 +123,22 @@ row, 8 comma-separated columns, `\N` marks a null field:
 |---|---|---|---|
 | 1 | Airline ID | — | OpenFlights' own surrogate id, not used |
 | 2 | Name | `Airline.name` | |
-| 3 | Alias | — | not modeled |
+| 3 | Alias | `Airline.alias` (`Option[String]`) | **Implemented.** Blank/`\N` → `None` |
 | 4 | IATA | — | not modeled (`Airline` has no IATA-code field, only ICAO) |
 | 5 | ICAO | `Airline.icao` (`AirlineIcaoCode`) | **Filter**: skip blank/`\N` |
-| 6 | Callsign | — | not modeled |
-| 7 | Country | Country relationship | **Gap** — free-text country *name* (e.g. `"Spain"`), not an ISO code; needs a name→`CountryCode` lookup, inherently fragile across name variants (`"United States"` vs `"United States of America"`) |
+| 6 | Callsign | `Airline.callsign` (`Option[String]`) | **Implemented.** Blank/`\N` → `None` |
+| 7 | Country | Country relationship | **Implemented** via a name→`CountryCode` lookup (live-fetched `Country` list + a small static alias table for OpenFlights' name variants, e.g. `"United States"` → `"United States of America (the)"`) — see `plans/masterdata/airline-sync.md`. Not every name resolves; unmapped rows are logged+skipped like any other unresolvable row (§8) |
 | 8 | Active (`Y`/`N`) | Row filter | Recommend keeping only `Active = Y` |
 
-**Two structural gaps found during research, not just filtering concerns:**
+**One structural gap found during research, resolved by removal rather than a workaround:**
 
-- **No founding-date column.** `Airline.foundationDate: LocalDate` is `NOT NULL` in both the schema
-  (`V9__add_airline_foundation_date.sql`) and the domain model — OpenFlights has nothing to fill it
-  with.
+- **No founding-date column** was ever available from this source — confirmed against OpenFlights'
+  own schema docs (openflights.org/data.php): `airlines.dat` has exactly 8 fields, none a date.
+  `Airline.foundationDate: LocalDate` was `NOT NULL` in both the schema
+  (`V9__add_airline_foundation_date.sql`) and the domain model, with nothing to fill it from.
+  **Resolved by dropping `foundationDate` from the entity entirely** (`V15__redesign_airline_columns.sql`)
+  and modeling `alias`/`callsign` instead — two fields the source actually provides that `Airline`
+  didn't capture before. See `plans/redesign-airline-drop-foundation-date.md`.
 - **Stale, community-maintained snapshot.** OpenFlights' own documentation describes the GitHub copy
   as "only a sporadically updated static snapshot of the live OpenFlights database" — no fixed refresh
   cadence. Licensed **ODbL + DbCL** (attribution + share-alike, but only on *public* redistribution of
@@ -133,8 +146,6 @@ row, 8 comma-separated columns, `\N` marks a null field:
 
 No better free, structured, machine-readable alternative surfaced during research (IATA's own Airline
 Coding Directory is a paid product; Wikipedia's airline-code lists are HTML tables, not a stable feed).
-Recommend proceeding with OpenFlights for identity fields (name/ICAO/country-name) while treating
-`foundationDate` and the `Country` name-to-code mapping as known-weak fields — see §9.
 
 ---
 
@@ -203,17 +214,17 @@ Revisit if the file count grows enough that a flat package stops being easy to s
 ```
 infrastructure/master-data-sync/
   src/main/scala/dev/cmartin/aerohex/infrastructure/masterdata/
-    Main.scala                    ← ZIOAppDefault entry point — implemented for Country (no CLI arg parsing yet; Airport/Airline still hardcode-absent)
+    Main.scala                    ← ZIOAppDefault entry point — implemented for Country, Airport, and Airline, in sequence (no CLI arg parsing)
     TempDirectory.scala           ← create/delete lifecycle, §4.3 — implemented
-    HttpDownloader.scala          ← ZIO HTTP Client.streaming → file, §4.4 — implemented, Country source only
+    HttpDownloader.scala          ← ZIO HTTP Client.streaming → file, §4.4 — implemented, reused unchanged for all three sources
     CountryCsvParser.scala        ← regex-based, no CSV library — §2.1/§4.5 — implemented (parse + toCommand)
-    AirportCsvParser.scala
-    AirlineCsvParser.scala        ← both: scala-csv → raw row → validated domain command, or a logged skip
-    EntitySync.scala              ← generic reconcile-and-apply algorithm (§7), parameterized per entity — implemented (loadExisting/reconcile/apply)
+    AirportCsvParser.scala        ← scala-csv-based — §2.2/§4.2 — implemented (parse + toCommand)
+    AirlineCsvParser.scala        ← scala-csv-based, no header row — §2.3/§4.2 — implemented (parse + toCommand, plus a static country-name alias table)
+    EntitySync.scala              ← generic reconcile-and-apply algorithm (§7), parameterized per entity — implemented (loadExisting/reconcile/apply), reused unchanged for Airport and Airline
     CountrySync.scala             ← implemented — parses, validates, reconciles, and applies real Create/Update/DeleteCountryService calls
-    AirportSync.scala
-    AirlineSync.scala
-    SyncReport.scala              ← created/updated/deleted/skipped counters + per-row error log — implemented
+    AirportSync.scala             ← implemented — same shape as CountrySync, plus a countryCodeByIata lookup map since Airport carries its country relationship separately from the entity itself (§9)
+    AirlineSync.scala             ← implemented — same shape again, plus resolving each row's free-text country name to a CountryCode via a live-fetched Country list (§9)
+    SyncReport.scala              ← created/updated/deleted/skipped counters + per-row error log — implemented, reused unchanged for Airport and Airline
 ```
 
 ---
@@ -314,15 +325,19 @@ Airline, Airport) follow this identical shape, just parameterized differently (`
 
 | Component | Function | Responsibility |
 |---|---|---|
-| `Main` (`ZIOAppDefault`) | `run` — implemented for Country | Orchestrates the three entity syncs in order (Country, then Airline/Airport), owns the temp-dir lifecycle. Country's real Quill-backed use-case layers are composed the same way `bootstrap`'s `WiringModule` does (`QuillDataSourceLayer.live >>> QuillCountryRepository.layer`, then `>>>` per service, combined with `++`); Airport/Airline orchestration not added yet |
-| `HttpDownloader` | `download(url: String, destFile: Path): ZIO[Client, Throwable, Path]` — implemented, Country source only | Streams the source URL to `destFile` (ZIO HTTP `Client.streaming` + redirect-following + non-2xx check, §4.4). `url: String`/`destFile` (a specific file, not a dir) — small deviations from this table's original sketch, settled once the component was actually built; logs start/success-with-size/failure (`ZIO.logInfo`/`logError`) |
+| `Main` (`ZIOAppDefault`) | `run` — implemented for Country and Airport | Orchestrates the entity syncs in order (Country, then Airport, then eventually Airline), owns the temp-dir lifecycle. Each entity's real Quill-backed use-case layers are composed the same way `bootstrap`'s `WiringModule` does (`QuillDataSourceLayer.live >>> QuillXxxRepository.layer`, then `>>>` per service, combined with `++`); Airline orchestration not added yet |
+| `HttpDownloader` | `download(url: String, destFile: Path): ZIO[Client, Throwable, Path]` — implemented, reused unchanged for both Country and Airport sources | Streams the source URL to `destFile` (ZIO HTTP `Client.streaming` + redirect-following + non-2xx check, §4.4). `url: String`/`destFile` (a specific file, not a dir) — small deviations from this table's original sketch, settled once the component was actually built; logs start/success-with-size/failure (`ZIO.logInfo`/`logError`). Airport's OurAirports URL currently 301-redirects to a GitHub mirror — already covered by the existing `followRedirects`, confirmed live, no code change needed |
 | `CountryCsvParser` | `parse(file: Path): IO[IOException, List[CountryRow]]` — implemented | Skips the header line by position (never logged), then matches each remaining line against the §2.1 regex via `zio-nio`'s `Files.readAllLines` (§4.5) — no CSV library. A non-matching line is a tolerated parse error: logged at `WARN` with the raw line, skipped, processing continues (§8). `CountryRow`/`IOException`, not `SourceRow`/`Task` — settled once actually built, same as `HttpDownloader`'s deviations |
 | same parser | `toCommand(row: CountryRow): IO[DomainError, CreateCountryCommand]` — implemented | Mirrors the existing HTTP create path exactly (`CreateCountryRequest.toCommand`, `adapter-http/.../CountryDto.scala`): `CountryCode.validateAll` (accumulating, not `.make`'s fail-fast), folded into `DomainError.InvalidCountryCode` via `.toEitherWith` + `ZIO.fromEither`. `IO[DomainError, CreateCountryCommand]`, not the sketch's `Either[String, Command]`. First function in this module needing `domain` — `master-data-sync` now has `.dependsOn(domain)` in `build.sbt` (§3.1); `application`/`persistenceQuill` still not needed, since this only builds a command, it doesn't persist one |
-| `AirportCsvParser` / `AirlineCsvParser` | `parse(file: Path): Task[List[SourceRow]]` | Reads the downloaded file with `scala-csv` (`ZIO.attempt(CSVReader.open(file).all())`), yields one raw row per record |
-| same parser | `toCommand(row: SourceRow): Either[String, Command]` | Maps a raw row to the entity's create/update command, via the existing domain `Newtype.make`/`.validateAll` |
-| `EntitySync` | `loadExisting[K, E](findAll: UIO[List[E]], keyOf: E => K): UIO[Map[K, E]]` — implemented | Gets everything currently stored, keyed by natural key; takes the already-built `findAll` effect rather than a repository/use-case directly — each entity's `XxxSync` supplies its own unbounded read (§7.1) |
-| `EntitySync` | `reconcile[K, E](source: List[E], existing: Map[K, E], keyOf: E => K): SyncPlan[K, E]` — implemented | Pure diff, no I/O — buckets each source row into `toCreate`/`toUpdate`/`unchanged` (plain `==` equality, §9) and every leftover `existing` key into `toDelete` (§7.2). `SyncPlan[K, E](toCreate: List[E], toUpdate: List[E], toDelete: List[K], unchanged: Int)` |
-| `EntitySync` | `apply[K, E](plan, create, update, delete): UIO[SyncReport]` — implemented | Calls the entity's existing `Create`/`Update`/`Delete` use cases for each bucket, each via a caught effect — a failure is logged at `WARN` and counted as `skippedConflict`, never propagated (the generic mechanism behind §7.2's FK-violation-per-row handling) |
+| `AirportCsvParser` | `parse(file: Path): Task[List[AirportRow]]` — implemented | Reads the downloaded file with `scala-csv`'s `CSVReader.open(file.toFile).allWithHeaders()` (§2.2/§4.2), filters to `large_airport`/`medium_airport` rows (§9, silent — an expected exclusion, not a data problem), then per row: skips (logs `WARN`) a blank `iata_code` or a value that's neither `icao_code` nor its `ident` fallback in `AirportIcaoCode`'s 4-letter shape. `Task`, not `IO[IOException, _]` — `scala-csv` can throw more than `IOException` |
+| same parser | `toCommand(row: AirportRow): IO[DomainError, CreateAirportCommand]` — implemented | Mirrors `CreateAirportRequest.toCommand` (`adapter-http/.../airport/AirportDto.scala`) exactly: `IataCode.validateAll`/`AirportIcaoCode.validateAll` (accumulating) folded into `DomainError.InvalidIataCode`/`InvalidAirportIcaoCode`; `countryCode = CountryCode.unsafeMake(row.countryCode)` — a reference field, unvalidated at this boundary per `CLAUDE.md`'s convention |
+| `AirlineCsvParser` | `parse(file: Path): Task[List[AirlineRow]]` — implemented | `scala-csv`'s `CSVReader.open(file.toFile).all()` — no header row, unlike Country/Airport, so columns are read positionally (§2.3). Filters to `active == "Y"` (silent — an expected exclusion, §8), then skips (logs `WARN`) a row whose ICAO isn't a valid 3-letter shape. `\N`/blank → `None` for `alias`/`callsign` |
+| same parser | `toCommand(row: AirlineRow, countryNameToCode: Map[String, CountryCode]): IO[DomainError, CreateAirlineCommand]` — implemented | Mirrors `CreateAirlineRequest.toCommand` (`adapter-http/.../airline/AirlineDto.scala`) for `AirlineIcaoCode.validateAll`; unlike Country/Airport's `toCommand`, takes a second parameter — the source's `Country` column is a free-text *name*, not a code, so resolving it needs the caller-supplied live country-name map (built once in `AirlineSync.sync`, not per-row) plus a static `countryNameAliases` table for known name variants (§9). Fails with `DomainError.CountryNotFound` (reused, not a new case) when a name doesn't resolve |
+| `EntitySync` | `loadExisting[K, E](findAll: UIO[List[E]], keyOf: E => K): UIO[Map[K, E]]` — implemented, reused unchanged for Airport and Airline | Gets everything currently stored, keyed by natural key; takes the already-built `findAll` effect rather than a repository/use-case directly — each entity's `XxxSync` supplies its own unbounded read (§7.1). Airport's and Airline's `findAllUnbounded` both return `IO[DomainError, _]` (matching their own existing convention, unlike Country's `UIO`), so `AirportSync`/`AirlineSync` both adapt via `.orDieWith(...)` before passing it here |
+| `EntitySync` | `reconcile[K, E](source: List[E], existing: Map[K, E], keyOf: E => K): SyncPlan[K, E]` — implemented, reused unchanged for Airport and Airline | Pure diff, no I/O — buckets each source row into `toCreate`/`toUpdate`/`unchanged` (plain `==` equality, §9) and every leftover `existing` key into `toDelete` (§7.2). `SyncPlan[K, E](toCreate: List[E], toUpdate: List[E], toDelete: List[K], unchanged: Int)`. For Airport and Airline, the `==` on the bare entity can't see a country-only change (§9's documented gap); for Airline specifically, a handful of source rows sharing one ICAO code under different names (an OpenFlights data quirk, not this code) can also cycle between `toCreate`/`toUpdate` across separate runs — see §9 |
+| `EntitySync` | `apply[K, E](plan, create, update, delete): UIO[SyncReport]` — implemented, reused unchanged for Airport and Airline | Calls the entity's existing `Create`/`Update`/`Delete` use cases for each bucket, each via a caught effect — a failure is logged at `WARN` and counted as `skippedConflict`, never propagated (the generic mechanism behind §7.2's FK-violation-per-row handling). Verified live for Airport: Priština's airport (`iso_country = "XK"`, not a real country code) correctly skipped as `CountryNotFound`. Verified live for Airline: 7 duplicate-ICAO source rows correctly caught as `AirlineAlreadyExists`/skipped, none aborted the run |
+| `AirportSync` | `sync(file: Path): ZIO[CreateAirportUseCase & UpdateAirportUseCase & DeleteAirportUseCase & FindAirportUseCase, Throwable, SyncReport]` — implemented | Same shape as `CountrySync.sync`, plus a `countryCodeByIata: Map[IataCode, CountryCode]` built from the parsed source once — `Airport` itself carries no `countryCode` field, so `create`/`update`'s calls into the real use cases look the country code up from this map rather than the (bare-`Airport`) diff |
+| `AirlineSync` | `sync(file: Path): ZIO[CreateAirlineUseCase & UpdateAirlineUseCase & DeleteAirlineUseCase & FindAirlineUseCase & FindCountryUseCase, Throwable, SyncReport]` — implemented | Same shape again, plus `FindCountryUseCase` in its environment (reusing exactly what `CountrySync` already needs, no new dependency) to fetch the live `Country` list once for `AirlineCsvParser.toCommand`'s country-name resolution. `countryCodeByIcao: Map[AirlineIcaoCode, CountryCode]` built from the parsed commands, same trick `AirportSync` uses |
 | `Main` | cleanup | Deletes the temp dir (`TempDirectory.create`/`delete` via `ZIO.acquireRelease`, §4.3 — already implemented) once every entity has run |
 | `SyncReport` | `log(): UIO[Unit]` — implemented | Emits one summary line (`ZIO.logInfo`) with all six counters; `created`/`updated`/`deleted`/`unchanged`/`skippedConflict` come from `EntitySync.apply`, `skippedInvalid` stays `0` until a future increment sums in the parse/`toCommand` stage's skip count |
 
@@ -385,8 +400,9 @@ sequenceDiagram
     Main->>Main: log SyncReport summary
 ```
 
-Order across entities: **Country, then Airline and Airport** (the latter two are independent of each
-other, both depend only on Country existing first for creates/updates).
+Order across entities: **Country, then Airport and Airline** (the latter two are independent of each
+other, both depend only on Country existing first for creates/updates). Implemented and verified for
+all three, in this order.
 
 ---
 
@@ -451,9 +467,9 @@ key + reason) to act on without re-running.
 
 | Topic | Recommendation | Notes |
 |---|---|---|
-| Airport `type` filter | `large_airport` + `medium_airport` only | `small_airport`/`heliport`/`closed_airport`/etc. rarely carry a real IATA code; revisit if a future use case needs smaller fields |
-| Airline `foundationDate` gap | Needs a decision, not a default — either relax `airlines.foundation_date` to nullable for sync-originated rows, or accept a documented sentinel and flag those rows for manual backfill | No source found in research supplies this field; either option touches an existing `NOT NULL` migration/domain invariant |
-| Airline `Country` (name, not code) | Build a small static name→`CountryCode` lookup table; log+skip unmatched names (or skip the whole row if Country is mandatory on create) | Country-name spelling varies across sources |
+| Airport `type` filter | **Decided and implemented.** `large_airport` + `medium_airport` only | `small_airport`/`heliport`/`closed_airport`/etc. rarely carry a real IATA code; revisit if a future use case needs smaller fields. Implemented in `AirportCsvParser.parse` as a silent exclusion (§8) — verified live, 5,276 of 85,797 rows matched. See `plans/masterdata/airport-sync.md` |
+| Airline `foundationDate` gap | **Resolved — removed, not defaulted.** `foundationDate` dropped from `Airline` entirely; `alias`/`callsign` (real OpenFlights fields) modeled instead | No source ever supplied this field (confirmed against OpenFlights' own schema docs — 8 fields, no date). Removing it, rather than a sentinel/nullable workaround, means the sync tool needed no special-casing at all for this field. See `plans/redesign-airline-drop-foundation-date.md` |
+| Airline `Country` (name, not code) | **Decided and implemented.** Small static name→`CountryCode` lookup table (via a live-fetched `Country` list); log+skip unmatched names | Country-name spelling varies across sources (e.g. `"Turkey"` → `"Türkiye"`, `"Russia"` → `"Russian Federation (the)"`) — verified live: 148 of 196 distinct active-airline country names matched directly, the rest covered by the alias table or correctly left unmapped (e.g. `"Netherlands Antilles"`, dissolved 2010). See `plans/masterdata/airline-sync.md` |
 | CSV library | **Decided.** `scala-csv` 2.0.0 (Country parses via regex instead, §2.1) | Full comparison and rejected alternatives: §4.2/§10 |
 | Temp directory library | **Decided and implemented, with a caveat.** `zio-nio` 2.0.2 (`Files.createTempDirectory` + `deleteRecursive`, exposed as this project's own `TempDirectory.create`/`delete`) | Closes a recursive-delete gap the plain-JDK baseline leaves unimplemented; caveat is the dependency's own last release/commit being from Oct 2023. Rejected alternatives: §4.3/§10. See `plans/masterdata/master-data-sync-scaffold.md` |
 | HTTP download client | **Decided and implemented.** `zio-http` `Client`, Country source only so far | Already a build dependency, no new artifact; needs redirect-following (Country's source URL redirects) and non-2xx detection, both confirmed capabilities. Rejected alternatives: §4.4/§10. See `plans/masterdata/http-downloader-country.md` |
@@ -461,8 +477,11 @@ key + reason) to act on without re-running.
 | Scheduling mechanism | **Decided.** Standalone `ZIOAppDefault` app, packaged like `bootstrap` (`sbt-assembly`), invoked by an OS-level (`crontab`) entry on whatever host runs it — `0 0 1 */6 *` for a "1st of the month, every 6 months" cadence, or similar | The app has no built-in scheduling awareness — the OS decides when to run `java -jar master-data-sync.jar`. Rejected alternative (GitHub Actions `schedule:`): §10 |
 | Dry-run mode | Recommend a `--dry-run` flag that logs the diff (create/update/delete counts + affected rows) without writing | Deletes are destructive and the Airline source has known gaps; a first run should be inspectable before it's trusted unattended |
 | "Different" comparison for updates | **Decided and implemented.** Field-by-field equality on the mapped subset of columns only — plain `==` on the case class, no custom typeclass (`EntitySync.reconcile`) | Avoids spurious updates from OurAirports/OpenFlights columns this project doesn't model; correct today since Country's case class already contains exactly the mapped fields — revisit if a future entity's case class carries fields the source doesn't supply |
-| Bulk-read for `loadExisting` — Country **done**, Airport/Airline still open | Country's `findAllUnbounded` (§7.1) is implemented and verified live; not yet extended to Airport/Airline | Twice-a-year batch job, so even a fully unbounded read of a few thousand rows is unlikely to be a real problem — but flagging rather than assuming |
-| Generic reconciliation algorithm (`EntitySync`) | **Decided and implemented, now wired end-to-end for Country.** Type-parameterized over `K`/`E`, fixed on `DomainError` as the create/update/delete error channel, never fails the fiber (caught + `WARN` log + counted as `skippedConflict`) | `CountrySync` drives it against the real `Create`/`Update`/`DeleteCountryService`, verified live against Postgres (created 248, then a second run reported 0 writes/249 unchanged — idempotent). The FK-violation-to-`DomainError` mapping gap in `QuillCountryRepository` (§7.2) is a separate, still-open problem — not a risk for Country alone (no FK references it), but relevant once Airport/Airline sync can delete a Country. See `plans/masterdata/entity-sync.md` and `plans/masterdata/country-sync-wiring.md` |
+| Bulk-read for `loadExisting` — **all three entities done** | All three `findAllUnbounded` implementations (§7.1) are implemented and verified live | Twice-a-year batch job, so even a fully unbounded read of a few thousand rows is unlikely to be a real problem — but flagging rather than assuming. Airport's and Airline's are both `IO[DomainError, List[_]]` (matching each entity's own existing convention), not `UIO` like Country's — `AirportSync`/`AirlineSync` both adapt with `.orDieWith(...)` at the `EntitySync.loadExisting` call site. See `plans/masterdata/airport-sync.md`, `plans/masterdata/airline-sync.md` |
+| Generic reconciliation algorithm (`EntitySync`) | **Decided and implemented, now wired end-to-end for all three entities.** Type-parameterized over `K`/`E`, fixed on `DomainError` as the create/update/delete error channel, never fails the fiber (caught + `WARN` log + counted as `skippedConflict`) | `CountrySync`/`AirportSync`/`AirlineSync` all drive it against the real `Create`/`Update`/`DeleteXxxService`s, verified live against Postgres (Country: created 248, then unchanged; Airport: created 4,534, then unchanged; Airline: created 1,009, then unchanged with a 7-row nuance — see below). `EntitySync` itself needed zero changes across all three entities — fully reused. The FK-violation-to-`DomainError` mapping gap in `QuillCountryRepository` (§7.2) is a separate, still-open problem — not a risk for Country alone (no FK references it), but relevant once a Country-deletion path is exercised (an Airport/Airline row disappearing from its own source only deletes that row, not the Country). See `plans/masterdata/entity-sync.md`, `plans/masterdata/country-sync-wiring.md`, `plans/masterdata/airport-sync.md`, and `plans/masterdata/airline-sync.md` |
+| Airport/Airline reconcile diff can't detect a country-only change | **Known, accepted gap, both entities** — neither `Airport`'s nor `Airline`'s case class has a `countryCode` field (the relationship is resolved separately via `save`/`.update`'s extra param), so `EntitySync.reconcile`'s `==` diff on the bare entity won't flag a source row whose *only* change is its country; it reads as unchanged | `countryCode` is still always correct on create/update — `AirportSync.sync`/`AirlineSync.sync` each build a `countryCodeByIata`/`countryCodeByIcao` map from the parsed source and look it up independently of the diff. Accepted rather than fixed with a richer wrapper type, since that would need an extra per-row country lookup for every *existing* row just to build the comparison value, for what's expected to be a rare case. See `plans/masterdata/airport-sync.md`, `plans/masterdata/airline-sync.md` |
+| Airline: duplicate ICAO codes within the OpenFlights source itself | **Known, accepted, source-data quirk — not a bug.** A handful of OpenFlights rows (7, verified live) share one ICAO code under different names (e.g. two distinct `JAL` entries). `EntitySync.reconcile` doesn't deduplicate *within* a single source batch, so both same-keyed rows get processed against the one `existing` entry: the first succeeds, the second hits `AirlineAlreadyExists` and is counted as `skippedConflict` — exactly the generic per-row tolerance `EntitySync.apply` already provides, working correctly on a case the design didn't specifically anticipate. On a later run, the *other* duplicate can look like an "update" against what's stored, since the source always contains both, so these 7 rows may not settle into a stable `unchanged` count run-over-run | Not fixed with source-side deduplication — would add real complexity to `EntitySync`'s otherwise-fully-generic reconcile for a ~0.7% edge case (7 of 1,009 rows), and causes no data loss (the row count itself stays stable). See `plans/masterdata/airline-sync.md` |
+| Generalize `CountrySync`/`AirportSync`'s glue and `Main`'s per-entity layer-wiring | **Not yet — revisit once Airline lands.** `EntitySync`/`SyncReport`/`HttpDownloader`/`TempDirectory` are already generalized (parametric over `K`/`E`, reused unchanged by Airport); what's still duplicated is (1) each `XxxSync.sync`'s glue — `parse → toCommand-per-row → collect Rights → loadExisting → reconcile → apply → copy(skippedInvalid)` is structurally identical in `CountrySync`/`AirportSync`, differing only in the concrete `Row`/`Command`/`Entity`/`Key` types (plus Airport's extra `countryCodeByIata` step) — and (2) `Main`'s `countryRepoLayer`/`countryUseCasesLayer` vs `airportRepoLayer`/`airportUseCasesLayer`, same `QuillDataSourceLayer.live >>> QuillXxxRepository.layer` then `>>>`-per-service-`++`-combined shape repeated verbatim | Two instances (Country, Airport) risk guessing the wrong generic shape — build Airline first by copy-and-adapt, then extract a generic `EntitySync.syncEntity(parse, toCommand, toEntity, keyOf, create, update, delete, findAllUnbounded)` helper and a small generic layer-builder only if the third instance confirms the same shape (Rule of Three). If it does, generalize via **composition** (higher-order functions/type parameters, matching every other generic piece this module already has) — **not inheritance**; this codebase never uses class hierarchies for behavior reuse, only ZIO/FP composition, and traits here are hexagonal ports, not implementation base classes |
 
 ---
 

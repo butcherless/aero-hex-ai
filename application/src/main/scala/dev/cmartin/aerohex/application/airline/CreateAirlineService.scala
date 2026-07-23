@@ -13,7 +13,7 @@ final class CreateAirlineService(repo: AirlineRepository) extends CreateAirlineU
     val effect = repo.findByIcao(command.icao).flatMap:
       case Some(_) => ZIO.fail(DomainError.AirlineAlreadyExists(command.icao.value))
       case None    =>
-        repo.save(Airline(command.icao, command.name, command.foundationDate), command.countryCode)
+        repo.save(Airline(command.icao, command.name, command.alias, command.callsign), command.countryCode)
     effect @@ ServiceAspect.logged(s"CreateAirlineService.create(${command.icao.value})")
 
 object CreateAirlineService:

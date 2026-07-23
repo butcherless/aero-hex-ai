@@ -50,12 +50,17 @@ type AirlineIcaoCode = AirlineIcaoCode.Type
   *   the airline's full name (e.g. `"Iberia"`). Must not be blank in practice
   *   (BR-14), enforced only at the HTTP write boundary
   *   (`Validator.minLength(1)`), not by this type.
-  * @param foundationDate
-  *   the date the airline was founded. No plausibility check (e.g. not in the
-  *   future) beyond the SQL `DATE` type at the persistence layer.
+  * @param alias
+  *   an alternative commercial name the airline is commonly known by (e.g.
+  *   `"Vueling"` for an airline whose registered name differs), if any. Plain
+  *   `Option[String]`, no shape rule — mirrors `Flight.alias`'s treatment.
+  * @param callsign
+  *   the airline's radiotelephony callsign (e.g. `"IBERIA"`), if any. Plain
+  *   `Option[String]`, no shape rule.
   */
 case class Airline(
     icao: AirlineIcaoCode,
     name: String,
-    foundationDate: java.time.LocalDate
+    alias: Option[String],
+    callsign: Option[String]
 )

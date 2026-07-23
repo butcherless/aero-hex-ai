@@ -16,14 +16,13 @@ import dev.cmartin.aerohex.domain.airline.{
 import dev.cmartin.aerohex.domain.country.{Country, CountryCode}
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.shared.Pagination
-import java.time.LocalDate
 import zio.test.*
 import zio.{Ref, Scope, ZIO, ZLayer}
 
 object AirlineServiceSpec extends ZIOSpecDefault:
 
-  private val iberia  = Airline(AirlineIcaoCode("IBE"), "Iberia", LocalDate.of(1927, 6, 28))
-  private val vueling = Airline(AirlineIcaoCode("VLG"), "Vueling", LocalDate.of(2004, 3, 1))
+  private val iberia  = Airline(AirlineIcaoCode("IBE"), "Iberia", None, Some("IBERIA"))
+  private val vueling = Airline(AirlineIcaoCode("VLG"), "Vueling", None, Some("VUELING"))
   private val spain   = Country(CountryCode("ES"), "Spain")
 
   override def spec: Spec[TestEnvironment & Scope, Any] =
@@ -37,7 +36,7 @@ object AirlineServiceSpec extends ZIOSpecDefault:
                           onSave = (a, _) => savedRef.set(Some(a)).as(a)
                         )
             command   =
-              CreateAirlineCommand(AirlineIcaoCode("IBE"), "Iberia", LocalDate.of(1927, 6, 28), CountryCode("ES"))
+              CreateAirlineCommand(AirlineIcaoCode("IBE"), "Iberia", None, Some("IBERIA"), CountryCode("ES"))
             result   <- new CreateAirlineService(repo).create(command)
             saved    <- savedRef.get
           yield assertTrue(
@@ -48,7 +47,7 @@ object AirlineServiceSpec extends ZIOSpecDefault:
         test("fails with AirlineAlreadyExists and never calls save when the airline already exists") {
           val repo    = stubAirlineRepo(onFindByIcao = _ => ZIO.some(iberia))
           val command =
-            CreateAirlineCommand(AirlineIcaoCode("IBE"), "Other name", LocalDate.of(1927, 6, 28), CountryCode("ES"))
+            CreateAirlineCommand(AirlineIcaoCode("IBE"), "Other name", None, Some("IBERIA"), CountryCode("ES"))
           for error <- new CreateAirlineService(repo).create(command).flip
           yield assertTrue(error == DomainError.AirlineAlreadyExists("IBE"))
         }
@@ -95,7 +94,8 @@ object AirlineServiceSpec extends ZIOSpecDefault:
               UpdateAirlineCommand(
                 AirlineIcaoCode("IBE"),
                 "Iberia Airlines",
-                LocalDate.of(1927, 6, 28),
+                None,
+                Some("IBERIA"),
                 CountryCode("ES")
               )
             result      <- new UpdateAirlineService(repo).update(command)
@@ -108,7 +108,7 @@ object AirlineServiceSpec extends ZIOSpecDefault:
         test("propagates AirlineNotFound from the repository") {
           val repo    = stubAirlineRepo(onUpdate = (_, _) => ZIO.fail(DomainError.AirlineNotFound("XXX")))
           val command =
-            UpdateAirlineCommand(AirlineIcaoCode("XXX"), "Nowhere", LocalDate.of(2000, 1, 1), CountryCode("ES"))
+            UpdateAirlineCommand(AirlineIcaoCode("XXX"), "Nowhere", None, None, CountryCode("ES"))
           for error <- new UpdateAirlineService(repo).update(command).flip
           yield assertTrue(error == DomainError.AirlineNotFound("XXX"))
         }

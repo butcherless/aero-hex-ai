@@ -9,10 +9,12 @@ object CountrySync:
 
   private def keyOf(country: Country): CountryCode = country.code
 
-  /** Downloads-having-already-happened entry point: parses the given Country CSV file, validates each
-    * row the same way the HTTP create path does, then reconciles the valid rows against whatever is
-    * currently stored, calling the real Create/Update/Delete use cases for every row that needs one.
-    * A row that fails parsing or validation is logged and skipped, not allowed to abort the sync.
+  /** Downloads-having-already-happened entry point: parses the given Country
+    * CSV file, validates each row the same way the HTTP create path does, then
+    * reconciles the valid rows against whatever is currently stored, calling
+    * the real Create/Update/Delete use cases for every row that needs one. A
+    * row that fails parsing or validation is logged and skipped, not allowed to
+    * abort the sync.
     */
   def sync(file: Path): ZIO[
     CreateCountryUseCase & UpdateCountryUseCase & DeleteCountryUseCase & FindCountryUseCase,

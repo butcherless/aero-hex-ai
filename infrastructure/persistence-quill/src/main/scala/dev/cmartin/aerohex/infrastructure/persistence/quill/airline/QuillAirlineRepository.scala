@@ -9,7 +9,6 @@ import dev.cmartin.aerohex.infrastructure.persistence.quill.country.QuillCountry
 import dev.cmartin.aerohex.shared.Pagination
 import io.getquill.*
 import io.getquill.jdbczio.Quill
-import java.time.LocalDate
 import javax.sql.DataSource
 import zio.{IO, URLayer, ZLayer}
 
@@ -19,7 +18,8 @@ final class QuillAirlineRepository(dataSource: DataSource) extends AirlineReposi
       id: Long,
       icaoCode: String,
       name: String,
-      foundationDate: LocalDate,
+      alias: Option[String],
+      callsign: Option[String],
       countryId: Long
   )
 
@@ -28,7 +28,7 @@ final class QuillAirlineRepository(dataSource: DataSource) extends AirlineReposi
   import ctx.*
 
   private def toAirline(a: AirlineRow): Airline =
-    Airline(AirlineIcaoCode.unsafeMake(a.icaoCode), a.name, a.foundationDate)
+    Airline(AirlineIcaoCode.unsafeMake(a.icaoCode), a.name, a.alias, a.callsign)
 
   override def findByIcao(icao: AirlineIcaoCode): IO[DomainError, Option[Airline]] =
     ctx
@@ -51,6 +51,14 @@ final class QuillAirlineRepository(dataSource: DataSource) extends AirlineReposi
       .map(_.map(toAirline))
       .orDie
   }
+
+  override def findAllUnbounded: IO[DomainError, List[Airline]] =
+    ctx
+      .run(quote {
+        querySchema[AirlineRow]("airlines").sortBy(_.icaoCode)
+      })
+      .map(_.map(toAirline))
+      .orDie
 
   override def findByCountry(code: CountryCode, pagination: Pagination): IO[DomainError, List[Airline]] = {
     val offset = pagination.offset
@@ -76,10 +84,11 @@ final class QuillAirlineRepository(dataSource: DataSource) extends AirlineReposi
         ctx
           .run(quote {
             querySchema[AirlineRow]("airlines").insert(
-              _.icaoCode       -> lift(airline.icao.value),
-              _.name           -> lift(airline.name),
-              _.foundationDate -> lift(airline.foundationDate),
-              _.countryId      -> lift(countryId)
+              _.icaoCode  -> lift(airline.icao.value),
+              _.name      -> lift(airline.name),
+              _.alias     -> lift(airline.alias),
+              _.callsign  -> lift(airline.callsign),
+              _.countryId -> lift(countryId)
             )
           })
           .as(airline)
@@ -93,9 +102,10 @@ final class QuillAirlineRepository(dataSource: DataSource) extends AirlineReposi
           querySchema[AirlineRow]("airlines")
             .filter(_.icaoCode == lift(airline.icao.value))
             .update(
-              _.name           -> lift(airline.name),
-              _.foundationDate -> lift(airline.foundationDate),
-              _.countryId      -> lift(countryId)
+              _.name      -> lift(airline.name),
+              _.alias     -> lift(airline.alias),
+              _.callsign  -> lift(airline.callsign),
+              _.countryId -> lift(countryId)
             )
         })
       )(DomainError.AirlineNotFound(airline.icao.value), airline)

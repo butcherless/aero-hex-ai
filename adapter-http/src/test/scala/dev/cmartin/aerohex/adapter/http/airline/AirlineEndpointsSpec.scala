@@ -6,7 +6,6 @@ import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.route.FindAirlinesByRouteUseCase
 import dev.cmartin.aerohex.shared.Pagination
 import io.circe.generic.auto.*
-import java.time.LocalDate
 import sttp.client4.*
 import sttp.client4.circe.*
 import sttp.client4.impl.zio.RIOMonadAsyncError
@@ -18,18 +17,20 @@ import zio.{IO, Scope, Task, ZIO, ZLayer}
 
 object AirlineEndpointsSpec extends ZIOSpecDefault:
 
-  private val iberia  = Airline(AirlineIcaoCode("IBE"), "Iberia", LocalDate.of(1927, 6, 28))
-  private val vueling = Airline(AirlineIcaoCode("VLG"), "Vueling", LocalDate.of(2004, 3, 1))
+  private val iberia  = Airline(AirlineIcaoCode("IBE"), "Iberia", None, Some("IBERIA"))
+  private val vueling = Airline(AirlineIcaoCode("VLG"), "Vueling", None, Some("VUELING"))
 
   // ── Stub use-case implementations ─────────────────────────────────────────
 
   private val defaultFind: FindAirlineUseCase = new FindAirlineUseCase:
     def findByIcao(icao: String): IO[DomainError, Airline]     = ZIO.succeed(iberia)
     def findAll(p: Pagination): IO[DomainError, List[Airline]] = ZIO.succeed(List(iberia, vueling))
+    def findAllUnbounded: IO[DomainError, List[Airline]]       = ZIO.succeed(List(iberia, vueling))
 
   private val notFoundFind: FindAirlineUseCase = new FindAirlineUseCase:
     def findByIcao(icao: String): IO[DomainError, Airline]     = ZIO.fail(DomainError.AirlineNotFound(icao))
     def findAll(p: Pagination): IO[DomainError, List[Airline]] = ZIO.fail(DomainError.AirlineNotFound("n/a"))
+    def findAllUnbounded: IO[DomainError, List[Airline]]       = ZIO.fail(DomainError.AirlineNotFound("n/a"))
 
   private val defaultCreate: CreateAirlineUseCase = (_: CreateAirlineCommand) => ZIO.succeed(iberia)
 
@@ -170,7 +171,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
             response <-
               basicRequest
                 .post(uri"https://test.com/api/v1/airlines")
-                .body("""{"icao":"IBE","name":"Iberia","foundationDate":"1927-06-28","countryCode":"ES"}""")
+                .body("""{"icao":"IBE","name":"Iberia","alias":null,"callsign":"IBERIA","countryCode":"ES"}""")
                 .contentType("application/json")
                 .response(asJson[AirlineDto])
                 .send(makeBackend())
@@ -186,7 +187,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
             response <-
               basicRequest
                 .post(uri"https://test.com/api/v1/airlines")
-                .body("""{"icao":"IBE","name":"Iberia","foundationDate":"1927-06-28","countryCode":"ES"}""")
+                .body("""{"icao":"IBE","name":"Iberia","alias":null,"callsign":"IBERIA","countryCode":"ES"}""")
                 .contentType("application/json")
                 .send(makeBackend(create = conflictCreate))
           yield assertTrue(response.code == StatusCode.Conflict)
@@ -196,7 +197,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
             response <-
               basicRequest
                 .post(uri"https://test.com/api/v1/airlines")
-                .body("""{"icao":"IBE","name":"Iberia","foundationDate":"1927-06-28","countryCode":"XX"}""")
+                .body("""{"icao":"IBE","name":"Iberia","alias":null,"callsign":"IBERIA","countryCode":"XX"}""")
                 .contentType("application/json")
                 .send(makeBackend(create = countryNotFoundCreate))
           yield assertTrue(response.code == StatusCode.NotFound)
@@ -206,7 +207,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
             response <-
               basicRequest
                 .post(uri"https://test.com/api/v1/airlines")
-                .body("""{"icao":"I","name":"Iberia","foundationDate":"1927-06-28","countryCode":"ES"}""")
+                .body("""{"icao":"I","name":"Iberia","alias":null,"callsign":"IBERIA","countryCode":"ES"}""")
                 .contentType("application/json")
                 .send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
@@ -216,7 +217,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
             response <-
               basicRequest
                 .post(uri"https://test.com/api/v1/airlines")
-                .body("""{"icao":"123","name":"Nowhere","foundationDate":"1927-06-28","countryCode":"ES"}""")
+                .body("""{"icao":"123","name":"Nowhere","alias":null,"callsign":"IBERIA","countryCode":"ES"}""")
                 .contentType("application/json")
                 .send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
@@ -226,7 +227,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
             response <-
               basicRequest
                 .post(uri"https://test.com/api/v1/airlines")
-                .body("""{"icao":"IBE","name":"","foundationDate":"1927-06-28","countryCode":"ES"}""")
+                .body("""{"icao":"IBE","name":"","alias":null,"callsign":"IBERIA","countryCode":"ES"}""")
                 .contentType("application/json")
                 .send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
@@ -238,7 +239,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
             response <-
               basicRequest
                 .put(uri"https://test.com/api/v1/airlines/IBE")
-                .body("""{"name":"Iberia Airlines","foundationDate":"1927-06-28","countryCode":"ES"}""")
+                .body("""{"name":"Iberia Airlines","alias":null,"callsign":"IBERIA","countryCode":"ES"}""")
                 .contentType("application/json")
                 .response(asJson[AirlineDto])
                 .send(makeBackend())
@@ -253,7 +254,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
             response <-
               basicRequest
                 .put(uri"https://test.com/api/v1/airlines/XXX")
-                .body("""{"name":"Nowhere","foundationDate":"1927-06-28","countryCode":"ES"}""")
+                .body("""{"name":"Nowhere","alias":null,"callsign":"IBERIA","countryCode":"ES"}""")
                 .contentType("application/json")
                 .send(makeBackend(update = notFoundUpdate))
           yield assertTrue(response.code == StatusCode.NotFound)
@@ -263,7 +264,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
             response <-
               basicRequest
                 .put(uri"https://test.com/api/v1/airlines/IBE")
-                .body("""{"name":"Iberia","foundationDate":"1927-06-28","countryCode":"XX"}""")
+                .body("""{"name":"Iberia","alias":null,"callsign":"IBERIA","countryCode":"XX"}""")
                 .contentType("application/json")
                 .send(makeBackend(update = countryNotFoundUpdate))
           yield assertTrue(response.code == StatusCode.NotFound)
@@ -273,7 +274,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
             response <-
               basicRequest
                 .put(uri"https://test.com/api/v1/airlines/IB")
-                .body("""{"name":"Iberia","foundationDate":"1927-06-28","countryCode":"ES"}""")
+                .body("""{"name":"Iberia","alias":null,"callsign":"IBERIA","countryCode":"ES"}""")
                 .contentType("application/json")
                 .send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
@@ -283,7 +284,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
             response <-
               basicRequest
                 .put(uri"https://test.com/api/v1/airlines/IBE")
-                .body("""{"name":"","foundationDate":"1927-06-28","countryCode":"ES"}""")
+                .body("""{"name":"","alias":null,"callsign":"IBERIA","countryCode":"ES"}""")
                 .contentType("application/json")
                 .send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)

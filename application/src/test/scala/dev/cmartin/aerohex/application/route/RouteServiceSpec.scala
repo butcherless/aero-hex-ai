@@ -15,7 +15,6 @@ import dev.cmartin.aerohex.domain.route.{
   Route
 }
 import dev.cmartin.aerohex.shared.Pagination
-import java.time.LocalDate
 import zio.test.*
 import zio.{IO, Scope, ZIO, ZLayer}
 
@@ -24,12 +23,14 @@ object RouteServiceSpec extends ZIOSpecDefault:
   private val mad    = Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Barajas", "Madrid")
   private val tfn    = Airport(IataCode("TFN"), AirportIcaoCode("GCXO"), "Norte", "Tenerife")
   private val route  = Route(IataCode("MAD"), IataCode("TFN"), 1740)
-  private val iberia = Airline(AirlineIcaoCode("IBE"), "Iberia", LocalDate.of(1927, 6, 28))
+  private val iberia = Airline(AirlineIcaoCode("IBE"), "Iberia", None, Some("IBERIA"))
 
   private def findAirportStub(byIata: String => IO[DomainError, Airport]): FindAirportUseCase =
     new FindAirportUseCase:
       def findByIata(iata: String): IO[DomainError, Airport]          = byIata(iata)
       def findAll(p: Pagination): IO[DomainError, List[Airport]]      = ZIO.die(new NotImplementedError("findAll"))
+      def findAllUnbounded: IO[DomainError, List[Airport]]            =
+        ZIO.die(new NotImplementedError("findAllUnbounded"))
       def searchByName(query: String): IO[DomainError, List[Airport]] =
         ZIO.die(new NotImplementedError("searchByName"))
 

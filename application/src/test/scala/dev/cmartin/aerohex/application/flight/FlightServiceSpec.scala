@@ -17,7 +17,7 @@ import dev.cmartin.aerohex.domain.flight.{
   UpdateFlightUseCase
 }
 import dev.cmartin.aerohex.shared.Pagination
-import java.time.{LocalDate, LocalTime}
+import java.time.LocalTime
 import zio.test.*
 import zio.{Ref, Scope, ZIO, ZLayer}
 
@@ -33,7 +33,7 @@ object FlightServiceSpec extends ZIOSpecDefault:
     AirlineIcaoCode("AEA")
   )
 
-  private val airEuropa = Airline(AirlineIcaoCode("AEA"), "Air Europa", LocalDate.of(1986, 11, 21))
+  private val airEuropa = Airline(AirlineIcaoCode("AEA"), "Air Europa", None, Some("AIR EUROPA"))
 
   private val vy1234 = Flight(
     FlightCode("VY1234"),

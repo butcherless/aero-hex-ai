@@ -10,11 +10,11 @@ import zio.test.*
 object CountrySyncSpec extends ZIOSpecDefault:
 
   private final case class StubUseCases(
-    create: CreateCountryUseCase,
-    update: UpdateCountryUseCase,
-    delete: DeleteCountryUseCase,
-    find: FindCountryUseCase,
-    currentState: UIO[List[Country]]
+      create: CreateCountryUseCase,
+      update: UpdateCountryUseCase,
+      delete: DeleteCountryUseCase,
+      find: FindCountryUseCase,
+      currentState: UIO[List[Country]]
   )
 
   private def stubUseCases(initial: List[Country]): UIO[StubUseCases] =
@@ -32,10 +32,10 @@ object CountrySyncSpec extends ZIOSpecDefault:
       val find: FindCountryUseCase = new FindCountryUseCase:
         def findByCode(code: CountryCode): IO[DomainError, Country] =
           ZIO.die(new NotImplementedError("findByCode"))
-        def findAll(p: Pagination): UIO[List[Country]]               =
+        def findAll(p: Pagination): UIO[List[Country]]              =
           ZIO.die(new NotImplementedError("findAll"))
-        def findAllUnbounded: UIO[List[Country]]                     = state.get
-        def searchByName(q: String): UIO[List[Country]]              =
+        def findAllUnbounded: UIO[List[Country]]                    = state.get
+        def searchByName(q: String): UIO[List[Country]]             =
           ZIO.die(new NotImplementedError("searchByName"))
 
       StubUseCases(create, update, delete, find, state.get)
@@ -70,7 +70,8 @@ object CountrySyncSpec extends ZIOSpecDefault:
           finalState <- useCases.currentState
           _          <- TempDirectory.delete(fixture.dir)
         yield assertTrue(
-          report == SyncReport(created = 1, updated = 0, deleted = 0, unchanged = 0, skippedInvalid = 0, skippedConflict = 0),
+          report ==
+            SyncReport(created = 1, updated = 0, deleted = 0, unchanged = 0, skippedInvalid = 0, skippedConflict = 0),
           finalState == List(Country(CountryCode("ES"), "Spain"))
         )
       },
@@ -82,7 +83,8 @@ object CountrySyncSpec extends ZIOSpecDefault:
           finalState <- useCases.currentState
           _          <- TempDirectory.delete(fixture.dir)
         yield assertTrue(
-          report == SyncReport(created = 0, updated = 1, deleted = 0, unchanged = 0, skippedInvalid = 0, skippedConflict = 0),
+          report ==
+            SyncReport(created = 0, updated = 1, deleted = 0, unchanged = 0, skippedInvalid = 0, skippedConflict = 0),
           finalState == List(Country(CountryCode("ES"), "Spain"))
         )
       },
@@ -94,7 +96,8 @@ object CountrySyncSpec extends ZIOSpecDefault:
           finalState <- useCases.currentState
           _          <- TempDirectory.delete(fixture.dir)
         yield assertTrue(
-          report == SyncReport(created = 0, updated = 0, deleted = 1, unchanged = 1, skippedInvalid = 0, skippedConflict = 0),
+          report ==
+            SyncReport(created = 0, updated = 0, deleted = 1, unchanged = 1, skippedInvalid = 0, skippedConflict = 0),
           finalState == List(Country(CountryCode("ES"), "Spain"))
         )
       },
@@ -111,7 +114,8 @@ object CountrySyncSpec extends ZIOSpecDefault:
           finalState <- useCases.currentState
           _          <- TempDirectory.delete(fixture.dir)
         yield assertTrue(
-          report == SyncReport(created = 0, updated = 0, deleted = 0, unchanged = 1, skippedInvalid = 0, skippedConflict = 0),
+          report ==
+            SyncReport(created = 0, updated = 0, deleted = 0, unchanged = 1, skippedInvalid = 0, skippedConflict = 0),
           finalState == List(Country(CountryCode("ES"), "Spain"))
         )
       }

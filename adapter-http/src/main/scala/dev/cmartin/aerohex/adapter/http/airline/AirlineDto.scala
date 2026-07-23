@@ -5,7 +5,6 @@ import dev.cmartin.aerohex.domain.airline.{Airline, AirlineIcaoCode}
 import dev.cmartin.aerohex.domain.airline.{CreateAirlineCommand, UpdateAirlineCommand}
 import dev.cmartin.aerohex.domain.country.CountryCode
 import dev.cmartin.aerohex.domain.error.DomainError
-import java.time.LocalDate
 import sttp.tapir.Schema
 import sttp.tapir.Validator
 import zio.{IO, ZIO}
@@ -16,23 +15,31 @@ private val icaoSchema: Schema[String] => Schema[String] = _.description("3-lett
   .validate(Validator.maxLength(3))
   .encodedExample("IBE")
 
-case class AirlineDto(icao: String, name: String, foundationDate: String)
+case class AirlineDto(icao: String, name: String, alias: Option[String], callsign: Option[String])
 
 object AirlineDto {
   def fromDomain(airline: Airline): AirlineDto =
     AirlineDto(
       icao = airline.icao.value,
       name = airline.name,
-      foundationDate = airline.foundationDate.toString
+      alias = airline.alias,
+      callsign = airline.callsign
     )
 
   given Schema[AirlineDto] = Schema.derived[AirlineDto]
     .modify(_.icao)(icaoSchema)
     .modify(_.name)(_.description("Full airline name.").encodedExample("Iberia"))
-    .modify(_.foundationDate)(_.description("Date the airline was founded (ISO 8601).").encodedExample("1927-06-28"))
+    .modify(_.alias)(_.description("Alternative commercial name, if any.").encodedExample("Vueling"))
+    .modify(_.callsign)(_.description("Radiotelephony callsign, if any.").encodedExample("IBERIA"))
 }
 
-case class CreateAirlineRequest(icao: String, name: String, foundationDate: String, countryCode: String)
+case class CreateAirlineRequest(
+    icao: String,
+    name: String,
+    alias: Option[String],
+    callsign: Option[String],
+    countryCode: String
+)
 
 object CreateAirlineRequest {
   def toCommand(req: CreateAirlineRequest): IO[DomainError, CreateAirlineCommand] =
@@ -46,7 +53,8 @@ object CreateAirlineRequest {
         CreateAirlineCommand(
           icao = icao,
           name = req.name,
-          foundationDate = LocalDate.parse(req.foundationDate),
+          alias = req.alias,
+          callsign = req.callsign,
           countryCode = CountryCode.unsafeMake(req.countryCode)
         )
       )
@@ -56,20 +64,20 @@ object CreateAirlineRequest {
     .modify(_.name)(
       _.description("Full airline name.").validate(Validator.minLength(1)).encodedExample("Iberia")
     )
-    .modify(_.foundationDate)(
-      _.description("Date the airline was founded (ISO 8601).").encodedExample("1927-06-28")
-    )
+    .modify(_.alias)(_.description("Alternative commercial name, if any.").encodedExample("Vueling"))
+    .modify(_.callsign)(_.description("Radiotelephony callsign, if any.").encodedExample("IBERIA"))
     .modify(_.countryCode)(SchemaModifiers.countryCode)
 }
 
-case class UpdateAirlineRequest(name: String, foundationDate: String, countryCode: String)
+case class UpdateAirlineRequest(name: String, alias: Option[String], callsign: Option[String], countryCode: String)
 
 object UpdateAirlineRequest {
   def toCommand(icao: String, req: UpdateAirlineRequest): UpdateAirlineCommand =
     UpdateAirlineCommand(
       icao = AirlineIcaoCode.unsafeMake(icao),
       name = req.name,
-      foundationDate = LocalDate.parse(req.foundationDate),
+      alias = req.alias,
+      callsign = req.callsign,
       countryCode = CountryCode.unsafeMake(req.countryCode)
     )
 
@@ -77,8 +85,7 @@ object UpdateAirlineRequest {
     .modify(_.name)(
       _.description("Full airline name.").validate(Validator.minLength(1)).encodedExample("Iberia")
     )
-    .modify(_.foundationDate)(
-      _.description("Date the airline was founded (ISO 8601).").encodedExample("1927-06-28")
-    )
+    .modify(_.alias)(_.description("Alternative commercial name, if any.").encodedExample("Vueling"))
+    .modify(_.callsign)(_.description("Radiotelephony callsign, if any.").encodedExample("IBERIA"))
     .modify(_.countryCode)(SchemaModifiers.countryCode)
 }
