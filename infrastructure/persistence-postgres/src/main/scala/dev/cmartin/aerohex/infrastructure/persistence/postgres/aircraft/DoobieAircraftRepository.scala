@@ -9,7 +9,6 @@ import dev.cmartin.aerohex.shared.Pagination
 import doobie.Transactor
 import doobie.implicits.*
 import doobie.postgres.*
-import doobie.postgres.implicits.*
 import zio.interop.catz.*
 import zio.{IO, Task, URLayer, ZIO, ZLayer}
 

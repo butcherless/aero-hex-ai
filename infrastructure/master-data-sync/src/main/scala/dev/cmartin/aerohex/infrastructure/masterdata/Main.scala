@@ -43,6 +43,7 @@ import dev.cmartin.aerohex.infrastructure.persistence.quill.airline.QuillAirline
 import dev.cmartin.aerohex.infrastructure.persistence.quill.airport.QuillAirportRepository
 import dev.cmartin.aerohex.infrastructure.persistence.quill.config.QuillDataSourceLayer
 import dev.cmartin.aerohex.infrastructure.persistence.quill.country.QuillCountryRepository
+import javax.sql.DataSource
 import zio.*
 import zio.http.Client
 import zio.logging.backend.SLF4J
@@ -58,35 +59,55 @@ object Main extends ZIOAppDefault:
   private val airportUrl    = "https://ourairports.com/data/airports.csv"
   private val airlineUrl    = "https://raw.githubusercontent.com/jpatokal/openflights/master/data/airlines.dat"
 
-  private val countryRepoLayer: TaskLayer[CountryRepository] =
-    QuillDataSourceLayer.live >>> QuillCountryRepository.layer
+  // Every entity wires its Quill repository the same way (QuillDataSourceLayer.live >>> the
+  // repo's own .layer) and then its four use-case services the same way (repo layer >>> each
+  // service's own .layer, ++-combined) — the two helpers below capture that shape once, generic
+  // over the repo/use-case types, so each entity below is just a one-line call.
+  private def repoLayer[Repo](quillLayer: URLayer[DataSource, Repo]): TaskLayer[Repo] =
+    QuillDataSourceLayer.live >>> quillLayer
+
+  private def useCasesLayer[Repo, Create, Update: Tag, Delete: Tag, Find: Tag](
+      repo: TaskLayer[Repo]
+  )(
+      create: URLayer[Repo, Create],
+      update: URLayer[Repo, Update],
+      delete: URLayer[Repo, Delete],
+      find: URLayer[Repo, Find]
+  ): TaskLayer[Create & Update & Delete & Find] =
+    (repo >>> create) ++ (repo >>> update) ++ (repo >>> delete) ++ (repo >>> find)
+
+  private val countryRepoLayer: TaskLayer[CountryRepository] = repoLayer(QuillCountryRepository.layer)
 
   private val countryUseCasesLayer
       : TaskLayer[CreateCountryUseCase & UpdateCountryUseCase & DeleteCountryUseCase & FindCountryUseCase] =
-    (countryRepoLayer >>> CreateCountryService.layer) ++
-      (countryRepoLayer >>> UpdateCountryService.layer) ++
-      (countryRepoLayer >>> DeleteCountryService.layer) ++
-      (countryRepoLayer >>> FindCountryService.layer)
+    useCasesLayer(countryRepoLayer)(
+      CreateCountryService.layer,
+      UpdateCountryService.layer,
+      DeleteCountryService.layer,
+      FindCountryService.layer
+    )
 
-  private val airportRepoLayer: TaskLayer[AirportRepository] =
-    QuillDataSourceLayer.live >>> QuillAirportRepository.layer
+  private val airportRepoLayer: TaskLayer[AirportRepository] = repoLayer(QuillAirportRepository.layer)
 
   private val airportUseCasesLayer
       : TaskLayer[CreateAirportUseCase & UpdateAirportUseCase & DeleteAirportUseCase & FindAirportUseCase] =
-    (airportRepoLayer >>> CreateAirportService.layer) ++
-      (airportRepoLayer >>> UpdateAirportService.layer) ++
-      (airportRepoLayer >>> DeleteAirportService.layer) ++
-      (airportRepoLayer >>> FindAirportService.layer)
+    useCasesLayer(airportRepoLayer)(
+      CreateAirportService.layer,
+      UpdateAirportService.layer,
+      DeleteAirportService.layer,
+      FindAirportService.layer
+    )
 
-  private val airlineRepoLayer: TaskLayer[AirlineRepository] =
-    QuillDataSourceLayer.live >>> QuillAirlineRepository.layer
+  private val airlineRepoLayer: TaskLayer[AirlineRepository] = repoLayer(QuillAirlineRepository.layer)
 
   private val airlineUseCasesLayer
       : TaskLayer[CreateAirlineUseCase & UpdateAirlineUseCase & DeleteAirlineUseCase & FindAirlineUseCase] =
-    (airlineRepoLayer >>> CreateAirlineService.layer) ++
-      (airlineRepoLayer >>> UpdateAirlineService.layer) ++
-      (airlineRepoLayer >>> DeleteAirlineService.layer) ++
-      (airlineRepoLayer >>> FindAirlineService.layer)
+    useCasesLayer(airlineRepoLayer)(
+      CreateAirlineService.layer,
+      UpdateAirlineService.layer,
+      DeleteAirlineService.layer,
+      FindAirlineService.layer
+    )
 
   private def release(dir: Path): UIO[Unit] =
     (TempDirectory.delete(dir) *> ZIO.logInfo(s"Deleted temporary directory: $dir")).ignoreLogged
