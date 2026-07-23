@@ -259,7 +259,7 @@ maintenance risk for a marginal ergonomics win. Between the two mature options, 
 
 ### 4.3 Temporary directory — creation & cleanup
 
-**Decided and implemented:** `zio-nio`'s `Files.createTempDirectory`/`deleteRecursive`, exposed as
+**Decided and implemented** — see `plans/masterdata/master-data-sync-scaffold.md`: `zio-nio`'s `Files.createTempDirectory`/`deleteRecursive`, exposed as
 this module's own `TempDirectory.create`/`delete` (`infrastructure/master-data-sync`), composed via
 `ZIO.acquireRelease` in `Main` for guaranteed cleanup. Closes a recursive-delete gap a hand-rolled
 `java.nio.file.Files` wrapper would otherwise need to implement itself (`JFiles.delete` only removes
@@ -290,7 +290,8 @@ Rejected alternatives: `java.net.http.HttpClient`, `sttp-client4`, Apache HttpCl
 
 ### 4.5 File line reading — comparison
 
-**Decided and implemented** (Country's `parse` only so far): `zio-nio`'s `Files.readAllLines` — already
+**Decided and implemented** (Country's `parse` only so far) — see `plans/masterdata/country-csv-parser.md`:
+`zio-nio`'s `Files.readAllLines` — already
 a dependency of this module (added for `TempDirectory`, §4.3), zero new footprint. Eager/in-memory,
 right-sized for Country's ~4 KB/249-row file; `zio-nio`'s streaming alternative, `Files.lines`, is the
 right tool for a much larger file (Airport's OurAirports source is "tens of MB") — deferred to that
@@ -454,9 +455,9 @@ key + reason) to act on without re-running.
 | Airline `foundationDate` gap | Needs a decision, not a default — either relax `airlines.foundation_date` to nullable for sync-originated rows, or accept a documented sentinel and flag those rows for manual backfill | No source found in research supplies this field; either option touches an existing `NOT NULL` migration/domain invariant |
 | Airline `Country` (name, not code) | Build a small static name→`CountryCode` lookup table; log+skip unmatched names (or skip the whole row if Country is mandatory on create) | Country-name spelling varies across sources |
 | CSV library | **Decided.** `scala-csv` 2.0.0 (Country parses via regex instead, §2.1) | Full comparison and rejected alternatives: §4.2/§10 |
-| Temp directory library | **Decided and implemented, with a caveat.** `zio-nio` 2.0.2 (`Files.createTempDirectory` + `deleteRecursive`, exposed as this project's own `TempDirectory.create`/`delete`) | Closes a recursive-delete gap the plain-JDK baseline leaves unimplemented; caveat is the dependency's own last release/commit being from Oct 2023. Rejected alternatives: §4.3/§10 |
-| HTTP download client | **Decided and implemented.** `zio-http` `Client`, Country source only so far | Already a build dependency, no new artifact; needs redirect-following (Country's source URL redirects) and non-2xx detection, both confirmed capabilities. Rejected alternatives: §4.4/§10 |
-| File line reading | **Decided and implemented.** `zio-nio`'s `Files.readAllLines` (Country's `parse` function only so far) | Already a build dependency; eager/in-memory is right-sized for Country's ~4 KB file, unlike Airport's later tens-of-MB source. Rejected alternatives: §4.5/§10 |
+| Temp directory library | **Decided and implemented, with a caveat.** `zio-nio` 2.0.2 (`Files.createTempDirectory` + `deleteRecursive`, exposed as this project's own `TempDirectory.create`/`delete`) | Closes a recursive-delete gap the plain-JDK baseline leaves unimplemented; caveat is the dependency's own last release/commit being from Oct 2023. Rejected alternatives: §4.3/§10. See `plans/masterdata/master-data-sync-scaffold.md` |
+| HTTP download client | **Decided and implemented.** `zio-http` `Client`, Country source only so far | Already a build dependency, no new artifact; needs redirect-following (Country's source URL redirects) and non-2xx detection, both confirmed capabilities. Rejected alternatives: §4.4/§10. See `plans/masterdata/http-downloader-country.md` |
+| File line reading | **Decided and implemented.** `zio-nio`'s `Files.readAllLines` (Country's `parse` function only so far) | Already a build dependency; eager/in-memory is right-sized for Country's ~4 KB file, unlike Airport's later tens-of-MB source. Rejected alternatives: §4.5/§10. See `plans/masterdata/country-csv-parser.md` |
 | Scheduling mechanism | **Decided.** Standalone `ZIOAppDefault` app, packaged like `bootstrap` (`sbt-assembly`), invoked by an OS-level (`crontab`) entry on whatever host runs it — `0 0 1 */6 *` for a "1st of the month, every 6 months" cadence, or similar | The app has no built-in scheduling awareness — the OS decides when to run `java -jar master-data-sync.jar`. Rejected alternative (GitHub Actions `schedule:`): §10 |
 | Dry-run mode | Recommend a `--dry-run` flag that logs the diff (create/update/delete counts + affected rows) without writing | Deletes are destructive and the Airline source has known gaps; a first run should be inspectable before it's trusted unattended |
 | "Different" comparison for updates | **Decided and implemented.** Field-by-field equality on the mapped subset of columns only — plain `==` on the case class, no custom typeclass (`EntitySync.reconcile`) | Avoids spurious updates from OurAirports/OpenFlights columns this project doesn't model; correct today since Country's case class already contains exactly the mapped fields — revisit if a future entity's case class carries fields the source doesn't supply |
