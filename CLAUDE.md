@@ -11,17 +11,6 @@ Always ask for confirmation before pushing. Never push automatically after a com
 After a push completes, do not monitor GitHub Actions (no `gh run watch`/polling loop) unless the
 user explicitly asks for CI status.
 
-## Build commands
-
-```bash
-sbt compile           # compile all modules
-sbt test              # run all tests
-sbt scalafmtAll       # format all sources (run before committing new files)
-sbt scalafmtCheckAll  # check formatting (CI gate; requires git-tracked files)
-sbt bloopInstall      # regenerate .bloop/ after dependency changes
-sbt xdup              # show outdated dependencies (alias for dependencyUpdates)
-```
-
 ## After every implementation
 
 Run `sbt scalafmtAll` then `sbt compile` (must pass with zero errors and zero warnings) — do not
@@ -43,29 +32,6 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
   (a GA release or a needed capability).
 - **Transitive deps** — let SBT resolve via eviction; only force an override for a known vulnerability or binary-incompatibility.
 - **Updates** — run `sbt xdup` before each feature cycle. Patch/minor updates are free; major bumps need migration-guide review and passing compile + tests.
-
-## Tech stack
-
-| Concern | Library | Version |
-|---|---|---|
-| Runtime | Java LTS | 21 |
-| Language | Scala 3 LTS | 3.3.8 |
-| Build | SBT | 1.12.14 |
-| Effect | ZIO | 2.1.26 |
-| Smart constructors (`CountryCode`/`IataCode`/`AirportIcaoCode`/`AirlineIcaoCode`/`Registration`) | ZIO Prelude | 1.0.0-RC47 |
-| HTTP server | ZIO HTTP | 3.11.3 |
-| HTTP endpoints | Tapir | 1.13.28 |
-| Persistence (wired default) | Quill | 4.8.6 |
-| Persistence (unwired alternate) | Doobie + zio-interop-cats | 1.0.0-RC9 / 23.1.0.13 |
-| Connection pooling | HikariCP | 7.1.0 |
-| Messaging | ZIO Kafka | 3.7.0 |
-| Migrations | Flyway | 13.0.0 |
-| Database | PostgreSQL JDBC | 42.7.13 |
-| JSON | Circe | 0.14.16 |
-| Logging | ZIO Logging + SLF4J + Logback | 2.5.3 / 1.5.38 |
-| Integration testing | Testcontainers | 1.21.3 |
-| HTTP-adapter tests (test scope) | sttp-client4 + Tapir stub server | 4.0.26 |
-| Temp-dir lifecycle + file reading (`master-data-sync` only) | ZIO NIO | 2.0.2 |
 
 ## Module dependency graph
 
@@ -105,40 +71,9 @@ Rule: inner modules never depend on outer ones. `domain` has zero framework depe
 
 ## Integration tests (opt-in, real Postgres)
 
-`infrastructure/integration-tests/` runs `FlywayMigration`, `DoobieXxxRepository`, and
-`QuillXxxRepository` against a real Postgres started via Testcontainers — no in-memory stubs, no
-Tapir stub server. It is deliberately **not** in `root`'s `.aggregate(...)`, so `sbt compile`,
-`sbt test`, and `sbt coverageAggregate` never touch it; invoke it explicitly:
-
-```bash
-sbt integrationTests/test   # or: sbt integrationTest (alias)
-```
-
-Coverage so far: `FlywayMigrationItSpec` (migrations reach `V14`), Country (`DoobieCountryRepositoryItSpec`
-+ `QuillCountryRepositoryItSpec`, incl. `validateCode` success/failure against the `country_codes`
-master table), Airport (`DoobieAirportRepositoryItSpec` +
-`QuillAirportRepositoryItSpec`), Airline (`DoobieAirlineRepositoryItSpec` +
-`QuillAirlineRepositoryItSpec`), Aircraft (`DoobieAircraftRepositoryItSpec` +
-`QuillAircraftRepositoryItSpec`, seeding a `Country` then an `Airline` first since `aircraft.airline_id`
-FKs to `airlines.id`), Flight (`DoobieFlightRepositoryItSpec` + `QuillFlightRepositoryItSpec`, seeding a
-`Country`, two `Airport`s (origin + destination), and an `Airline` first since `flights.origin_airport_id`/
-`destination_airport_id`/`airline_id` FK to `airports.id`/`airlines.id`) — each seeding its own `Country`
-row first since `airports.country_id`/`airlines.country_id` FK to `countries.id` — 112 tests total, all
-green. Route is not implemented yet.
-See `plans/add-persistence-integration-tests.md` for the full scope table and design rationale (why a
-plain subproject instead of sbt's deprecated `IntegrationTest` config, why one module instead of
-three, why fresh-container-per-suite).
-
-Two gotchas baked into the setup, both documented with why in the plan doc:
-- `build.sbt` sets `Test / javaOptions += "-Dapi.version=1.41"` because Testcontainers 1.21.x's
-  Docker-environment probe falls back to a hardcoded, very old API version when none is negotiated,
-  and recent Docker Desktop releases reject that below their `MinAPIVersion` — surfacing as a
-  misleading "Could not find a valid Docker environment" with no obvious cause unless you add a
-  temporary SLF4J binding to see the underlying 400 from the daemon.
-- **Every spec must call `.provideLayerShared(...)`, never `.provideLayer(...)`,** on its
-  `suite(...)`. `provideLayer` silently rebuilds the layer per `test` block instead of once per
-  suite — caught during validation when 15 Country tests started 16 separate Postgres containers
-  instead of 3.
+Real-Postgres tests via Testcontainers, opt-in (`sbt integrationTests/test`), not in root's
+aggregate. See [infrastructure/integration-tests/CLAUDE.md](./infrastructure/integration-tests/CLAUDE.md)
+for scope, coverage, and its two setup gotchas.
 
 ## Key patterns
 
@@ -204,7 +139,7 @@ object QuillAirportRepository:
 | `RouteEventCodec.routeCreatedSerde` | `???` — needs ZIO Kafka 3.x `Serde` with Circe JSON |
 | `RouteEventProducer.publish` | compiles, but only logs the event — doesn't call `Producer.produce` |
 | `WiringModule.appLayer` | wires Quill `CountryRepository`, Quill `AirportRepository`, Quill `AirlineRepository`, Quill `AircraftRepository`, Quill `FlightRepository`, and in-memory stubs for everything else (Route/RouteAirline/FlightInstance) |
-| `bootstrap/src/main/resources/application.conf`'s `kafka.group-id` | missing a `${?KAFKA_GROUP_ID}` override (every other setting in that file has one) — harmless today since Kafka isn't wired into `Main`, but a silent no-op once it is; see "## Local infrastructure" |
+| `bootstrap/src/main/resources/application.conf`'s `kafka.group-id` | missing a `${?KAFKA_GROUP_ID}` override (every other setting in that file has one) — harmless today since Kafka isn't wired into `Main`, but a silent no-op once it is |
 
 ## Database schema
 
@@ -225,23 +160,6 @@ database is migration-produced (one-time reset performed 2026-07-09; see
 `plans/run-flyway-on-startup.md` for the design and the adoption procedure for machines whose
 database predates this).
 
-## Local infrastructure
-
-`docker-compose.yml`:
-- **Postgres 18** on `localhost:5432` — database/user/password: `aviation`
-- **Kafka** (KRaft, no ZooKeeper) on `localhost:9092` — auto-creates topics
-
-Environment variables (with fallbacks):
-```
-POSTGRES_URL / POSTGRES_USER / POSTGRES_PASSWORD
-KAFKA_BOOTSTRAP_SERVERS
-HTTP_PORT  (default 8080)
-FLYWAY_MIGRATE_ON_START  (default true; "false" skips the startup migration)
-```
-`bootstrap/src/main/resources/application.conf`'s `kafka.group-id` has no `${?KAFKA_GROUP_ID}`
-override (unlike every other setting in that file) — setting the env var has no effect on the
-running bootstrap app today. Tracked in "## Pending implementations".
-
 ## REST API
 
 Code-first OpenAPI — Tapir endpoint definitions in Scala are the single source of truth, never a
@@ -260,26 +178,8 @@ increment (e.g. `plans/masterdata/`, built up over the master-data-sync module's
 
 ## Docs directory
 
-`docs/` holds analysis and API artifacts (distinct from `plans/`, which holds implementation designs):
-
-- `docs/analysis/01-domain-model.md` — DDD glossary + domain model with standard IATA/ICAO
-  terminology; the source of truth for entity/value-object definitions.
-- `docs/analysis/entity-relationship-draft.md` — working notes on entity relationships and
-  cardinalities; a scratch space, **not** a source of truth — conclusions get promoted into
-  `01-domain-model.md`.
-- `docs/analysis/validation-analysis-hexagonal.md` — the validation-design rationale behind
-  `## Key patterns`' opaque-types convention (why smart constructors, why accumulate-vs-fail-fast).
-- `docs/analysis-plan.md` — the task plan that drives the analysis docs (glossary → use cases → ADR).
-- `docs/api/collection.json` + `environment.json` — Postman collection kept in sync with the
-  Tapir-generated OpenAPI spec via the `sync-postman-collection` skill; regenerate after any
-  endpoint change, never edit by hand. Its 5 `E2E — ...` folders are runnable against a live app
-  via the `run-e2e-tests` skill — see `## Validation` below.
-- `docs/api/endpoint-status.md` — per-endpoint implementation status table (see `## REST API`
-  above); update whenever an endpoint's status changes.
-- `docs/todo/` — analysis for future work. `auth-jwt.md` (JWT auth with Tapir + ZIO) is still
-  idea-stage; `master-data/analysis.md` is further along — architecture decided and partially
-  implemented (Country sync end-to-end against real Postgres), with its own `plans/masterdata/`
-  subdirectory of implementation-increment docs.
+`docs/` holds analysis and API artifacts (distinct from `plans/`, which holds implementation
+designs) — see [docs/CLAUDE.md](./docs/CLAUDE.md) for what's in each file.
 
 ## Coverage
 
@@ -339,7 +239,7 @@ validation (contract correctness, an independent axis from runtime behavior) →
 
 ## Formatter
 
-`.scalafmt.conf`: `maxColumn = 120`, `align.preset = most`, `newlines.source = keep`, `lineEndings = preserve`, `rewrite.scala3.removeOptionalBraces = no`, `project.git = true` (only git-tracked files formatted; run `sbt scalafmtAll` for new files).
+`.scalafmt.conf` sets `project.git = true` — only git-tracked files get formatted; `git add` a new file before running `sbt scalafmtAll` or it's silently skipped.
 
 ## Documentation sources
 
