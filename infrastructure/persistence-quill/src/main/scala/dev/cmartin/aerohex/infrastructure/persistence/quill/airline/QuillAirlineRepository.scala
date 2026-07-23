@@ -60,6 +60,18 @@ final class QuillAirlineRepository(dataSource: DataSource) extends AirlineReposi
       .map(_.map(toAirline))
       .orDie
 
+  override def findAllUnboundedWithCountry: IO[DomainError, List[(Airline, CountryCode)]] =
+    ctx
+      .run(quote {
+        (for {
+          a <- querySchema[AirlineRow]("airlines")
+          c <- querySchema[CountryRef]("countries").join(c => c.id == a.countryId)
+        } yield (a, c))
+          .sortBy(_._1.icaoCode)
+      })
+      .map(_.map { case (a, c) => (toAirline(a), CountryCode.unsafeMake(c.code)) })
+      .orDie
+
   override def findByCountry(code: CountryCode, pagination: Pagination): IO[DomainError, List[Airline]] = {
     val offset = pagination.offset
     val limit  = pagination.pageSize

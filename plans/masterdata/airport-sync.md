@@ -64,16 +64,22 @@ verification precedent.
   expected `UIO[List[E]]` via `.orDieWith(e => new RuntimeException(e.toString))`, not `.orDie`** —
   `.orDie` requires the error channel to already be `Throwable`; `DomainError` isn't, so the explicit
   conversion is required. `EntitySync` itself is untouched.
-- **Known, accepted gap: the reconcile diff can't detect a country-only change.** `Airport`'s case
-  class has no `countryCode` field (the relationship is resolved separately via
+- **Follow-up: the reconcile-can't-detect-a-country-only-change gap is fixed.** `Airport`'s case class
+  still has no `countryCode` field (the relationship is resolved separately via
   `AirportRepository.save`/`.update`'s extra param), so `EntitySync.reconcile`'s `==` diff on bare
-  `Airport` won't flag a source row whose *only* change is `iso_country` — it reads as unchanged.
-  Accepted rather than fixed with a richer wrapper type (would need an extra per-row country lookup for
-  every *existing* airport just to build the comparison value, for what's expected to be a rare case).
-  `countryCode` is still always correct on create/update: `AirportSync.sync` builds a
-  `countryCodeByIata: Map[IataCode, CountryCode]` from the parsed source once, and both the `create`/
-  `update` lambdas passed to `EntitySync.apply` look the airport's country code up from that map —
-  independent of the diff itself.
+  `Airport` couldn't flag a source row whose *only* change was `iso_country`. Fixed by widening the
+  comparable `E` type `AirportSync` passes into `EntitySync` from bare `Airport` to `(Airport,
+  CountryCode)` — a plain tuple, structurally comparable via `==` for free, no new wrapper type needed.
+  The *existing* side of that pair comes from a new bulk repository method,
+  `AirportRepository.findAllUnboundedWithCountry: IO[DomainError, List[(Airport, CountryCode)]]`
+  (exposed via `FindAirportUseCase`, implemented as one JOIN query in `QuillAirportRepository`, kept
+  schema-consistent in `DoobieAirportRepository`) — a single query, not a per-row `findCountryByIata`
+  call for every existing row. The *source* side is built the same way, straight from the parsed
+  commands. This let the old `countryCodeByIata` lookup map be deleted entirely — the country code now
+  travels with the entity through `create`/`update` via tuple destructuring instead of a separate
+  lookup. `EntitySync` itself needed no change. New trait method meant the same mechanical-fixup sweep
+  as before: `AirportRepositoryStub`, `AirportEndpointsSpec`, `RouteServiceSpec`'s `findAirportStub`,
+  plus `FindAirportService`'s delegate.
 - **`Main.scala`** extends the existing `for` inside `ZIO.acquireRelease(...).flatMap { dir => ... }`
   with a second download+sync+log triple after Country's (Country-then-Airport ordering per §5.1/§6),
   plus a new `airportRepoLayer`/`airportUseCasesLayer` built exactly like the Country ones

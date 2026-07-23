@@ -1,6 +1,7 @@
 package dev.cmartin.aerohex.infrastructure.masterdata
 
 import dev.cmartin.aerohex.domain.airport.*
+import dev.cmartin.aerohex.domain.country.CountryCode
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.shared.Pagination
 import zio.*
@@ -21,28 +22,33 @@ object AirportSyncSpec extends ZIOSpecDefault:
       update: UpdateAirportUseCase,
       delete: DeleteAirportUseCase,
       find: FindAirportUseCase,
-      currentState: UIO[List[Airport]]
+      currentState: UIO[List[(Airport, CountryCode)]]
   )
 
-  private def stubUseCases(initial: List[Airport]): UIO[StubUseCases] =
+  private def stubUseCases(initial: List[(Airport, CountryCode)]): UIO[StubUseCases] =
     Ref.make(initial).map { state =>
       val create: CreateAirportUseCase = (command: CreateAirportCommand) =>
         val airport = Airport(command.iataCode, command.icaoCode, command.name, command.city)
-        state.update(airport :: _).as(airport)
+        state.update((airport, command.countryCode) :: _).as(airport)
 
       val update: UpdateAirportUseCase = (command: UpdateAirportCommand) =>
         val airport = Airport(command.iataCode, command.icaoCode, command.name, command.city)
-        state.update(_.map(a => if a.iataCode == command.iataCode then airport else a)).as(airport)
+        state
+          .update(_.map { case (a, c) =>
+            if a.iataCode == command.iataCode then (airport, command.countryCode) else (a, c)
+          })
+          .as(airport)
 
-      val delete: DeleteAirportUseCase = (iata: IataCode) => state.update(_.filterNot(_.iataCode == iata)).unit
+      val delete: DeleteAirportUseCase = (iata: IataCode) => state.update(_.filterNot(_._1.iataCode == iata)).unit
 
       val find: FindAirportUseCase = new FindAirportUseCase:
-        def findByIata(iata: String): IO[DomainError, Airport]      =
+        def findByIata(iata: String): IO[DomainError, Airport]                         =
           ZIO.die(new NotImplementedError("findByIata"))
-        def findAll(p: Pagination): IO[DomainError, List[Airport]]  =
+        def findAll(p: Pagination): IO[DomainError, List[Airport]]                     =
           ZIO.die(new NotImplementedError("findAll"))
-        def findAllUnbounded: IO[DomainError, List[Airport]]        = state.get
-        def searchByName(q: String): IO[DomainError, List[Airport]] =
+        def findAllUnbounded: IO[DomainError, List[Airport]]                           = state.get.map(_.map(_._1))
+        def findAllUnboundedWithCountry: IO[DomainError, List[(Airport, CountryCode)]] = state.get
+        def searchByName(q: String): IO[DomainError, List[Airport]]                    =
           ZIO.die(new NotImplementedError("searchByName"))
 
       StubUseCases(create, update, delete, find, state.get)
@@ -80,13 +86,22 @@ object AirportSyncSpec extends ZIOSpecDefault:
           report ==
             SyncReport(created = 1, updated = 0, deleted = 0, unchanged = 0, skippedInvalid = 0, skippedConflict = 0),
           finalState ==
-            List(Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Adolfo Suárez Madrid-Barajas Airport", "Madrid"))
+            List(
+              (
+                Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Adolfo Suárez Madrid-Barajas Airport", "Madrid"),
+                CountryCode("ES")
+              )
+            )
         )
       },
       test("updates an existing airport whose name changed") {
         for
           fixture    <- writeCsv(List(row("MAD", "LEMD", "Adolfo Suárez Madrid-Barajas Airport", "Madrid", "ES")))
-          useCases   <- stubUseCases(List(Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Old Name", "Madrid")))
+          useCases   <-
+            stubUseCases(List((
+              Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Old Name", "Madrid"),
+              CountryCode("ES")
+            )))
           report     <- runSync(fixture, useCases)
           finalState <- useCases.currentState
           _          <- TempDirectory.delete(fixture.dir)
@@ -94,7 +109,42 @@ object AirportSyncSpec extends ZIOSpecDefault:
           report ==
             SyncReport(created = 0, updated = 1, deleted = 0, unchanged = 0, skippedInvalid = 0, skippedConflict = 0),
           finalState ==
-            List(Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Adolfo Suárez Madrid-Barajas Airport", "Madrid"))
+            List(
+              (
+                Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Adolfo Suárez Madrid-Barajas Airport", "Madrid"),
+                CountryCode("ES")
+              )
+            )
+        )
+      },
+      // The airport's own fields (iata/icao/name/city) are identical to the source — only the
+      // stored country differs. EntitySync.reconcile's `==` now runs over (Airport, CountryCode)
+      // pairs (§9 of docs/todo/master-data/analysis.md), so this must still surface as an update.
+      test("updates an existing airport whose country changed, with identical airport fields") {
+        for
+          fixture    <- writeCsv(List(row("MAD", "LEMD", "Adolfo Suárez Madrid-Barajas Airport", "Madrid", "ES")))
+          useCases   <-
+            stubUseCases(
+              List(
+                (
+                  Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Adolfo Suárez Madrid-Barajas Airport", "Madrid"),
+                  CountryCode("FR")
+                )
+              )
+            )
+          report     <- runSync(fixture, useCases)
+          finalState <- useCases.currentState
+          _          <- TempDirectory.delete(fixture.dir)
+        yield assertTrue(
+          report ==
+            SyncReport(created = 0, updated = 1, deleted = 0, unchanged = 0, skippedInvalid = 0, skippedConflict = 0),
+          finalState ==
+            List(
+              (
+                Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Adolfo Suárez Madrid-Barajas Airport", "Madrid"),
+                CountryCode("ES")
+              )
+            )
         )
       },
       test("deletes an existing airport absent from the source") {
@@ -102,17 +152,23 @@ object AirportSyncSpec extends ZIOSpecDefault:
           fixture    <- writeCsv(List(row("MAD", "LEMD", "Adolfo Suárez Madrid-Barajas Airport", "Madrid", "ES")))
           useCases   <- stubUseCases(
                           List(
-                            Airport(
-                              IataCode("MAD"),
-                              AirportIcaoCode("LEMD"),
-                              "Adolfo Suárez Madrid-Barajas Airport",
-                              "Madrid"
+                            (
+                              Airport(
+                                IataCode("MAD"),
+                                AirportIcaoCode("LEMD"),
+                                "Adolfo Suárez Madrid-Barajas Airport",
+                                "Madrid"
+                              ),
+                              CountryCode("ES")
                             ),
-                            Airport(
-                              IataCode("BCN"),
-                              AirportIcaoCode("LEBL"),
-                              "Josep Tarradellas Barcelona-El Prat",
-                              "Barcelona"
+                            (
+                              Airport(
+                                IataCode("BCN"),
+                                AirportIcaoCode("LEBL"),
+                                "Josep Tarradellas Barcelona-El Prat",
+                                "Barcelona"
+                              ),
+                              CountryCode("ES")
                             )
                           )
                         )
@@ -123,7 +179,12 @@ object AirportSyncSpec extends ZIOSpecDefault:
           report ==
             SyncReport(created = 0, updated = 0, deleted = 1, unchanged = 1, skippedInvalid = 0, skippedConflict = 0),
           finalState ==
-            List(Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Adolfo Suárez Madrid-Barajas Airport", "Madrid"))
+            List(
+              (
+                Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Adolfo Suárez Madrid-Barajas Airport", "Madrid"),
+                CountryCode("ES")
+              )
+            )
         )
       },
       // A row filtered out by AirportCsvParser.parse's own type filter (§9) never becomes an
@@ -135,12 +196,19 @@ object AirportSyncSpec extends ZIOSpecDefault:
         for
           fixture    <-
             writeCsv(List(row("MAD", "LEMD", "Adolfo Suárez Madrid-Barajas Airport", "Madrid", "ES"), heliport))
-          useCases   <- stubUseCases(List(Airport(
-                          IataCode("MAD"),
-                          AirportIcaoCode("LEMD"),
-                          "Adolfo Suárez Madrid-Barajas Airport",
-                          "Madrid"
-                        )))
+          useCases   <- stubUseCases(
+                          List(
+                            (
+                              Airport(
+                                IataCode("MAD"),
+                                AirportIcaoCode("LEMD"),
+                                "Adolfo Suárez Madrid-Barajas Airport",
+                                "Madrid"
+                              ),
+                              CountryCode("ES")
+                            )
+                          )
+                        )
           report     <- runSync(fixture, useCases)
           finalState <- useCases.currentState
           _          <- TempDirectory.delete(fixture.dir)
@@ -148,7 +216,12 @@ object AirportSyncSpec extends ZIOSpecDefault:
           report ==
             SyncReport(created = 0, updated = 0, deleted = 0, unchanged = 1, skippedInvalid = 0, skippedConflict = 0),
           finalState ==
-            List(Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Adolfo Suárez Madrid-Barajas Airport", "Madrid"))
+            List(
+              (
+                Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Adolfo Suárez Madrid-Barajas Airport", "Madrid"),
+                CountryCode("ES")
+              )
+            )
         )
       },
       // Unlike the filtered-out row above, a non-blank but malformed IATA code (§8) survives
@@ -170,7 +243,12 @@ object AirportSyncSpec extends ZIOSpecDefault:
           report ==
             SyncReport(created = 1, updated = 0, deleted = 0, unchanged = 0, skippedInvalid = 1, skippedConflict = 0),
           finalState ==
-            List(Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Adolfo Suárez Madrid-Barajas Airport", "Madrid"))
+            List(
+              (
+                Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Adolfo Suárez Madrid-Barajas Airport", "Madrid"),
+                CountryCode("ES")
+              )
+            )
         )
       }
     )

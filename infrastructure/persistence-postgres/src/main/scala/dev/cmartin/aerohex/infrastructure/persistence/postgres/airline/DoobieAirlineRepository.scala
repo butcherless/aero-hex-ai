@@ -46,6 +46,18 @@ final class DoobieAirlineRepository(protected val xa: Transactor[Task]) extends 
       .map(_.map((i, n, alias, callsign) => Airline(AirlineIcaoCode.unsafeMake(i), n, alias, callsign)))
       .orDie
 
+  override def findAllUnboundedWithCountry: IO[DomainError, List[(Airline, CountryCode)]] =
+    sql"""SELECT a.icao_code, a.name, a.alias, a.callsign, c.code
+          FROM airlines a JOIN countries c ON a.country_id = c.id
+          ORDER BY a.icao_code"""
+      .query[(String, String, Option[String], Option[String], String)]
+      .to[List]
+      .transact(xa)
+      .map(_.map { case (i, n, alias, callsign, countryCode) =>
+        (Airline(AirlineIcaoCode.unsafeMake(i), n, alias, callsign), CountryCode.unsafeMake(countryCode))
+      })
+      .orDie
+
   override def findByCountry(code: CountryCode, pagination: Pagination): IO[DomainError, List[Airline]] =
     sql"""SELECT a.icao_code, a.name, a.alias, a.callsign
           FROM airlines a JOIN countries c ON a.country_id = c.id

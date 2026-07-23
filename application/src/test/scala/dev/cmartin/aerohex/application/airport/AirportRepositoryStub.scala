@@ -19,6 +19,8 @@ private[application] object AirportRepositoryStub:
       ZIO.die(new NotImplementedError("findAll"))
     def findAllUnbounded: IO[DomainError, List[Airport]]                             =
       ZIO.die(new NotImplementedError("findAllUnbounded"))
+    def findAllUnboundedWithCountry: IO[DomainError, List[(Airport, CountryCode)]]   =
+      ZIO.die(new NotImplementedError("findAllUnboundedWithCountry"))
     def searchByName(q: String): IO[DomainError, List[Airport]]                      =
       ZIO.die(new NotImplementedError("searchByName"))
     def findByCountry(c: CountryCode, p: Pagination): IO[DomainError, List[Airport]] =
@@ -36,6 +38,8 @@ private[application] object AirportRepositoryStub:
       onFindByIata: IataCode => IO[DomainError, Option[Airport]] = unimplementedAirportRepo.findByIata,
       onFindAll: Pagination => IO[DomainError, List[Airport]] = unimplementedAirportRepo.findAll,
       onFindAllUnbounded: IO[DomainError, List[Airport]] = unimplementedAirportRepo.findAllUnbounded,
+      onFindAllUnboundedWithCountry: IO[DomainError, List[(Airport, CountryCode)]] =
+        unimplementedAirportRepo.findAllUnboundedWithCountry,
       onSearchByName: String => IO[DomainError, List[Airport]] = unimplementedAirportRepo.searchByName,
       onFindByCountry: (CountryCode, Pagination) => IO[DomainError, List[Airport]] =
         unimplementedAirportRepo.findByCountry,
@@ -47,6 +51,7 @@ private[application] object AirportRepositoryStub:
     def findByIata(iata: IataCode): IO[DomainError, Option[Airport]]                 = onFindByIata(iata)
     def findAll(p: Pagination): IO[DomainError, List[Airport]]                       = onFindAll(p)
     def findAllUnbounded: IO[DomainError, List[Airport]]                             = onFindAllUnbounded
+    def findAllUnboundedWithCountry: IO[DomainError, List[(Airport, CountryCode)]]   = onFindAllUnboundedWithCountry
     def searchByName(q: String): IO[DomainError, List[Airport]]                      = onSearchByName(q)
     def findByCountry(c: CountryCode, p: Pagination): IO[DomainError, List[Airport]] = onFindByCountry(c, p)
     def findCountryByIata(iata: IataCode): IO[DomainError, Option[Country]]          = onFindCountryByIata(iata)

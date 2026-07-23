@@ -9,6 +9,7 @@ trait AirportRepository {
   def findByIata(iata: IataCode): IO[DomainError, Option[Airport]]
   def findAll(pagination: Pagination): IO[DomainError, List[Airport]]
   def findAllUnbounded: IO[DomainError, List[Airport]]
+  def findAllUnboundedWithCountry: IO[DomainError, List[(Airport, CountryCode)]]
   def searchByName(query: String): IO[DomainError, List[Airport]]
   def findByCountry(code: CountryCode, pagination: Pagination): IO[DomainError, List[Airport]]
   def findCountryByIata(iata: IataCode): IO[DomainError, Option[Country]]

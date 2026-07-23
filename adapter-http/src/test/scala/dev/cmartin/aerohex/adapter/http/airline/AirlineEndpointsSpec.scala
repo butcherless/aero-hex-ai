@@ -23,14 +23,18 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
   // ── Stub use-case implementations ─────────────────────────────────────────
 
   private val defaultFind: FindAirlineUseCase = new FindAirlineUseCase:
-    def findByIcao(icao: String): IO[DomainError, Airline]     = ZIO.succeed(iberia)
-    def findAll(p: Pagination): IO[DomainError, List[Airline]] = ZIO.succeed(List(iberia, vueling))
-    def findAllUnbounded: IO[DomainError, List[Airline]]       = ZIO.succeed(List(iberia, vueling))
+    def findByIcao(icao: String): IO[DomainError, Airline]                         = ZIO.succeed(iberia)
+    def findAll(p: Pagination): IO[DomainError, List[Airline]]                     = ZIO.succeed(List(iberia, vueling))
+    def findAllUnbounded: IO[DomainError, List[Airline]]                           = ZIO.succeed(List(iberia, vueling))
+    def findAllUnboundedWithCountry: IO[DomainError, List[(Airline, CountryCode)]] =
+      ZIO.die(new NotImplementedError("findAllUnboundedWithCountry"))
 
   private val notFoundFind: FindAirlineUseCase = new FindAirlineUseCase:
-    def findByIcao(icao: String): IO[DomainError, Airline]     = ZIO.fail(DomainError.AirlineNotFound(icao))
-    def findAll(p: Pagination): IO[DomainError, List[Airline]] = ZIO.fail(DomainError.AirlineNotFound("n/a"))
-    def findAllUnbounded: IO[DomainError, List[Airline]]       = ZIO.fail(DomainError.AirlineNotFound("n/a"))
+    def findByIcao(icao: String): IO[DomainError, Airline]                         = ZIO.fail(DomainError.AirlineNotFound(icao))
+    def findAll(p: Pagination): IO[DomainError, List[Airline]]                     = ZIO.fail(DomainError.AirlineNotFound("n/a"))
+    def findAllUnbounded: IO[DomainError, List[Airline]]                           = ZIO.fail(DomainError.AirlineNotFound("n/a"))
+    def findAllUnboundedWithCountry: IO[DomainError, List[(Airline, CountryCode)]] =
+      ZIO.die(new NotImplementedError("findAllUnboundedWithCountry"))
 
   private val defaultCreate: CreateAirlineUseCase = (_: CreateAirlineCommand) => ZIO.succeed(iberia)
 

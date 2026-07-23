@@ -4,6 +4,7 @@ import RouteAirlineRepositoryStub.{stubRouteAirlineRepo, unimplementedRouteAirli
 import RouteRepositoryStub.{stubRouteRepo, unimplementedRouteRepo}
 import dev.cmartin.aerohex.domain.airline.{Airline, AirlineIcaoCode}
 import dev.cmartin.aerohex.domain.airport.{Airport, AirportIcaoCode, FindAirportUseCase, IataCode}
+import dev.cmartin.aerohex.domain.country.CountryCode
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.route.{
   AssociateAirlineUseCase,
@@ -27,11 +28,13 @@ object RouteServiceSpec extends ZIOSpecDefault:
 
   private def findAirportStub(byIata: String => IO[DomainError, Airport]): FindAirportUseCase =
     new FindAirportUseCase:
-      def findByIata(iata: String): IO[DomainError, Airport]          = byIata(iata)
-      def findAll(p: Pagination): IO[DomainError, List[Airport]]      = ZIO.die(new NotImplementedError("findAll"))
-      def findAllUnbounded: IO[DomainError, List[Airport]]            =
+      def findByIata(iata: String): IO[DomainError, Airport]                         = byIata(iata)
+      def findAll(p: Pagination): IO[DomainError, List[Airport]]                     = ZIO.die(new NotImplementedError("findAll"))
+      def findAllUnbounded: IO[DomainError, List[Airport]]                           =
         ZIO.die(new NotImplementedError("findAllUnbounded"))
-      def searchByName(query: String): IO[DomainError, List[Airport]] =
+      def findAllUnboundedWithCountry: IO[DomainError, List[(Airport, CountryCode)]] =
+        ZIO.die(new NotImplementedError("findAllUnboundedWithCountry"))
+      def searchByName(query: String): IO[DomainError, List[Airport]]                =
         ZIO.die(new NotImplementedError("searchByName"))
 
   override def spec: Spec[TestEnvironment & Scope, Any] =

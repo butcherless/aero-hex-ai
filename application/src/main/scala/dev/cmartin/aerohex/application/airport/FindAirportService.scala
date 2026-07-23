@@ -4,6 +4,7 @@ import dev.cmartin.aerohex.application.aspect.ServiceAspect
 import dev.cmartin.aerohex.domain.airport.AirportRepository
 import dev.cmartin.aerohex.domain.airport.FindAirportUseCase
 import dev.cmartin.aerohex.domain.airport.{Airport, IataCode}
+import dev.cmartin.aerohex.domain.country.CountryCode
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.error.DomainError.AirportNotFound
 import dev.cmartin.aerohex.shared.Pagination
@@ -20,6 +21,9 @@ final class FindAirportService(repo: AirportRepository) extends FindAirportUseCa
 
   override def findAllUnbounded: IO[DomainError, List[Airport]] =
     repo.findAllUnbounded @@ ServiceAspect.logged("FindAirportService.findAllUnbounded")
+
+  override def findAllUnboundedWithCountry: IO[DomainError, List[(Airport, CountryCode)]] =
+    repo.findAllUnboundedWithCountry @@ ServiceAspect.logged("FindAirportService.findAllUnboundedWithCountry")
 
   override def searchByName(query: String): IO[DomainError, List[Airport]] =
     repo.searchByName(query) @@ ServiceAspect.logged(s"FindAirportService.searchByName($query)")

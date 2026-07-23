@@ -43,10 +43,12 @@ skippedConflict: 0` — the row count stayed at 1,009 (confirmed via `psql`), bu
   the new trait method: only **two** files this time (smaller than Airport's three) —
   `AirlineRepositoryStub.scala` and `AirlineEndpointsSpec.scala`'s `defaultFind`/`notFoundFind` — a
   whole-repo grep confirmed no `RouteServiceSpec`-style surprise for Airline.
-- **Same accepted gap as Airport**: `Airline`'s case class has no `countryCode` field, so
-  `EntitySync.reconcile`'s `==` diff can't detect a country-only change for an existing row.
-  `countryCodeByIcao: Map[AirlineIcaoCode, CountryCode]`, built from the parsed commands, is how the
-  create/update calls still get the correct country regardless.
+- **Follow-up: fixed the same way as Airport.** `Airline`'s case class still has no `countryCode`
+  field, so `EntitySync.reconcile`'s `==` diff couldn't detect a country-only change for an existing
+  row. `AirlineSync` now reconciles `(Airline, CountryCode)` pairs instead of bare `Airline`, backed by
+  a new `AirlineRepository.findAllUnboundedWithCountry` bulk join query (+ `FindAirlineUseCase`, Quill
+  join implementation, Doobie kept schema-consistent) for the *existing* side — the old
+  `countryCodeByIcao` lookup map is gone; the country code now travels with the entity itself.
 - **New nuance found during live verification, not anticipated in the design**: OpenFlights' source
   itself has a handful of rows sharing the same ICAO code under different names (e.g. two distinct
   `JAL` entries). Since `EntitySync.reconcile`'s `toCreate`/`toUpdate` buckets are built by scanning
@@ -55,9 +57,13 @@ skippedConflict: 0` — the row count stayed at 1,009 (confirmed via `psql`), bu
   `AirlineAlreadyExists` and is counted as `skippedConflict` (exactly the generic per-row tolerance
   `EntitySync.apply` already provides, working correctly on a case the design didn't specifically
   anticipate). On a subsequent run, the *other* duplicate can look like an "update" against what's
-  stored, since the source always contains both. Affects 7 of 1,009 rows — accepted as a
-  source-data-quality quirk, not fixed with source-side deduplication (would add complexity to
-  `EntitySync`'s otherwise-generic reconcile for a ~0.7% edge case).
+  stored, since the source always contains both. Affects 7 of 1,009 rows — originally accepted as a
+  source-data-quality quirk, not fixed.
+- **Follow-up: fixed.** `AirlineSync.sync` now dedupes the parsed `commands` by ICAO (`groupBy` +
+  keep-first) before calling `EntitySync.reconcile` at all — `EntitySync` itself stays untouched,
+  since the dedup happens one layer up at the OpenFlights-specific call site. Every dropped duplicate
+  is logged and counted as `skippedInvalid`. Covered by a new `AirlineSyncSpec` test ("keeps only the
+  first row when the source has two entries for the same ICAO").
 
 ## Files touched
 
