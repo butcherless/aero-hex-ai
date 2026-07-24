@@ -3,13 +3,13 @@ package dev.cmartin.aerohex.it.migration
 import dev.cmartin.aerohex.infrastructure.migration.FlywayMigration
 import dev.cmartin.aerohex.it.support.PostgresContainerSupport
 import java.sql.DriverManager
-import org.testcontainers.containers.PostgreSQLContainer
+import org.testcontainers.postgresql.PostgreSQLContainer
 import zio.*
 import zio.test.*
 
 object FlywayMigrationItSpec extends ZIOSpecDefault {
 
-  private def latestSchemaVersion(container: PostgreSQLContainer[?]): Task[String] =
+  private def latestSchemaVersion(container: PostgreSQLContainer): Task[String] =
     ZIO.attemptBlocking {
       val conn = DriverManager.getConnection(container.getJdbcUrl, container.getUsername, container.getPassword)
       try {
@@ -25,7 +25,7 @@ object FlywayMigrationItSpec extends ZIOSpecDefault {
     suite("FlywayMigration")(
       test("applies all migrations up to V15 against a fresh container") {
         for
-          container <- ZIO.service[PostgreSQLContainer[?]]
+          container <- ZIO.service[PostgreSQLContainer]
           _         <- FlywayMigration.migrate(container.getJdbcUrl, container.getUsername, container.getPassword)
           version   <- latestSchemaVersion(container)
         yield assertTrue(version == "15")

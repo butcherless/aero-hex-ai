@@ -15,5 +15,5 @@ object Versions {
   val logback        = "1.6.0"
   val sttpClient4    = "4.0.26"
   val protoQuill     = "4.8.6"
-  val testcontainers = "1.21.4"
+  val testcontainers = "2.0.5"
 }

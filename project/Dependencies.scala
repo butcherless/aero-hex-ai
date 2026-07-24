@@ -50,8 +50,8 @@ object Dependencies {
   val quillJdbcZio = "io.getquill" %% "quill-jdbc-zio" % Versions.protoQuill
 
   // Test — integration tests (real Postgres via Testcontainers)
-  val testcontainersCore     = "org.testcontainers" % "testcontainers" % Versions.testcontainers % Test
-  val testcontainersPostgres = "org.testcontainers" % "postgresql"     % Versions.testcontainers % Test
+  val testcontainersCore     = "org.testcontainers" % "testcontainers"            % Versions.testcontainers % Test
+  val testcontainersPostgres = "org.testcontainers" % "testcontainers-postgresql" % Versions.testcontainers % Test
 
   val commonTest: Seq[ModuleID] = Seq(zioTest, zioTestSbt)
 }

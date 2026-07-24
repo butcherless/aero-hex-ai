@@ -3,7 +3,7 @@ package dev.cmartin.aerohex.it.support
 import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
 import dev.cmartin.aerohex.infrastructure.migration.FlywayMigration
 import javax.sql.DataSource
-import org.testcontainers.containers.PostgreSQLContainer
+import org.testcontainers.postgresql.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
 import zio.{TaskLayer, ZIO, ZLayer}
 
@@ -13,7 +13,7 @@ object PostgresContainerSupport {
 
   // Fresh container per suite: simplest correctness story, avoids state bleeding
   // between specs. See plans/add-persistence-integration-tests.md.
-  val containerLayer: TaskLayer[PostgreSQLContainer[?]] = ZLayer.scoped {
+  val containerLayer: TaskLayer[PostgreSQLContainer] = ZLayer.scoped {
     ZIO.acquireRelease(
       ZIO.attempt {
         val c = new PostgreSQLContainer(image)
@@ -23,13 +23,13 @@ object PostgresContainerSupport {
     )(c => ZIO.attempt(c.stop()).ignoreLogged)
   }
 
-  val migratedContainerLayer: TaskLayer[PostgreSQLContainer[?]] =
+  val migratedContainerLayer: TaskLayer[PostgreSQLContainer] =
     containerLayer.tap { env =>
-      val c = env.get[PostgreSQLContainer[?]]
+      val c = env.get[PostgreSQLContainer]
       FlywayMigration.migrate(c.getJdbcUrl, c.getUsername, c.getPassword)
     }
 
-  private def buildDataSource(c: PostgreSQLContainer[?]): HikariDataSource = {
+  private def buildDataSource(c: PostgreSQLContainer): HikariDataSource = {
     val cfg = new HikariConfig()
     cfg.setJdbcUrl(c.getJdbcUrl)
     cfg.setUsername(c.getUsername)
@@ -38,10 +38,10 @@ object PostgresContainerSupport {
     new HikariDataSource(cfg)
   }
 
-  private val dataSourceFromContainer: ZLayer[PostgreSQLContainer[?], Throwable, DataSource] =
+  private val dataSourceFromContainer: ZLayer[PostgreSQLContainer, Throwable, DataSource] =
     ZLayer.scoped {
       for
-        c  <- ZIO.service[PostgreSQLContainer[?]]
+        c  <- ZIO.service[PostgreSQLContainer]
         ds <- ZIO.acquireRelease(ZIO.attempt(buildDataSource(c)))(ds => ZIO.attempt(ds.close()).ignoreLogged)
       yield ds: DataSource
     }
