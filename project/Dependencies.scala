@@ -1,17 +1,17 @@
-import sbt._
+import sbt.*
 
 object Dependencies {
 
   // ZIO
-  val zio            = "dev.zio" %% "zio"              % Versions.zio
-  val zioPrelude     = "dev.zio" %% "zio-prelude"      % Versions.zioPrelude
-  val zioStreams     = "dev.zio" %% "zio-streams"      % Versions.zio
-  val zioNio         = "dev.zio" %% "zio-nio"          % Versions.zioNio
+  val zio        = "dev.zio" %% "zio"         % Versions.zio
+  val zioPrelude = "dev.zio" %% "zio-prelude" % Versions.zioPrelude
+  val zioStreams = "dev.zio" %% "zio-streams" % Versions.zio
+  val zioNio     = "dev.zio" %% "zio-nio"     % Versions.zioNio
 
   // CSV parsing (Airport/Airline sources — Country parses via regex instead, see analysis doc §2.1)
-  val scalaCsv = "com.github.tototoshi" %% "scala-csv" % Versions.scalaCsv
-  val zioTest        = "dev.zio" %% "zio-test"         % Versions.zio % Test
-  val zioTestSbt     = "dev.zio" %% "zio-test-sbt"     % Versions.zio % Test
+  val scalaCsv   = "com.github.tototoshi" %% "scala-csv"    % Versions.scalaCsv
+  val zioTest    = "dev.zio"              %% "zio-test"     % Versions.zio % Test
+  val zioTestSbt = "dev.zio"              %% "zio-test-sbt" % Versions.zio % Test
 
   // ZIO HTTP + Tapir
   val zioHttp        = "dev.zio"                     %% "zio-http"                % Versions.zioHttp
@@ -37,14 +37,14 @@ object Dependencies {
   val circeParser  = "io.circe" %% "circe-parser"  % Versions.circe
 
   // Logging
-  val zioLogging      = "dev.zio"        %% "zio-logging"        % Versions.zioLogging
-  val zioLoggingSlf4j = "dev.zio"        %% "zio-logging-slf4j2" % Versions.zioLogging
-  val logback         = "ch.qos.logback"  % "logback-classic"    % Versions.logback
+  val zioLogging      = "dev.zio"       %% "zio-logging"        % Versions.zioLogging
+  val zioLoggingSlf4j = "dev.zio"       %% "zio-logging-slf4j2" % Versions.zioLogging
+  val logback         = "ch.qos.logback" % "logback-classic"    % Versions.logback
 
   // Test — HTTP adapter
-  val tapirStubServer = "com.softwaremill.sttp.tapir"  %% "tapir-sttp-stub4-server" % Versions.tapir        % Test
-  val sttpClientZio   = "com.softwaremill.sttp.client4" %% "zio"                    % Versions.sttpClient4  % Test
-  val sttpClientCirce = "com.softwaremill.sttp.client4" %% "circe"                  % Versions.sttpClient4  % Test
+  val tapirStubServer = "com.softwaremill.sttp.tapir"   %% "tapir-sttp-stub4-server" % Versions.tapir       % Test
+  val sttpClientZio   = "com.softwaremill.sttp.client4" %% "zio"                     % Versions.sttpClient4 % Test
+  val sttpClientCirce = "com.softwaremill.sttp.client4" %% "circe"                   % Versions.sttpClient4 % Test
 
   // ProtoQuill (ZIO JDBC)
   val quillJdbcZio = "io.getquill" %% "quill-jdbc-zio" % Versions.protoQuill

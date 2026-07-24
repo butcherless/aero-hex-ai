@@ -3,7 +3,7 @@ object Versions {
   val zio            = "2.1.26"
   val zioPrelude     = "1.0.0-RC47" // no GA release yet
   val zioHttp        = "3.11.3"
-  val tapir          = "1.13.28"
+  val tapir          = "1.13.29"
   val zioKafka       = "3.7.0"
   val zioNio         = "2.0.2"
   val scalaCsv       = "2.0.0"
@@ -12,8 +12,8 @@ object Versions {
   val hikaricp       = "7.1.0"
   val circe          = "0.14.16"
   val zioLogging     = "2.5.3"
-  val logback        = "1.5.38"
+  val logback        = "1.6.0"
   val sttpClient4    = "4.0.26"
   val protoQuill     = "4.8.6"
-  val testcontainers = "1.21.3"
+  val testcontainers = "1.21.4"
 }
