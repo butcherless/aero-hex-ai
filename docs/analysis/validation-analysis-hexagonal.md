@@ -58,13 +58,11 @@ sit behind a `port.out`, not inside `CountryCode.apply`.
   or an Aircraft's Airline, must already exist)**: still **not** a dedicated
   `domain/service`. It's embedded inside the **persistence adapter**:
   `QuillCountryIdResolver.resolveCountryId`
-  (`infrastructure/persistence-quill/.../QuillCountryIdResolver.scala`) and
-  `DoobieIdResolver.resolveId`
-  (`infrastructure/persistence-postgres/.../DoobieIdResolver.scala`) run the
-  lookup query themselves and fail with `DomainError.CountryNotFound`/
+  (`infrastructure/persistence-quill/.../QuillCountryIdResolver.scala`) runs
+  the lookup query itself and fails with `DomainError.CountryNotFound`/
   `AirlineNotFound` if nothing matches — invoked only when `save`/`update`
   actually runs, from inside `QuillAirportRepository`/`QuillAirlineRepository`/
-  `QuillAircraftRepository` (same for the Doobie adapters). Application
+  `QuillAircraftRepository`. Application
   services (e.g. `CreateAirportService`) never call an explicit
   existence-check step themselves; they only pre-check the entity's *own*
   uniqueness (`repo.findByIata` before `save`) and delegate everything about
@@ -271,7 +269,7 @@ domain/service/    → CountryValidationService.validateExists(code) — new,
                      — this is BR-04: "an Airport's/Airline's Country must
                      already exist"
 
-infrastructure/    → QuillCountryRepository / DoobieCountryRepository —
+infrastructure/    → QuillCountryRepository —
                      the existing Postgres/Quill query implementing the port
                      (unchanged)
 
@@ -407,8 +405,9 @@ becomes a one-line `assertion` override.
 
 - **New dependency**: `zio-prelude` isn't in `project/Versions.scala` today.
   It's still pre-GA (`1.0.0-RC47`) — the same versioning-policy exception
-  class as Doobie under `CLAUDE.md`'s "stable GA by default" rule, so
-  adopting it means explicitly carving out a second named exception.
+  class Doobie once was under `CLAUDE.md`'s "stable GA by default" rule (Doobie
+  has since been removed), so adopting it means explicitly carving out a
+  named exception.
 - **Return type mismatch**: `CountryCode.make` returns
   `Validation[String, CountryCode]`, not this project's `IO[DomainError, X]`.
   The one real call site (`CreateCountryRequest.toCommand`) bridges it with
@@ -440,8 +439,9 @@ becomes a one-line `assertion` override.
 **Original recommendation:** stay with the **scala 3 opaque type** for
 `CountryCode` (and `IataCode`/`IcaoCode`/`Registration`) for now: this
 project already has zero dependencies for value objects, `CLAUDE.md`'s
-versioning policy already grants exactly one pre-GA exception (Doobie) and a
-second one isn't justified by a single 2-letter regex check, and §2's actual
+versioning policy already granted exactly one pre-GA exception (Doobie, since
+removed from the codebase) and a second one isn't justified by a single
+2-letter regex check, and §2's actual
 gap — `from` being dead code — is a *call-site* problem (nothing routes
 through it), not a *capability* problem that `Newtype` would fix on its own.
 
@@ -450,9 +450,10 @@ ZIO Prelude `Newtype` anyway, as an explicit decision, not a re-derivation of
 this recommendation — this section's own tradeoffs (§6.4's integration cost,
 §6.5's cons column) still hold and were accepted knowingly:
 
-- `project/Versions.scala` now carries a second pre-GA exception
-  (`zioPrelude = "1.0.0-RC47"`), alongside Doobie, under `CLAUDE.md`'s
-  versioning policy.
+- `project/Versions.scala` carried a second pre-GA exception
+  (`zioPrelude = "1.0.0-RC47"`) alongside Doobie under `CLAUDE.md`'s
+  versioning policy; Doobie has since been removed, leaving `zioPrelude` as
+  the sole named exception.
 - `IataCode`/`IcaoCode`/`Registration` were **not** migrated — `CountryCode`
   is the only `Newtype` in the domain module, so the "uniformity" con in
   §6.4/§6.5 is real and current, not hypothetical. Whether that's temporary

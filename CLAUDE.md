@@ -27,9 +27,9 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 - **JDK** — Java 21 LTS required, locally and in CI (`java-version: '21'` in `.github/workflows/*.yml`). Never Java 25 or other
   non-LTS versions — Java 25 silently breaks ZIO 2.1.26's test framework (tests report "Failed" with zero SBT test events,
   no pass/fail per test). ZIO is only certified for Java 17/21.
-- **Direct deps** — stable GA by default. Named exceptions: Doobie 1.x and ZIO Prelude 1.x (neither
-  has a GA release yet) — don't chase a newer RC/M/SNAPSHOT for either without a deliberate reason
-  (a GA release or a needed capability).
+- **Direct deps** — stable GA by default. Named exception: ZIO Prelude 1.x (no GA release yet) —
+  don't chase a newer RC/M/SNAPSHOT without a deliberate reason (a GA release or a needed
+  capability).
 - **Transitive deps** — let SBT resolve via eviction; only force an override for a known vulnerability or binary-incompatibility.
 - **Updates** — run `sbt xdup` before each feature cycle. Patch/minor updates are free; major bumps need migration-guide review and passing compile + tests.
 
@@ -39,13 +39,12 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 shared-kernel
     └── domain
             ├── application
-            ├── persistence-postgres   (infrastructure — unwired; Doobie repos kept schema-consistent)
             ├── persistence-quill      (infrastructure — wired into bootstrap; Country + Airport + Airline + Aircraft + Flight)
             ├── messaging-kafka        (infrastructure — not wired into bootstrap)
             └── adapter-http
-                        └── bootstrap  (composition root: domain + application + adapter-http + persistence-quill + persistence-postgres + migration)
+                        └── bootstrap  (composition root: domain + application + adapter-http + persistence-quill + migration)
                 migration              (SQL + Flyway only; no domain dependency — wired into bootstrap for migrate-on-start)
-                integration-tests      (opt-in — domain + migration + persistence-postgres + persistence-quill, real-Postgres tests; NOT in root's aggregate)
+                integration-tests      (opt-in — domain + migration + persistence-quill, real-Postgres tests; NOT in root's aggregate)
                 master-data-sync       (opt-in — domain + application + persistence-quill; downloads/parses/syncs Country + Airport + Airline against real Postgres; NOT in root's aggregate; see plans/masterdata/)
 ```
 
@@ -60,7 +59,6 @@ Rule: inner modules never depend on outer ones. `domain` has zero framework depe
   - `port/in/` — driving ports / use-case interfaces
   - `port/out/` — driven ports / repository + publisher interfaces
 - **`application/`** — orchestrates ports, implements `port/in`. Each service has a companion `ZLayer`.
-- **`persistence-postgres/`** — Doobie implementations of `port/out` (`DoobieCountryRepository`, `DoobieAirportRepository`, `DoobieAirlineRepository`, `DoobieAircraftRepository`, `DoobieRouteRepository`, `DoobieFlightRepository`, `DoobieOutboxRepository`). Unwired but kept schema-consistent, in case Doobie is chosen again.
 - **`persistence-quill/`** — Quill implementations of `CountryRepository`/`AirportRepository`/`AirlineRepository`/`AircraftRepository`/`FlightRepository`; all five wired via `WiringModule`, sharing one `QuillDataSourceLayer.live` `DataSource`. Route/RouteAirline/FlightInstance are still an in-memory stub.
 - **Persistence policy:** all wired repositories must use the same implementation — switching is all-or-nothing across every entity, in one commit (see the header comment in `WiringModule.scala`).
 - **`messaging-kafka/`** — ZIO Kafka producer and outbox relay. Not wired into bootstrap.
@@ -243,7 +241,7 @@ validation (contract correctness, an independent axis from runtime behavior) →
 
 ## Documentation sources
 
-Always fetch current docs before writing or modifying library API calls — training data may be stale, especially for ZIO Kafka 3.x and Doobie 1.x (both have breaking changes from prior versions).
+Always fetch current docs before writing or modifying library API calls — training data may be stale, especially for ZIO Kafka 3.x (breaking changes from prior versions).
 
 **Choosing a library for a new capability** (not just calling an API on one already in use): check
 options in this order, verifying each against current docs/source rather than memory, and record the
@@ -269,5 +267,4 @@ one-line decision once it shipped.
    - ZIO HTTP: https://zio.dev/zio-http/
    - ZIO Kafka: https://zio.dev/zio-kafka/
    - Tapir: https://tapir.softwaremill.com/en/latest/
-   - Doobie: https://tpolecat.github.io/doobie/
    - Flyway: https://documentation.red-gate.com/fd/

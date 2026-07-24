@@ -2,13 +2,10 @@ package dev.cmartin.aerohex.it.support
 
 import com.zaxxer.hikari.{HikariConfig, HikariDataSource}
 import dev.cmartin.aerohex.infrastructure.migration.FlywayMigration
-import doobie.hikari.HikariTransactor
-import doobie.util.transactor.Transactor
 import javax.sql.DataSource
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.utility.DockerImageName
-import zio.interop.catz.*
-import zio.{Task, TaskLayer, ZIO, ZLayer}
+import zio.{TaskLayer, ZIO, ZLayer}
 
 object PostgresContainerSupport {
 
@@ -50,19 +47,4 @@ object PostgresContainerSupport {
     }
 
   val dataSourceLayer: TaskLayer[DataSource] = migratedContainerLayer >>> dataSourceFromContainer
-
-  private val transactorFromContainer: ZLayer[PostgreSQLContainer[?], Throwable, Transactor[Task]] =
-    ZLayer.scoped {
-      ZIO.service[PostgreSQLContainer[?]].flatMap { c =>
-        val hikariConfig = new HikariConfig()
-        hikariConfig.setDriverClassName("org.postgresql.Driver")
-        hikariConfig.setJdbcUrl(c.getJdbcUrl)
-        hikariConfig.setUsername(c.getUsername)
-        hikariConfig.setPassword(c.getPassword)
-        hikariConfig.setMaximumPoolSize(5)
-        HikariTransactor.fromHikariConfig[Task](hikariConfig).toScopedZIO
-      }
-    }
-
-  val transactorLayer: TaskLayer[Transactor[Task]] = migratedContainerLayer >>> transactorFromContainer
 }

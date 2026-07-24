@@ -91,7 +91,7 @@ jobs:
       - name: Cache incremental compilation state
         # Same key as the build job's cache above (this job only runs after it, via `needs: build`)
         # — reuses the exact target/ state build already compiled this commit for the shared modules
-        # (domain, migration, persistenceQuill, persistencePostgres), so this job only compiles
+        # (domain, migration, persistenceQuill), so this job only compiles
         # integrationTests itself instead of the whole dependency chain again.
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:

@@ -7,10 +7,7 @@ import dev.cmartin.aerohex.shared.Pagination
 import zio.ZIO
 import zio.test.*
 
-// Behavior contract shared by QuillAirportRepositoryItSpec and DoobieAirportRepositoryItSpec —
-// both adapters must satisfy the same AirportRepository port and behave identically here (unlike
-// CountryRepositoryContractSpec, Doobie's Airport.save also fails on a duplicate iata code), so the
-// test bodies are shared; only the provided layer differs per adapter.
+// Behavior contract for QuillAirportRepositoryItSpec, satisfying the AirportRepository port.
 object AirportRepositoryContractSpec:
 
   private def seedCountry(code: String, name: String): ZIO[CountryRepository, DomainError, Unit] =

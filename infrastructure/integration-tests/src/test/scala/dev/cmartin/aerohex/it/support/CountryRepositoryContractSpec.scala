@@ -6,10 +6,8 @@ import dev.cmartin.aerohex.shared.Pagination
 import zio.ZIO
 import zio.test.*
 
-// Behavior contract shared by QuillCountryRepositoryItSpec and DoobieCountryRepositoryItSpec.
-// Quill's save fails on a duplicate code while Doobie's save upserts — a pre-existing, deliberate
-// divergence (persistence-postgres is unwired/legacy; see CLAUDE.md's persistence policy), so the
-// duplicate-save test stays adapter-specific rather than living here.
+// Behavior contract for QuillCountryRepositoryItSpec. The duplicate-save test
+// (Quill's save fails on a duplicate code) stays adapter-specific rather than living here.
 object CountryRepositoryContractSpec:
 
   def tests: List[Spec[CountryRepository, Any]] = List(

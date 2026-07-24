@@ -37,7 +37,7 @@ fixed 60-character output. No Scala wrapper is needed; `ZIO.attempt` covers the 
 val jwtScala = "10.0.1"
 val jbcrypt = "0.4"
 
-// infrastructure/auth (new module or added to persistence-postgres)
+// infrastructure/auth (new module or added to persistence-quill)
 libraryDependencies ++= Seq(
   "io.github.jwt-scala" %% "jwt-circe" % Versions.jwtScala,
   "org.mindrot" % "jbcrypt" % Versions.jbcrypt
@@ -71,8 +71,8 @@ application/
     AuthService.scala            ← implements AuthUseCase; orchestrates UserRepository + TokenService
 
 infrastructure/
-  persistence-postgres/
-    DoobieUserRepository.scala   ← Doobie implementation of UserRepository
+  persistence-quill/
+    QuillUserRepository.scala    ← Quill implementation of UserRepository
   auth/
     JwtService.scala             ← implements TokenService; wraps jwt-circe in ZIO effects
     JwtConfig.scala              ← secretKey, algorithm, ttlSeconds — read from environment

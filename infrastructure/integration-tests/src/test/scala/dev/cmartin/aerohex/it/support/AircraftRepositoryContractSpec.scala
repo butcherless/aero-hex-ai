@@ -8,10 +8,8 @@ import dev.cmartin.aerohex.shared.Pagination
 import zio.ZIO
 import zio.test.*
 
-// Behavior contract shared by QuillAircraftRepositoryItSpec and DoobieAircraftRepositoryItSpec — both
-// adapters must satisfy the same AircraftRepository port and behave identically here, so the test
-// bodies are shared; only the provided layer differs per adapter. Aircraft depends on Airline, which
-// itself depends on Country, so every test seeds both parents first.
+// Behavior contract for QuillAircraftRepositoryItSpec, satisfying the AircraftRepository port.
+// Aircraft depends on Airline, which itself depends on Country, so every test seeds both parents first.
 object AircraftRepositoryContractSpec:
 
   private def seedCountry(code: String, name: String): ZIO[CountryRepository, DomainError, Unit] =

@@ -58,7 +58,6 @@ lazy val coverageProjects: Seq[Project] = Seq(
   sharedKernel,
   domain,
   application,
-  persistencePostgres,
   persistenceQuill,
   messagingKafka,
   migration,
@@ -99,23 +98,6 @@ lazy val application = project
   .settings(
     name := "application",
     libraryDependencies ++= Seq(zio)
-  )
-  .settings(coverageSettings*)
-  .disablePlugins(AssemblyPlugin)
-
-lazy val persistencePostgres = project
-  .in(file("infrastructure/persistence-postgres"))
-  .dependsOn(domain)
-  .settings(
-    name := "persistence-postgres",
-    libraryDependencies ++= Seq(
-      doobieCore,
-      doobieHikari,
-      doobiePostgres,
-      zioInteropCats,
-      postgresql,
-      hikaricp
-    )
   )
   .settings(coverageSettings*)
   .disablePlugins(AssemblyPlugin)
@@ -187,7 +169,7 @@ lazy val adapterHttp = project
 
 lazy val bootstrap = project
   .in(file("bootstrap"))
-  .dependsOn(domain, application, adapterHttp, persistenceQuill, persistencePostgres, migration)
+  .dependsOn(domain, application, adapterHttp, persistenceQuill, migration)
   .settings(
     name := "bootstrap",
     libraryDependencies ++= Seq(
@@ -234,7 +216,7 @@ lazy val bootstrap = project
 // `sbt integrationTests/test` or the `integrationTest` alias.
 lazy val integrationTests = project
   .in(file("infrastructure/integration-tests"))
-  .dependsOn(migration, persistencePostgres, persistenceQuill)
+  .dependsOn(migration, persistenceQuill)
   .settings(
     name           := "integration-tests",
     publish / skip := true,

@@ -1,9 +1,7 @@
 object Versions {
   val scala3         = "3.3.8"
   val zio            = "2.1.26"
-  val zioPrelude     = "1.0.0-RC47" // no GA release yet, same exception class as Doobie
-  val zioInteropCats = "23.1.0.13"
-  val doobie         = "1.0.0-RC9" // RC12 exists but still not stable
+  val zioPrelude     = "1.0.0-RC47" // no GA release yet
   val zioHttp        = "3.11.3"
   val tapir          = "1.13.28"
   val zioKafka       = "3.7.0"

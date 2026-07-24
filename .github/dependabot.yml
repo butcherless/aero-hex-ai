@@ -20,8 +20,6 @@ updates:
       # Major bumps need migration-guide review (CLAUDE.md versioning policy) — keep them manual.
       - dependency-name: "*"
         update-types: [ "version-update:semver-major" ]
-      # Doobie is pinned deliberately (no GA release yet) — don't auto-chase newer RCs.
-      - dependency-name: "org.tpolecat:doobie-*"
 
   - package-ecosystem: "docker-compose"
     directory: "/"

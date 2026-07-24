@@ -30,13 +30,11 @@ import dev.cmartin.aerohex.shared.Pagination
 import zio.*
 
 // POLICY: every real-persistence repository must be wired to the SAME implementation (currently
-// Quill, sharing one QuillDataSourceLayer.live DataSource/pool) — no mixing Quill and Doobie
-// across entities. If this ever switches (e.g. back to Doobie), switch every wired repository in
-// the same change, not one at a time, to avoid the split Country=Quill/Airport=Doobie state this
-// project went through. Doobie implementations (DoobieCountryRepository, DoobieAirportRepository,
-// DoobieAirlineRepository, DoobieAircraftRepository, DoobieRouteRepository, DoobieFlightRepository)
-// still exist in persistence-postgres and are kept schema-consistent, but none are wired here
-// today. Route/RouteAirline/FlightInstance repositories use in-memory stubs.
+// Quill, sharing one QuillDataSourceLayer.live DataSource/pool) — no mixing implementations
+// across entities. If this ever switches to a different persistence library, switch every wired
+// repository in the same change, not one at a time, to avoid the split Country=Quill/Airport=X
+// state this project went through with its former Doobie implementation.
+// Route/RouteAirline/FlightInstance repositories use in-memory stubs.
 object WiringModule {
 
   private val countryRepoLayer: TaskLayer[CountryRepository] =

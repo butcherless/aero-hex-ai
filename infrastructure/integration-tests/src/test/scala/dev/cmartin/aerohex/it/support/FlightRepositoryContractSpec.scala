@@ -10,11 +10,9 @@ import java.time.LocalTime
 import zio.ZIO
 import zio.test.*
 
-// Behavior contract shared by QuillFlightRepositoryItSpec and DoobieFlightRepositoryItSpec — both
-// adapters must satisfy the same FlightRepository port and behave identically here, so the test
-// bodies are shared; only the provided layer differs per adapter. Flight depends on two Airports
-// (origin + destination) and an Airline, each of which itself depends on Country, so every test
-// seeds the full chain first.
+// Behavior contract for QuillFlightRepositoryItSpec, satisfying the FlightRepository port.
+// Flight depends on two Airports (origin + destination) and an Airline, each of which itself
+// depends on Country, so every test seeds the full chain first.
 object FlightRepositoryContractSpec:
 
   private def seedCountry(code: String, name: String): ZIO[CountryRepository, DomainError, Unit] =

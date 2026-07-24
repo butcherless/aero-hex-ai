@@ -11,9 +11,9 @@ Airline → Route** — with a Kafka outbox pattern for domain events still bein
 - **Scala 3** (LTS) + **SBT 1** multi-module build
 - **ZIO** for functional effects, **ZIO HTTP** for the server, **Tapir** for endpoint definitions
   and code-first OpenAPI generation
-- **Quill** over **PostgreSQL** persists `Country`, `Airport`, and `Airline` (the only repositories
-  wired to a real database so far); Doobie exists in code, kept schema-consistent, but isn't wired
-  into the running app. Flyway migrations run in-process at startup
+- **Quill** over **PostgreSQL** persists `Country`, `Airport`, `Airline`, `Aircraft`, and `Flight`
+  (the only repositories wired to a real database so far). Flyway migrations run in-process at
+  startup
 - **ZIO Kafka** outbox relay exists but isn't wired in yet
 - **Circe** for JSON, **ZIO Logging** (SLF4J/Logback) for logging
 

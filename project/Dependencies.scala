@@ -12,12 +12,6 @@ object Dependencies {
   val scalaCsv = "com.github.tototoshi" %% "scala-csv" % Versions.scalaCsv
   val zioTest        = "dev.zio" %% "zio-test"         % Versions.zio % Test
   val zioTestSbt     = "dev.zio" %% "zio-test-sbt"     % Versions.zio % Test
-  val zioInteropCats = "dev.zio" %% "zio-interop-cats" % Versions.zioInteropCats
-
-  // Doobie (PostgreSQL persistence)
-  val doobieCore     = "org.tpolecat" %% "doobie-core"     % Versions.doobie
-  val doobieHikari   = "org.tpolecat" %% "doobie-hikari"   % Versions.doobie
-  val doobiePostgres = "org.tpolecat" %% "doobie-postgres" % Versions.doobie
 
   // ZIO HTTP + Tapir
   val zioHttp        = "dev.zio"                     %% "zio-http"                % Versions.zioHttp
