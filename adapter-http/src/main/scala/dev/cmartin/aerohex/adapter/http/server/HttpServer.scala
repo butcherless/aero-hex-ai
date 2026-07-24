@@ -6,6 +6,7 @@ import dev.cmartin.aerohex.adapter.http.airline.AirlineRoutes
 import dev.cmartin.aerohex.adapter.http.airport.AirportRoutes
 import dev.cmartin.aerohex.adapter.http.country.CountryRoutes
 import dev.cmartin.aerohex.adapter.http.flight.{FlightInstanceRoutes, FlightRoutes}
+import dev.cmartin.aerohex.adapter.http.middleware.TraceIdMiddleware
 import dev.cmartin.aerohex.adapter.http.route.RouteRoutes
 import sttp.tapir.server.ziohttp.ZioHttpInterpreter
 import sttp.tapir.swagger.bundle.SwaggerInterpreter
@@ -40,7 +41,10 @@ object HttpServer {
                            .fromServerEndpoints[Task](business, ApiSpec.info)
       _               <- ZIO.logInfo(s"HTTP server starting on port $port")
       result          <- Server
-                           .serve(ZioHttpInterpreter().toHttp(business ++ swagger).handleError(identity))
+                           .serve(
+                             (ZioHttpInterpreter().toHttp(business ++ swagger) @@ TraceIdMiddleware.live)
+                               .handleError(identity)
+                           )
                            .provide(Server.defaultWithPort(port))
     } yield result
 }

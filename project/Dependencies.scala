@@ -38,7 +38,7 @@ object Dependencies {
 
   // Logging
   val zioLogging      = "dev.zio"       %% "zio-logging"        % Versions.zioLogging
-  val zioLoggingSlf4j = "dev.zio"       %% "zio-logging-slf4j2" % Versions.zioLogging
+  val zioLoggingSlf4j = "dev.zio"       %% "zio-logging-slf4j"  % Versions.zioLogging
   val logback         = "ch.qos.logback" % "logback-classic"    % Versions.logback
 
   // Test — HTTP adapter

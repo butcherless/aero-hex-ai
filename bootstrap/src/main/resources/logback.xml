@@ -3,7 +3,7 @@
 
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{ISO8601} %-5level %-20X{fiber} [%thread] %logger{50} - %msg%n</pattern>
+            <pattern>%d{ISO8601} %-5level %-8X{fiber} %-36X{traceId} [%thread] %logger{50} - %msg%n</pattern>
         </encoder>
     </appender>
 
@@ -15,7 +15,7 @@
             <totalSizeCap>1GB</totalSizeCap>
         </rollingPolicy>
         <encoder>
-            <pattern>%d{ISO8601} %-5level %-20X{fiber} [%thread] %logger{50} - %msg%n</pattern>
+            <pattern>%d{ISO8601} %-5level %-8X{fiber} %-36X{traceId} [%thread] %logger{50} - %msg%n</pattern>
         </encoder>
     </appender>
 
