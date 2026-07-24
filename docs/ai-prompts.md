@@ -4,6 +4,7 @@ In all masterdata-related documents:
 - for all implementation candidates, libraries, algorithms, patterns, etc., that have been discarded, a reference is left but details are omitted. Once implemented, this no longer applies and makes the documents longer and harder to read.
 
 Review claude.md and related docs try to:
+- update the content to reflect the current state of the project
 - simplify text
 - check step sequences
 - discover missing info

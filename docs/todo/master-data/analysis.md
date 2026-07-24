@@ -169,14 +169,12 @@ like `adapter-http`, except its driver is an OS-scheduled process instead of an 
 | sbt project val / `name` | `masterDataSync` / `"master-data-sync"` |
 | Base package | `dev.cmartin.aerohex.infrastructure.masterdata` — one compact segment, same shape as `migration`'s single-segment package. This module is one specific tool, not a "capability + implementation choice" pair the way `messaging.kafka`/`persistence.quill` are (two dotted segments each), so it doesn't follow that half of the existing convention. |
 
-Target end state (the `.dependsOn`/CSV deps land incrementally as the pipeline below gets built).
-Current state: `.dependsOn(domain)` is real (added for `CountryCsvParser.toCommand`,
-`plans/masterdata/country-csv-parser.md`) — `application`/`persistenceQuill` and `scalaCsv` are
-still not needed, since nothing in this module persists a command yet or parses Airport/Airline's
-files:
+Final state — every dependency below is real and in use (`domain` for commands, `application` +
+`persistenceQuill` for the real Create/Update/Delete/Find services all three `XxxSync` objects drive,
+`scalaCsv` for the Airport/Airline parsers, §2.2/§2.3/§4.2):
 
 ```scala
-// build.sbt — new project block, alongside migration/messagingKafka/persistenceQuill
+// build.sbt — project block, alongside migration/messagingKafka/persistenceQuill
 lazy val masterDataSync = project
   .in(file("infrastructure/master-data-sync"))
   .dependsOn(domain, application, persistenceQuill)
@@ -184,10 +182,10 @@ lazy val masterDataSync = project
     name := "master-data-sync",
     libraryDependencies ++= Seq(
       zio,
-      zioStreams,
+      zioNio,
       zioHttp,
-      zioNio, // dev.zio:zio-nio — §4.3, already added
-      scalaCsv, // com.github.tototoshi:scala-csv — new dependency, §4.2
+      zioStreams,
+      scalaCsv,
       zioLogging,
       zioLoggingSlf4j,
       logback
@@ -249,24 +247,12 @@ infrastructure/master-data-sync/
 | Temp directory (create + guaranteed cleanup) | **`zio-nio`** (`dev.zio:zio-nio`, `_3` artifact) | `2.0.2` | See §4.3 below. Replaces an earlier plan to hand-roll this on top of plain `java.nio.file.Files`. |
 | Logging | **zio-logging** + **zio-logging-slf4j2** + **logback** | `2.5.3` / `2.5.3` / `1.5.38` | Same trio `bootstrap` uses. A separate JVM entry point needs its own `logback.xml`, not a shared one. |
 
-#### CSV library comparison
+#### CSV library — decided and implemented
 
-Goal for this pick: least code, most ZIO-ecosystem fit, without dropping below this project's bar for
-a stable/mature direct dependency (`CLAUDE.md`'s versioning policy). No first-party `zio-csv` exists.
-
-| Library | Scala 3 | ZIO fit | Maturity | Code shape | Verdict |
-|---|---|---|---|---|---|
-| `kantan.csv` | **No** — 2.12/2.13 only | — | 0.8.0, Scala-3-stalled | — | Disqualified |
-| `csv3s` | Yes | **Best** — built on `zio-parser` + Magnolia | 7 GitHub stars, no visible production use | Small (derivation) | Rejected — fails the maturity bar despite the best ecosystem fit |
-| `fs2-data-csv` | Yes | None — pulls in fs2/cats-effect | 1.13.0, actively maintained | Small (derivation) | Rejected — wrong effect ecosystem for a ZIO-only module |
-| Apache Commons CSV | N/A (plain Java) | None | 412 stars, Apache Commons project | More code — `CSVFormat` builder + `CSVParser` + index-based `CSVRecord` access | Solid fallback, not picked — more boilerplate |
-| **`scala-csv`** | **Yes** (`_3` artifact) | None, but the call site is one line: `CSVReader.open(file).all(): List[List[String]]` | 710 stars, 28 releases | Least code of any viable choice | **Selected** |
-
-Every option needs the same `ZIO.attempt` wrap except `csv3s` — and `csv3s` doesn't clear the maturity
-bar on its own merits (7 stars, no evidence of production use), so it isn't worth trading a real
-maintenance risk for a marginal ergonomics win. Between the two mature options, `scala-csv` wins on
-"reduce code": `.all()` returns rows directly, whereas Commons CSV needs a `CSVFormat` builder, a
-`CSVParser`, and index-based `CSVRecord` field access. (Rejected-alternatives summary: §10.)
+**`scala-csv`** (least code of the mature options: `CSVReader.open(file).all(): List[List[String]]` is
+the whole call site). Rejected alternatives: `kantan.csv` (no Scala 3 build), `csv3s` (best ZIO fit but
+too immature — 7 GitHub stars, no evidence of production use), `fs2-data-csv` (wrong effect ecosystem),
+Apache Commons CSV (mature, but more boilerplate than `scala-csv`). Full comparison: §10.
 
 ### 4.3 Temporary directory — creation & cleanup
 
@@ -285,11 +271,12 @@ Rejected alternatives: hand-rolled `java.nio.file.Files` + manual recursive dele
 
 ### 4.4 HTTP download — client comparison
 
-**Decided and implemented** (Country source only, §2.1) — see `plans/masterdata/http-downloader-country.md`:
-`zio-http` `Client.streaming`, already a main-scope build dependency (used server-side in
-`adapter-http`), so no new artifact. Two requirements confirmed necessary, not hypothetical:
-redirect-following (Country's source URL redirects, `datahub.io/core/country-list/...` →
-`r2.datahub.io/...`, confirmed live) via `ZClientAspect.followRedirects` composed with
+**Decided and implemented, reused unchanged for all three sources** (built against Country first,
+§2.1) — see `plans/masterdata/http-downloader-country.md`: `zio-http` `Client.streaming`, already a
+main-scope build dependency (used server-side in `adapter-http`), so no new artifact. Two requirements
+confirmed necessary, not hypothetical: redirect-following (Country's source URL redirects,
+`datahub.io/core/country-list/...` → `r2.datahub.io/...`, confirmed live; Airport's OurAirports URL
+turned out to redirect too, §5.1) via `ZClientAspect.followRedirects` composed with
 `ZIO#updateService[Client]`; and an explicit `Status.isSuccess` check before writing, so a `404`/`500`
 error page's body never gets written to disk as if it were the real payload.
 
@@ -301,12 +288,13 @@ Rejected alternatives: `java.net.http.HttpClient`, `sttp-client4`, Apache HttpCl
 
 ### 4.5 File line reading — comparison
 
-**Decided and implemented** (Country's `parse` only so far) — see `plans/masterdata/country-csv-parser.md`:
-`zio-nio`'s `Files.readAllLines` — already
-a dependency of this module (added for `TempDirectory`, §4.3), zero new footprint. Eager/in-memory,
-right-sized for Country's ~4 KB/249-row file; `zio-nio`'s streaming alternative, `Files.lines`, is the
-right tool for a much larger file (Airport's OurAirports source is "tens of MB") — deferred to that
-future increment.
+**Decided and implemented — Country-only, permanently, not a future increment.** See
+`plans/masterdata/country-csv-parser.md`: `zio-nio`'s `Files.readAllLines` — already a dependency of
+this module (added for `TempDirectory`, §4.3), zero new footprint. Eager/in-memory, right-sized for
+Country's ~4 KB/249-row file. `zio-nio`'s streaming alternative, `Files.lines`, was sketched here as
+the right tool for Airport's much larger ("tens of MB") file, but Airport/Airline ended up reading
+their files through `scala-csv`'s own `CSVReader` instead (§2.2/§2.3/§4.2) — `Files.lines` was never
+built, this comparison's scope stays Country-only.
 
 Rejected alternatives: plain `java.nio.file.Files.readAllLines`, `scala.io.Source`, `zio-streams`'
 `ZStream.fromFile` + `ZPipeline.splitLines`, `scala-csv` (§10).
@@ -328,7 +316,7 @@ Airline, Airport) follow this identical shape, just parameterized differently (`
 | `Main` (`ZIOAppDefault`) | `run` — implemented for Country and Airport | Orchestrates the entity syncs in order (Country, then Airport, then eventually Airline), owns the temp-dir lifecycle. Each entity's real Quill-backed use-case layers are composed the same way `bootstrap`'s `WiringModule` does (`QuillDataSourceLayer.live >>> QuillXxxRepository.layer`, then `>>>` per service, combined with `++`); Airline orchestration not added yet |
 | `HttpDownloader` | `download(url: String, destFile: Path): ZIO[Client, Throwable, Path]` — implemented, reused unchanged for both Country and Airport sources | Streams the source URL to `destFile` (ZIO HTTP `Client.streaming` + redirect-following + non-2xx check, §4.4). `url: String`/`destFile` (a specific file, not a dir) — small deviations from this table's original sketch, settled once the component was actually built; logs start/success-with-size/failure (`ZIO.logInfo`/`logError`). Airport's OurAirports URL currently 301-redirects to a GitHub mirror — already covered by the existing `followRedirects`, confirmed live, no code change needed |
 | `CountryCsvParser` | `parse(file: Path): IO[IOException, List[CountryRow]]` — implemented | Skips the header line by position (never logged), then matches each remaining line against the §2.1 regex via `zio-nio`'s `Files.readAllLines` (§4.5) — no CSV library. A non-matching line is a tolerated parse error: logged at `WARN` with the raw line, skipped, processing continues (§8). `CountryRow`/`IOException`, not `SourceRow`/`Task` — settled once actually built, same as `HttpDownloader`'s deviations |
-| same parser | `toCommand(row: CountryRow): IO[DomainError, CreateCountryCommand]` — implemented | Mirrors the existing HTTP create path exactly (`CreateCountryRequest.toCommand`, `adapter-http/.../CountryDto.scala`): `CountryCode.validateAll` (accumulating, not `.make`'s fail-fast), folded into `DomainError.InvalidCountryCode` via `.toEitherWith` + `ZIO.fromEither`. `IO[DomainError, CreateCountryCommand]`, not the sketch's `Either[String, Command]`. First function in this module needing `domain` — `master-data-sync` now has `.dependsOn(domain)` in `build.sbt` (§3.1); `application`/`persistenceQuill` still not needed, since this only builds a command, it doesn't persist one |
+| same parser | `toCommand(row: CountryRow): IO[DomainError, CreateCountryCommand]` — implemented | Mirrors the existing HTTP create path exactly (`CreateCountryRequest.toCommand`, `adapter-http/.../CountryDto.scala`): `CountryCode.validateAll` (accumulating, not `.make`'s fail-fast), folded into `DomainError.InvalidCountryCode` via `.toEitherWith` + `ZIO.fromEither`. `IO[DomainError, CreateCountryCommand]`, not the sketch's `Either[String, Command]`. First function in this module needing `domain` — the reason `master-data-sync` gained a `.dependsOn(domain)` in `build.sbt` before `application`/`persistenceQuill` were needed too (§3.1's final `.dependsOn(domain, application, persistenceQuill)` came later, once `CountrySync`/`AirportSync`/`AirlineSync` needed to actually persist a command, not just build one) |
 | `AirportCsvParser` | `parse(file: Path): Task[List[AirportRow]]` — implemented | Reads the downloaded file with `scala-csv`'s `CSVReader.open(file.toFile).allWithHeaders()` (§2.2/§4.2), filters to `large_airport`/`medium_airport` rows (§9, silent — an expected exclusion, not a data problem), then per row: skips (logs `WARN`) a blank `iata_code` or a value that's neither `icao_code` nor its `ident` fallback in `AirportIcaoCode`'s 4-letter shape. `Task`, not `IO[IOException, _]` — `scala-csv` can throw more than `IOException` |
 | same parser | `toCommand(row: AirportRow): IO[DomainError, CreateAirportCommand]` — implemented | Mirrors `CreateAirportRequest.toCommand` (`adapter-http/.../airport/AirportDto.scala`) exactly: `IataCode.validateAll`/`AirportIcaoCode.validateAll` (accumulating) folded into `DomainError.InvalidIataCode`/`InvalidAirportIcaoCode`; `countryCode = CountryCode.unsafeMake(row.countryCode)` — a reference field, unvalidated at this boundary per `CLAUDE.md`'s convention |
 | `AirlineCsvParser` | `parse(file: Path): Task[List[AirlineRow]]` — implemented | `scala-csv`'s `CSVReader.open(file.toFile).all()` — no header row, unlike Country/Airport, so columns are read positionally (§2.3). Filters to `active == "Y"` (silent — an expected exclusion, §8), then skips (logs `WARN`) a row whose ICAO isn't a valid 3-letter shape. `\N`/blank → `None` for `alias`/`callsign` |
@@ -416,13 +404,14 @@ repository method behind it — takes a `Pagination` argument, clamped to a maxi
 (`shared-kernel/Pagination.scala:9-10`, BR-12). There is no existing unpaginated "get everything" call
 for any of the three entities; getting a full table today would mean looping pages client-side.
 
-For **Country** — a fixed 249-row reference table — it's an accepted simplification to skip that loop:
-**implemented.** `FindCountryUseCase.findAllUnbounded: UIO[List[Country]]` delegates to
-`CountryRepository.findAllUnbounded`, backed by an un-clamped `SELECT ... ORDER BY code` in
-`QuillCountryRepository` (and, kept schema-consistent, `DoobieCountryRepository`). This was additive —
-Airport/Airline's paginated `findAll` and every HTTP-facing paginated behavior are untouched. Whether
-the same bypass extends to **Airport**/**Airline** (plausibly thousands of rows each after the
-§2.2/§2.3 filters, not hundreds) is still open — see §9.
+**Implemented for all three entities.** For Country — a fixed 249-row reference table — this was an
+accepted simplification from the start: `FindCountryUseCase.findAllUnbounded: UIO[List[Country]]`
+delegates to `CountryRepository.findAllUnbounded`, backed by an un-clamped `SELECT ... ORDER BY code`
+in `QuillCountryRepository` (and, kept schema-consistent, `DoobieCountryRepository`). The same bypass
+was extended to **Airport**/**Airline** too (plausibly thousands of rows each after the §2.2/§2.3
+filters, not hundreds) — see §9's "Bulk-read for `loadExisting`" row for both, plus the later
+`findAllUnboundedWithCountry` variant. Additive throughout — Airport/Airline's paginated `findAll` and
+every HTTP-facing paginated behavior are untouched.
 
 ### 7.2 Reconciliation & delete ordering
 
@@ -472,8 +461,8 @@ key + reason) to act on without re-running.
 | Airline `Country` (name, not code) | **Decided and implemented.** Small static name→`CountryCode` lookup table (via a live-fetched `Country` list); log+skip unmatched names | Country-name spelling varies across sources (e.g. `"Turkey"` → `"Türkiye"`, `"Russia"` → `"Russian Federation (the)"`) — verified live: 148 of 196 distinct active-airline country names matched directly, the rest covered by the alias table or correctly left unmapped (e.g. `"Netherlands Antilles"`, dissolved 2010). See `plans/masterdata/airline-sync.md` |
 | CSV library | **Decided.** `scala-csv` 2.0.0 (Country parses via regex instead, §2.1) | Full comparison and rejected alternatives: §4.2/§10 |
 | Temp directory library | **Decided and implemented, with a caveat.** `zio-nio` 2.0.2 (`Files.createTempDirectory` + `deleteRecursive`, exposed as this project's own `TempDirectory.create`/`delete`) | Closes a recursive-delete gap the plain-JDK baseline leaves unimplemented; caveat is the dependency's own last release/commit being from Oct 2023. Rejected alternatives: §4.3/§10. See `plans/masterdata/master-data-sync-scaffold.md` |
-| HTTP download client | **Decided and implemented.** `zio-http` `Client`, Country source only so far | Already a build dependency, no new artifact; needs redirect-following (Country's source URL redirects) and non-2xx detection, both confirmed capabilities. Rejected alternatives: §4.4/§10. See `plans/masterdata/http-downloader-country.md` |
-| File line reading | **Decided and implemented.** `zio-nio`'s `Files.readAllLines` (Country's `parse` function only so far) | Already a build dependency; eager/in-memory is right-sized for Country's ~4 KB file, unlike Airport's later tens-of-MB source. Rejected alternatives: §4.5/§10. See `plans/masterdata/country-csv-parser.md` |
+| HTTP download client | **Decided and implemented, reused unchanged for all three sources.** `zio-http` `Client` | Already a build dependency, no new artifact; needs redirect-following (both Country's and Airport's source URLs redirect) and non-2xx detection, both confirmed capabilities. Rejected alternatives: §4.4/§10. See `plans/masterdata/http-downloader-country.md` |
+| File line reading | **Decided and implemented — Country-only, permanently.** `zio-nio`'s `Files.readAllLines`, used only by `CountryCsvParser.parse` | Right-sized for Country's ~4 KB file; Airport/Airline read their (much larger) files via `scala-csv`'s own `CSVReader` instead, so this comparison's scope never extended. Rejected alternatives: §4.5/§10. See `plans/masterdata/country-csv-parser.md` |
 | Scheduling mechanism | **Decided.** Standalone `ZIOAppDefault` app, packaged like `bootstrap` (`sbt-assembly`), invoked by an OS-level (`crontab`) entry on whatever host runs it — `0 0 1 */6 *` for a "1st of the month, every 6 months" cadence, or similar | The app has no built-in scheduling awareness — the OS decides when to run `java -jar master-data-sync.jar`. Rejected alternative (GitHub Actions `schedule:`): §10 |
 | Dry-run mode | Recommend a `--dry-run` flag that logs the diff (create/update/delete counts + affected rows) without writing | Deletes are destructive and the Airline source has known gaps; a first run should be inspectable before it's trusted unattended |
 | "Different" comparison for updates | **Decided and implemented.** Field-by-field equality on the mapped subset of columns only — plain `==` on the case class, no custom typeclass (`EntitySync.reconcile`) | Avoids spurious updates from OurAirports/OpenFlights columns this project doesn't model; correct today since Country's case class already contains exactly the mapped fields — revisit if a future entity's case class carries fields the source doesn't supply |
@@ -481,7 +470,8 @@ key + reason) to act on without re-running.
 | Generic reconciliation algorithm (`EntitySync`) | **Decided and implemented, now wired end-to-end for all three entities.** Type-parameterized over `K`/`E`, fixed on `DomainError` as the create/update/delete error channel, never fails the fiber (caught + `WARN` log + counted as `skippedConflict`) | `CountrySync`/`AirportSync`/`AirlineSync` all drive it against the real `Create`/`Update`/`DeleteXxxService`s, verified live against Postgres (Country: created 248, then unchanged; Airport: created 4,534, then unchanged; Airline: created 1,009, then unchanged with a 7-row nuance — see below). `EntitySync` itself needed zero changes across all three entities — fully reused. The FK-violation-to-`DomainError` mapping gap in `QuillCountryRepository` (§7.2) is a separate, still-open problem — not a risk for Country alone (no FK references it), but relevant once a Country-deletion path is exercised (an Airport/Airline row disappearing from its own source only deletes that row, not the Country). See `plans/masterdata/entity-sync.md`, `plans/masterdata/country-sync-wiring.md`, `plans/masterdata/airport-sync.md`, and `plans/masterdata/airline-sync.md` |
 | Airport/Airline reconcile diff can't detect a country-only change | **Fixed, both entities.** Neither `Airport`'s nor `Airline`'s case class has a `countryCode` field (the relationship is resolved separately via `save`/`.update`'s extra param), so `EntitySync.reconcile`'s `==` diff on the bare entity couldn't flag a source row whose *only* change was its country. Fixed by widening the comparable `E` type `AirportSync`/`AirlineSync` pass into `EntitySync` from the bare entity to a `(Entity, CountryCode)` pair | New bulk repository method `findAllUnboundedWithCountry: IO[DomainError, List[(Entity, CountryCode)]]` added to `AirportRepository`/`AirlineRepository` (+ `FindAirportUseCase`/`FindAirlineUseCase`, + Quill join-query implementations, + Doobie kept schema-consistent) — one query for the *existing* side, not a per-row `findCountryByIata`-style lookup. `AirportSync.sync`/`AirlineSync.sync` now build the *source* side the same way (`(Entity, CountryCode)` tuples straight from the parsed commands), so `EntitySync.reconcile` — itself untouched — sees both sides in the same shape and its plain `==` picks up a country-only change for free. This also let the old `countryCodeByIata`/`countryCodeByIcao` lookup maps be deleted; the country code now travels with the entity through the whole pipeline. Covered by new `AirportSyncSpec`/`AirlineSyncSpec` tests ("updates an existing ... whose country changed, with identical ... fields"). See `plans/masterdata/airport-sync.md`, `plans/masterdata/airline-sync.md` |
 | Airline: duplicate ICAO codes within the OpenFlights source itself | **Fixed — deduplicated in `AirlineSync.sync`, not in `EntitySync`.** A handful of OpenFlights rows (7, verified live) share one ICAO code under different names (e.g. two distinct `JAL` entries). `AirlineSync.sync` now groups the parsed `commands` by ICAO before ever calling `EntitySync.reconcile`, keeps only the first row per ICAO, and logs+counts every dropped duplicate as `skippedInvalid` | `EntitySync.reconcile` itself needed no change — deduplication happens one layer up, at the call site that already knows the source is OpenFlights-shaped, so the otherwise-fully-generic reconcile stays untouched. Verified with a unit test (`AirlineSyncSpec`, "keeps only the first row when the source has two entries for the same ICAO"): the first row is created, the second is counted as `skippedInvalid`, and the run settles into a stable `unchanged` count on a later run since the source-side duplicate no longer alternates between create/update against the stored row. See `plans/masterdata/airline-sync.md` |
-| Generalize `CountrySync`/`AirportSync`'s glue and `Main`'s per-entity layer-wiring | **Not yet — revisit once Airline lands.** `EntitySync`/`SyncReport`/`HttpDownloader`/`TempDirectory` are already generalized (parametric over `K`/`E`, reused unchanged by Airport); what's still duplicated is (1) each `XxxSync.sync`'s glue — `parse → toCommand-per-row → collect Rights → loadExisting → reconcile → apply → copy(skippedInvalid)` is structurally identical in `CountrySync`/`AirportSync`, differing only in the concrete `Row`/`Command`/`Entity`/`Key` types (plus Airport's extra `countryCodeByIata` step) — and (2) `Main`'s `countryRepoLayer`/`countryUseCasesLayer` vs `airportRepoLayer`/`airportUseCasesLayer`, same `QuillDataSourceLayer.live >>> QuillXxxRepository.layer` then `>>>`-per-service-`++`-combined shape repeated verbatim | Two instances (Country, Airport) risk guessing the wrong generic shape — build Airline first by copy-and-adapt, then extract a generic `EntitySync.syncEntity(parse, toCommand, toEntity, keyOf, create, update, delete, findAllUnbounded)` helper and a small generic layer-builder only if the third instance confirms the same shape (Rule of Three). If it does, generalize via **composition** (higher-order functions/type parameters, matching every other generic piece this module already has) — **not inheritance**; this codebase never uses class hierarchies for behavior reuse, only ZIO/FP composition, and traits here are hexagonal ports, not implementation base classes |
+| Generalize `CountrySync`/`AirportSync`'s glue and `Main`'s per-entity layer-wiring | **Split decision.** `Main`'s per-entity layer-wiring: **generalized.** Each `XxxSync.sync`'s glue: **rejected**, not deferred | `Main` now has two small generic helpers (`repoLayer`/`useCasesLayer`) collapsing the `QuillDataSourceLayer.live >>> QuillXxxRepository.layer` then `>>>`-per-service-`++`-combined shape to one line per entity — a legitimate composition win since that shape stayed byte-for-byte identical across all three entities. The `XxxSync.sync` glue itself, by contrast, has **diverged** rather than converged since the country-only-change fix above: Airport/Airline now reconcile `(Entity, CountryCode)` tuples via `findAllUnboundedWithCountry` while Country still reconciles the bare entity via `findAllUnbounded`, and Airline alone has country-name resolution + ICAO dedup neither other entity needs. Forcing one `EntitySync.syncEntity(...)` higher-order function over three genuinely different-shaped bodies would need several optional hook parameters and end up harder to read than the current three — a "wrong abstraction" trap, not a Rule-of-Three win. `EntitySync` itself needed no change either way |
+| Externalize configuration (URLs, filters, dedup table) to a config file | **Candidate list only, not decided or implemented.** See §11 for the full property-by-property table | Every configurable value today is a hardcoded Scala `val` — no config file of any kind exists yet for this module. §11 catalogs what a future config file could expose, why, and what should explicitly stay out of it |
 
 ---
 
@@ -498,3 +488,44 @@ key + reason) to act on without re-running.
 | Temp directory: plain `java.nio.file.Files` + hand-rolled recursive delete, `better-files`, `os-lib`, `scala.reflect.io.Directory` | Rejected — see §4.3 |
 | HTTP download: `java.net.http.HttpClient`, `sttp-client4`, Apache HttpClient/OkHttp, `zio-http-testkit` (for testing) | Rejected — see §4.4 |
 | File line reading: plain `java.nio.file.Files.readAllLines`, `zio-streams`' `ZStream.fromFile` + `ZPipeline.splitLines` | Rejected — see §4.5 |
+
+---
+
+## 11. Candidate YAML configuration properties
+
+**Not decided or implemented** — this module has no config file of any kind today; every value below
+is a hardcoded Scala `val`/literal, changeable only by editing source and recompiling. This section
+catalogs *candidates* for a future config file, grounded in what's actually hardcoded right now, not
+a design for the loader itself. Two things a real implementation would still need to settle first,
+flagged here rather than assumed:
+
+- **Format mismatch with `bootstrap`.** `bootstrap` already reads config from `application.conf`
+  (HOCON, `postgres`/`kafka`/`http` blocks, `${?ENV_VAR}` overrides — see
+  `bootstrap/src/main/resources/application.conf`), not YAML. Introducing YAML here would be a second
+  config format in the same codebase. Worth a deliberate choice (consistency with `bootstrap` vs.
+  whatever prompted "YAML" specifically), not a default.
+- **No YAML/config library chosen yet.** Neither `zio-config` nor any YAML parser is a current
+  dependency of this module or the project. Actually building this needs the same comparison
+  `## Documentation sources`' "Choosing a library for a new capability" convention requires (ZIO
+  ecosystem first — `zio-config`; stdlib second — none for YAML; third-party last), the same shape
+  §4.2's CSV-library comparison already models for this doc.
+
+| Property (candidate path) | Current hardcoded location | Type | Rationale |
+|---|---|---|---|
+| `sources.country.url` | `Main.scala`'s `countryUrl` | String (URL) | Source URLs change rarely, but today a change needs a recompile + redeploy of the fat jar between two ~6-month runs |
+| `sources.airport.url` | `Main.scala`'s `airportUrl` | String (URL) | Same rationale — OurAirports' URL already 301-redirected once (§5.1), a config value survives that kind of change without a code diff |
+| `sources.airline.url` | `Main.scala`'s `airlineUrl` | String (URL) | Same rationale |
+| `sync.entities.country.enabled` / `.airport.enabled` / `.airline.enabled` | Not configurable — `Main.run` always runs all three, in order | Boolean, default `true` | Lets an operator re-run just one entity (e.g. after fixing a rejected row) without commenting out code |
+| `sync.dryRun` | Not implemented — the already-recommended, still-unbuilt §9 "Dry-run mode" decision | Boolean, default `false` | A config property is arguably a better fit than a CLI flag here, since the jar is invoked unattended by cron with no argument-passing convention established |
+| `http.maxRedirects` | `HttpDownloader.scala`'s `followRedirects` — hardcoded `5` | Int | Cheap to expose; low priority since 5 has never been a problem in practice |
+| `airport.includedTypes` | `AirportCsvParser.scala`'s `includedTypes = Set("large_airport", "medium_airport")` | `List[String]` | Directly answers §9's own "revisit if a future use case needs smaller fields" note on the Airport `type` filter — including `small_airport`/`heliport` becomes a config edit, not a code change |
+| `airline.activeOnly` | `AirlineCsvParser.scala`'s hardcoded `Active == "Y"` row filter | Boolean, default `true` | Lets an analysis-only rerun include inactive/historical carriers without touching the parser |
+| `airline.countryNameAliases` | `AirlineCsvParser.scala`'s static `countryNameAliases: Map[String, String]` (~35 entries, §2.3/§9) | `Map[String, String]` | The strongest candidate on this list — it's already pure data isolated in one place, and it's the one value most likely to need a small addition after a future run surfaces a new unmapped country name (§9: "not every name resolves"); moving it out of source means that addition doesn't need a recompile |
+
+**Explicitly not candidates**, so a future implementation doesn't accidentally duplicate existing
+mechanisms:
+
+| Property | Why it stays out |
+|---|---|
+| Postgres connection (url/user/password) | Already externalized via `POSTGRES_URL`/`POSTGRES_USER`/`POSTGRES_PASSWORD` env vars, the same convention `bootstrap`'s `application.conf` and this module's `QuillDataSourceLayer` already share — a second config path for the same value would just be a second place to keep in sync |
+| Scheduling cadence (the `*/6` months, cron expression) | §9's "Scheduling mechanism" is already decided: the app has zero built-in scheduling awareness by design, the OS crontab entry owns cadence — a YAML cadence field would contradict that decision, not extend it |

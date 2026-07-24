@@ -46,7 +46,7 @@ shared-kernel
                         └── bootstrap  (composition root: domain + application + adapter-http + persistence-quill + persistence-postgres + migration)
                 migration              (SQL + Flyway only; no domain dependency — wired into bootstrap for migrate-on-start)
                 integration-tests      (opt-in — domain + migration + persistence-postgres + persistence-quill, real-Postgres tests; NOT in root's aggregate)
-                master-data-sync       (opt-in — domain + application + persistence-quill; downloads/parses/syncs Country against real Postgres so far; NOT in root's aggregate; see plans/masterdata/)
+                master-data-sync       (opt-in — domain + application + persistence-quill; downloads/parses/syncs Country + Airport + Airline against real Postgres; NOT in root's aggregate; see plans/masterdata/)
 ```
 
 Rule: inner modules never depend on outer ones. `domain` has zero framework dependencies.
@@ -144,7 +144,7 @@ object QuillAirportRepository:
 ## Database schema
 
 Flyway migrations in `infrastructure/migration/src/main/resources/db/migration/` (currently
-V1–V14) are the source of truth for the schema — read them directly rather than looking for
+V1–V15) are the source of truth for the schema — read them directly rather than looking for
 columns/constraints duplicated here. Two behavioral gotchas worth knowing without reading every
 migration:
 - Every FK targets the parent's surrogate `id BIGINT`, not its natural key (`code`/`iata_code`/
@@ -247,9 +247,9 @@ Always fetch current docs before writing or modifying library API calls — trai
 
 **Choosing a library for a new capability** (not just calling an API on one already in use): check
 options in this order, verifying each against current docs/source rather than memory, and record the
-comparison the way `docs/todo/master-data/analysis.md` §4.2 does (goal, an options table, a
-verdict): (1) ZIO core or an official ZIO-ecosystem library first — best effect-system fit and this
-project's own established preference (`zio-nio` over `better-files`/`os-lib`, `zio-http` over
+comparison the way `docs/todo/master-data/analysis.md`'s §4.2–§4.5 did while each was still an open
+decision (goal, an options table, a verdict): (1) ZIO core or an official ZIO-ecosystem library
+first — best effect-system fit and this project's own established preference (`zio-nio` over `better-files`/`os-lib`, `zio-http` over
 `sttp-client4`/Apache HttpClient, both picked over more "mature" non-ZIO options on ecosystem fit
 alone); (2) the Scala/JDK standard-library baseline second — no new dependency, but check `scala.*`
 too, not just `java.*` (`scala.io.Source` exists for some things `scala-library` covers that
@@ -259,9 +259,9 @@ capability.
 
 **Once a decision is actually implemented**, collapse that comparison down to a one-line decision
 plus a bare list of the rejected alternatives (a reference, not the reasoning) — don't keep
-maintaining a full options table for something already settled and shipped. Compare
-`docs/todo/master-data/analysis.md` §4.3–§4.5 (implemented — trimmed) against §4.2 (still open —
-full table) to see the same doc showing both states.
+maintaining a full options table for something already settled and shipped. See
+`docs/todo/master-data/analysis.md`'s §4.2–§4.5: each was a full table while open, collapsed to a
+one-line decision once it shipped.
 
 1. **Context7 MCP** (`mcp__context7` tools) — preferred for quick lookups
 2. **Official sites** (WebFetch fallback):

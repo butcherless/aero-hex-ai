@@ -60,10 +60,15 @@ traceability to the source plan.
 aero-hex-ai/
 └── docs/
     └── analysis/
-        ├── 01-domain-model.md          # STATIC — glossary, entities, relationships, rules
-        ├── 02-use-cases.md             # DYNAMIC — use case catalog, flows
-        └── 03-adr-analysis-to-code.md  # traceability doc → hexagonal modules
+        ├── 01-domain-model.md          # STATIC — glossary, entities, relationships, rules — DONE
+        ├── 02-use-cases.md             # DYNAMIC — use case catalog, flows — not generated yet
+        └── 03-adr-analysis-to-code.md  # traceability doc → hexagonal modules — not generated yet
 ```
+
+**Status:** only Task 1 has been executed. `entity-relationship-draft.md` and
+`validation-analysis-hexagonal.md` also exist under `docs/analysis/`, but as separate working/rationale
+docs outside this plan's original 3-doc scope (see `docs/CLAUDE.md`), not as Task 2/3 output. Tasks 2
+and 3 below remain runnable as written whenever that work is picked up.
 
 ---
 

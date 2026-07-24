@@ -2,10 +2,12 @@
 
 > Source of truth for this document is the code: `domain/`, `application/`, `shared-kernel/`,
 > `adapter-http/` (DTO validators), and `infrastructure/migration/` (Flyway schema). Aviation
-> concept definitions are adapted from `../incubator/README.adoc` (`=== Model` section), a prior
-> research project by the same author covering the same domain. Every rule is traced to a file and
-> line; anything not explicit in code is marked `[ASSUMPTION]`, and anything documented/implied but
-> not actually enforced is marked `[MISSING]`.
+> concept definitions are adapted from `../incubator/README.adoc` (`=== Model` section) — a prior,
+> unrelated-repo research project by the same author covering the same domain, **not part of this
+> git repository** (won't resolve on another clone or machine; the definitions below are the
+> useful output, not a link you need to follow). Every rule is traced to a file and line; anything
+> not explicit in code is marked `[ASSUMPTION]`, and anything documented/implied but not actually
+> enforced is marked `[MISSING]`.
 
 ## 1. Ubiquitous Language / Glossary
 
