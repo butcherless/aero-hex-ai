@@ -48,3 +48,9 @@ Swagger UI: `http://localhost:8080/docs`
 | Routes | POST | `/api/v1/routes/{origin}/{destination}/airlines/{icao}` | stub |
 | Routes | DELETE | `/api/v1/routes/{origin}/{destination}/airlines/{icao}` | stub |
 | Routes | GET | `/api/v1/airlines/{icao}/routes` | stub |
+| Health | GET | `/health/live` | ✓ implemented |
+| Health | GET | `/health/ready` | ✓ implemented |
+
+`/health/live` and `/health/ready` are the sole intentionally unversioned endpoints (no `/api/v1`
+prefix) — they follow the Kubernetes/load-balancer liveness-and-readiness probe convention rather
+than this project's REST API versioning.

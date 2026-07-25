@@ -50,7 +50,8 @@ aborts startup. Set `FLYWAY_MIGRATE_ON_START=false` to skip.
 Verify it's up:
 
 ```bash
-curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/docs/docs.yaml   # → 200
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health/live    # → 200
+curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health/ready   # → 200 (503 if Postgres is unreachable)
 ```
 
 Swagger UI is served at `http://localhost:8080/docs`.
@@ -59,7 +60,8 @@ Swagger UI is served at `http://localhost:8080/docs`.
 
 **Countries** (CRUD + search), **Airports** (list, search, find, create, update,
 list-by-country), **Airlines** (CRUD), and **Aircraft** (CRUD) are implemented end-to-end
-against real Postgres; Flights, Flight Instances, and Route creation are stubbed. See
+against real Postgres; Flights, Flight Instances, and Route creation are stubbed. Liveness/readiness
+probes are available at `/health/live` and `/health/ready` (unversioned, no `/api/v1` prefix). See
 [CLAUDE.md](./CLAUDE.md#rest-api) for the per-endpoint status table.
 
 ## Development

@@ -5,6 +5,7 @@ import dev.cmartin.aerohex.adapter.http.airline.AirlineEndpoints
 import dev.cmartin.aerohex.adapter.http.airport.AirportEndpoints
 import dev.cmartin.aerohex.adapter.http.country.CountryEndpoints
 import dev.cmartin.aerohex.adapter.http.flight.{FlightEndpoints, FlightInstanceEndpoints}
+import dev.cmartin.aerohex.adapter.http.health.HealthEndpoints
 import dev.cmartin.aerohex.adapter.http.route.RouteEndpoints
 import sttp.apispec.Tag as ApiTag
 import sttp.apispec.openapi.{Contact, Info, License}
@@ -31,7 +32,8 @@ object ApiSpec:
     ApiTag(
       "Flight Instances",
       description = Some("Flight instance (actual, dated flight occurrence) lookup operations.")
-    )
+    ),
+    ApiTag("Health", description = Some("Liveness and readiness probes."))
   )
 
   val allEndpoints: List[AnyEndpoint] = List(
@@ -72,5 +74,7 @@ object ApiSpec:
     FlightEndpoints.update,
     FlightEndpoints.delete,
     FlightInstanceEndpoints.findAll,
-    FlightInstanceEndpoints.findById
+    FlightInstanceEndpoints.findById,
+    HealthEndpoints.live,
+    HealthEndpoints.ready
   )

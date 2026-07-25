@@ -165,6 +165,12 @@ hand-written spec file. Swagger UI: `http://localhost:8080/docs`. Full per-endpo
 status table: [docs/api/endpoint-status.md](./docs/api/endpoint-status.md) — update it whenever an
 endpoint moves from stub to implemented, or a new one is added.
 
+`/health/live` and `/health/ready` are liveness/readiness probes (`adapter-http/.../health/`) —
+the sole endpoints deliberately left unversioned (no `/api/v1` prefix), matching the
+Kubernetes/load-balancer probe convention. Readiness pings Postgres via the shared HikariCP
+`DataSource`, bounded by a 3s timeout so an unreachable DB fails fast (HikariCP's own
+`connectionTimeout` default is 30s).
+
 ## Plans directory
 
 Non-trivial changes (new endpoints, schema/persistence migrations, test refactors) get a design doc

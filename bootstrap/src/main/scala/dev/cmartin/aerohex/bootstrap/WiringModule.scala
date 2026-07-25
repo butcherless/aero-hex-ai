@@ -5,6 +5,7 @@ import dev.cmartin.aerohex.adapter.http.airline.AirlineRoutes
 import dev.cmartin.aerohex.adapter.http.airport.AirportRoutes
 import dev.cmartin.aerohex.adapter.http.country.CountryRoutes
 import dev.cmartin.aerohex.adapter.http.flight.{FlightInstanceRoutes, FlightRoutes}
+import dev.cmartin.aerohex.adapter.http.health.HealthRoutes
 import dev.cmartin.aerohex.adapter.http.route.RouteRoutes
 import dev.cmartin.aerohex.adapter.http.server.HttpServer
 import dev.cmartin.aerohex.application.aircraft.*
@@ -123,5 +124,6 @@ object WiringModule {
       (routeUseCaseLayers >>> RouteRoutes.layer) ++
       (aircraftUseCaseLayers >>> AircraftRoutes.layer) ++
       (flightUseCaseLayers >>> FlightRoutes.layer) ++
-      (flightInstanceRepoLayer >>> FindFlightInstanceService.layer >>> FlightInstanceRoutes.layer)
+      (flightInstanceRepoLayer >>> FindFlightInstanceService.layer >>> FlightInstanceRoutes.layer) ++
+      (QuillDataSourceLayer.live >>> HealthRoutes.layer)
 }
