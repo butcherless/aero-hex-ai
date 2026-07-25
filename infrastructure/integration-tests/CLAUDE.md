@@ -16,7 +16,7 @@ Aircraft (`QuillAircraftRepositoryItSpec`, seeding a `Country` then an `Airline`
 `aircraft.airline_id` FKs to `airlines.id`), Flight (`QuillFlightRepositoryItSpec`, seeding a
 `Country`, two `Airport`s (origin + destination), and an `Airline` first since `flights.origin_airport_id`/
 `destination_airport_id`/`airline_id` FK to `airports.id`/`airlines.id`) — each seeding its own `Country`
-row first since `airports.country_id`/`airlines.country_id` FK to `countries.id` — 57 tests total, all
+row first since `airports.country_id`/`airlines.country_id` FK to `countries.id` — 58 tests total, all
 green. Route is not implemented yet.
 See `plans/add-persistence-integration-tests.md` for the full scope table and design rationale (why a
 plain subproject instead of sbt's deprecated `IntegrationTest` config, why one module instead of

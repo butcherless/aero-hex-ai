@@ -24,6 +24,9 @@ final class FindAirlineService(repo: AirlineRepository) extends FindAirlineUseCa
 
   override def findAllUnboundedWithCountry: IO[DomainError, List[(Airline, CountryCode)]] =
     repo.findAllUnboundedWithCountry @@ ServiceAspect.logged("FindAirlineService.findAllUnboundedWithCountry")
+
+  override def searchByName(query: String): IO[DomainError, List[Airline]] =
+    repo.searchByName(query) @@ ServiceAspect.logged(s"FindAirlineService.searchByName($query)")
 }
 
 object FindAirlineService {

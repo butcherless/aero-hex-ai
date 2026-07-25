@@ -69,6 +69,28 @@ object AirlineEndpoints {
       .out(jsonBody[List[AirlineDto]].description("List of airlines."))
       .errorOut(oneOf[(StatusCode, HttpErrorResponse)](EndpointErrors.unexpectedError))
 
+  val searchByName: PublicEndpoint[String, (StatusCode, HttpErrorResponse), List[AirlineDto], Any] =
+    base.get
+      .summary("Search airlines by name")
+      .description(
+        "Returns all airlines whose name contains the given query string (case-insensitive). Query must be at least 3 characters."
+      )
+      .tag("Airlines")
+      .in("search")
+      .in(
+        query[String]("q")
+          .description("Name fragment to search for (minimum 3 characters).")
+          .validate(Validator.minLength(3))
+          .example("Iberia")
+      )
+      .out(jsonBody[List[AirlineDto]].description("Matching airlines."))
+      .errorOut(
+        oneOf[(StatusCode, HttpErrorResponse)](
+          EndpointErrors.badRequestVariant("Invalid search query."),
+          EndpointErrors.unexpectedError
+        )
+      )
+
   val findByIcao: PublicEndpoint[String, (StatusCode, HttpErrorResponse), AirlineDto, Any] =
     base.get
       .summary("Find airline by ICAO code")

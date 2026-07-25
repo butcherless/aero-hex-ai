@@ -67,6 +67,11 @@ object AirlineServiceSpec extends ZIOSpecDefault:
           val repo = stubAirlineRepo(onFindAll = _ => ZIO.succeed(List(iberia, vueling)))
           for result <- new FindAirlineService(repo).findAll(Pagination(1, 20))
           yield assertTrue(result == List(iberia, vueling))
+        },
+        test("searchByName delegates to the repository unchanged") {
+          val repo = stubAirlineRepo(onSearchByName = _ => ZIO.succeed(List(iberia)))
+          for result <- new FindAirlineService(repo).searchByName("Iberia")
+          yield assertTrue(result == List(iberia))
         }
       ),
       suite("FindAirlinesByCountryService")(

@@ -30,6 +30,12 @@ class AirlineRoutes(
         .map(_.map(AirlineDto.fromDomain))
         .mapError(ErrorMapper.toHttpError)
     },
+    AirlineEndpoints.searchByName.zServerLogic { q =>
+      useCase
+        .searchByName(q)
+        .map(_.map(AirlineDto.fromDomain))
+        .mapError(ErrorMapper.toHttpError)
+    },
     AirlineEndpoints.findByIcao.zServerLogic { icao =>
       useCase
         .findByIcao(icao)

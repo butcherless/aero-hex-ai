@@ -21,6 +21,8 @@ private[application] object AirlineRepositoryStub:
       ZIO.die(new NotImplementedError("findAllUnbounded"))
     def findAllUnboundedWithCountry: IO[DomainError, List[(Airline, CountryCode)]]   =
       ZIO.die(new NotImplementedError("findAllUnboundedWithCountry"))
+    def searchByName(query: String): IO[DomainError, List[Airline]]                  =
+      ZIO.die(new NotImplementedError("searchByName"))
     def findByCountry(c: CountryCode, p: Pagination): IO[DomainError, List[Airline]] =
       ZIO.die(new NotImplementedError("findByCountry"))
     def save(a: Airline, c: CountryCode): IO[DomainError, Airline]                   =
@@ -36,6 +38,7 @@ private[application] object AirlineRepositoryStub:
       onFindAllUnbounded: IO[DomainError, List[Airline]] = unimplementedAirlineRepo.findAllUnbounded,
       onFindAllUnboundedWithCountry: IO[DomainError, List[(Airline, CountryCode)]] =
         unimplementedAirlineRepo.findAllUnboundedWithCountry,
+      onSearchByName: String => IO[DomainError, List[Airline]] = unimplementedAirlineRepo.searchByName,
       onFindByCountry: (CountryCode, Pagination) => IO[DomainError, List[Airline]] =
         unimplementedAirlineRepo.findByCountry,
       onSave: (Airline, CountryCode) => IO[DomainError, Airline] = unimplementedAirlineRepo.save,
@@ -46,6 +49,7 @@ private[application] object AirlineRepositoryStub:
     def findAll(p: Pagination): IO[DomainError, List[Airline]]                       = onFindAll(p)
     def findAllUnbounded: IO[DomainError, List[Airline]]                             = onFindAllUnbounded
     def findAllUnboundedWithCountry: IO[DomainError, List[(Airline, CountryCode)]]   = onFindAllUnboundedWithCountry
+    def searchByName(query: String): IO[DomainError, List[Airline]]                  = onSearchByName(query)
     def findByCountry(c: CountryCode, p: Pagination): IO[DomainError, List[Airline]] = onFindByCountry(c, p)
     def save(a: Airline, c: CountryCode): IO[DomainError, Airline]                   = onSave(a, c)
     def update(a: Airline, c: CountryCode): IO[DomainError, Airline]                 = onUpdate(a, c)

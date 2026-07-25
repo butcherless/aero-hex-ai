@@ -10,6 +10,7 @@ trait AirlineRepository {
   def findAll(pagination: Pagination): IO[DomainError, List[Airline]]
   def findAllUnbounded: IO[DomainError, List[Airline]]
   def findAllUnboundedWithCountry: IO[DomainError, List[(Airline, CountryCode)]]
+  def searchByName(query: String): IO[DomainError, List[Airline]]
   def findByCountry(code: CountryCode, pagination: Pagination): IO[DomainError, List[Airline]]
   def save(airline: Airline, countryCode: CountryCode): IO[DomainError, Airline]
   def update(airline: Airline, countryCode: CountryCode): IO[DomainError, Airline]

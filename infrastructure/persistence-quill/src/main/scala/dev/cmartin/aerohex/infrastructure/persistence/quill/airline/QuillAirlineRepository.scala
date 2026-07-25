@@ -72,6 +72,18 @@ final class QuillAirlineRepository(dataSource: DataSource) extends AirlineReposi
       .map(_.map { case (a, c) => (toAirline(a), CountryCode.unsafeMake(c.code)) })
       .orDie
 
+  override def searchByName(query: String): IO[DomainError, List[Airline]] = {
+    val pattern = "%" + query + "%"
+    ctx
+      .run(quote {
+        querySchema[AirlineRow]("airlines")
+          .filter(r => infix"${r.name} ILIKE ${lift(pattern)}".as[Boolean])
+          .sortBy(_.name)
+      })
+      .map(_.map(toAirline))
+      .orDie
+  }
+
   override def findByCountry(code: CountryCode, pagination: Pagination): IO[DomainError, List[Airline]] = {
     val offset = pagination.offset
     val limit  = pagination.pageSize

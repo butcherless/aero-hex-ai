@@ -51,6 +51,7 @@ object ApiSpec:
     AirportEndpoints.delete,
     AirportEndpoints.findByCountry,
     AirlineEndpoints.findAll,
+    AirlineEndpoints.searchByName,
     AirlineEndpoints.findByIcao,
     AirlineEndpoints.create,
     AirlineEndpoints.update,

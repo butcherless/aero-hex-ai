@@ -28,6 +28,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
     def findAllUnbounded: IO[DomainError, List[Airline]]                           = ZIO.succeed(List(iberia, vueling))
     def findAllUnboundedWithCountry: IO[DomainError, List[(Airline, CountryCode)]] =
       ZIO.die(new NotImplementedError("findAllUnboundedWithCountry"))
+    def searchByName(q: String): IO[DomainError, List[Airline]]                    = ZIO.succeed(List(iberia))
 
   private val notFoundFind: FindAirlineUseCase = new FindAirlineUseCase:
     def findByIcao(icao: String): IO[DomainError, Airline]                         = ZIO.fail(DomainError.AirlineNotFound(icao))
@@ -35,6 +36,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
     def findAllUnbounded: IO[DomainError, List[Airline]]                           = ZIO.fail(DomainError.AirlineNotFound("n/a"))
     def findAllUnboundedWithCountry: IO[DomainError, List[(Airline, CountryCode)]] =
       ZIO.die(new NotImplementedError("findAllUnboundedWithCountry"))
+    def searchByName(q: String): IO[DomainError, List[Airline]]                    = ZIO.fail(DomainError.AirlineNotFound("n/a"))
 
   private val defaultCreate: CreateAirlineUseCase = (_: CreateAirlineCommand) => ZIO.succeed(iberia)
 
@@ -131,6 +133,34 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
           for
             response <- basicRequest.get(uri"https://test.com/api/v1/airlines?page=0").send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
+        }
+      ),
+      suite("GET /api/v1/airlines/search")(
+        test("returns 200 with matching airlines") {
+          for
+            response <- basicRequest
+                          .get(uri"https://test.com/api/v1/airlines/search?q=Iberia")
+                          .response(asJson[List[AirlineDto]])
+                          .send(makeBackend())
+            airlines  = response.body.toOption.getOrElse(Nil)
+          yield assertTrue(
+            response.code == StatusCode.Ok,
+            airlines.map(_.icao) == List("IBE")
+          )
+        },
+        test("returns 400 when query is shorter than 3 characters") {
+          for
+            response <- basicRequest
+                          .get(uri"https://test.com/api/v1/airlines/search?q=ab")
+                          .send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        },
+        test("propagates the mapped domain error when the use case fails") {
+          for
+            response <- basicRequest
+                          .get(uri"https://test.com/api/v1/airlines/search?q=Iberia")
+                          .send(makeBackend(find = notFoundFind))
+          yield assertTrue(response.code == StatusCode.NotFound)
         }
       ),
       suite("GET /api/v1/airlines/{icao}")(
@@ -401,7 +431,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
                                  ZLayer.succeed(defaultFindByRoute),
                                  AirlineRoutes.layer
                                )
-          yield assertTrue(endpointCount == 7)
+          yield assertTrue(endpointCount == 8)
         }
       )
     )

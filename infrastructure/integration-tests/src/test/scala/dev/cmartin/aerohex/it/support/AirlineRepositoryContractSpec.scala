@@ -31,6 +31,14 @@ object AirlineRepositoryContractSpec:
         all  <- repo.findAll(Pagination(page = 1, pageSize = 100))
       yield assertTrue(all.exists(_.icao.value == "AFR"))
     },
+    test("searchByName matches a case-insensitive substring") {
+      for
+        _       <- seedCountry("GB", "United Kingdom")
+        repo    <- ZIO.service[AirlineRepository]
+        _       <- repo.save(Airline(AirlineIcaoCode("BAW"), "British Airways", None, Some("SPEEDBIRD")), CountryCode("GB"))
+        results <- repo.searchByName("british")
+      yield assertTrue(results.exists(_.icao.value == "BAW"))
+    },
     test("findByCountry returns airlines in that country") {
       for
         _    <- seedCountry("DE", "Germany")

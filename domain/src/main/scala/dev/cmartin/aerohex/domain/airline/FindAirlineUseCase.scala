@@ -10,4 +10,5 @@ trait FindAirlineUseCase {
   def findAll(pagination: Pagination): IO[DomainError, List[Airline]]
   def findAllUnbounded: IO[DomainError, List[Airline]]
   def findAllUnboundedWithCountry: IO[DomainError, List[(Airline, CountryCode)]]
+  def searchByName(query: String): IO[DomainError, List[Airline]]
 }
