@@ -210,7 +210,7 @@ sbt coverageAggregate
 Four independent layers, each catching a different class of problem — run the ones relevant to
 what changed, not always all four:
 
-1. **Local build** — `sbt clean` → `compile` → `test` (343 unit tests, in-memory stubs / Tapir
+1. **Local build** — `sbt clean` → `compile` → `test` (350 unit tests, in-memory stubs / Tapir
    stub server) → `integrationTests/test` (112 tests, real Postgres via Testcontainers, needs
    Docker — see `## Integration tests` above) → `bootstrap/assembly` (package) →
    `coverageAggregate` (see `## Coverage` above for the `mkdir -p .coverage-data/...` step first).
