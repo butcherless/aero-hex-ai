@@ -4,6 +4,7 @@ import dev.cmartin.aerohex.domain.airline.*
 import dev.cmartin.aerohex.domain.country.CountryCode
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.route.FindAirlinesByRouteUseCase
+import dev.cmartin.aerohex.domain.user.{AccessToken, TokenService}
 import dev.cmartin.aerohex.shared.Pagination
 import io.circe.generic.auto.*
 import sttp.client4.*
@@ -13,7 +14,7 @@ import sttp.client4.testing.BackendStub
 import sttp.model.StatusCode
 import sttp.tapir.server.stub4.TapirStubInterpreter
 import zio.test.*
-import zio.{IO, Scope, Task, ZIO, ZLayer}
+import zio.{IO, Scope, Task, UIO, ZIO, ZLayer}
 
 object AirlineEndpointsSpec extends ZIOSpecDefault:
 
@@ -72,6 +73,17 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
   private val failingFindByRoute: FindAirlinesByRouteUseCase =
     (origin: String, destination: String) => ZIO.fail(DomainError.RouteNotFound(origin, destination))
 
+  // Every endpoint now requires a bearer token (plans/security/protect-endpoints.md).
+  private val validToken: TokenService = new TokenService:
+    def generate(username: String): UIO[AccessToken]     = ZIO.die(new NotImplementedError("generate"))
+    def validate(token: String): IO[DomainError, String] = ZIO.succeed("test-user")
+
+  private val rejectingToken: TokenService = new TokenService:
+    def generate(username: String): UIO[AccessToken]     = ZIO.die(new NotImplementedError("generate"))
+    def validate(token: String): IO[DomainError, String] = ZIO.fail(DomainError.InvalidToken("rejected"))
+
+  private val authedRequest = basicRequest.header("Authorization", "Bearer test-token")
+
   // ── Backend factory ────────────────────────────────────────────────────────
 
   private def makeBackend(
@@ -80,11 +92,12 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
       findByCountry: FindAirlinesByCountryUseCase = defaultFindByCountry,
       update: UpdateAirlineUseCase = defaultUpdate,
       delete: DeleteAirlineUseCase = defaultDelete,
-      findByRoute: FindAirlinesByRouteUseCase = defaultFindByRoute
+      findByRoute: FindAirlinesByRouteUseCase = defaultFindByRoute,
+      tokenService: TokenService = validToken
   ): Backend[Task] =
     TapirStubInterpreter(BackendStub(new RIOMonadAsyncError[Any]))
       .whenServerEndpointsRunLogic(
-        new AirlineRoutes(find, create, findByCountry, update, delete, findByRoute).serverEndpoints
+        new AirlineRoutes(find, create, findByCountry, update, delete, findByRoute, tokenService).serverEndpoints
       )
       .backend()
 
@@ -92,10 +105,24 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
 
   override def spec: Spec[TestEnvironment & Scope, Any] =
     suite("AirlineEndpoints")(
+      suite("Authentication")(
+        test("returns 401 when the Authorization header is missing") {
+          for
+            response <- basicRequest.get(uri"https://test.com/api/v1/airlines").send(makeBackend())
+          yield assertTrue(response.code == StatusCode.Unauthorized)
+        },
+        test("returns 401 when the token is rejected") {
+          for
+            response <- authedRequest
+                          .get(uri"https://test.com/api/v1/airlines")
+                          .send(makeBackend(tokenService = rejectingToken))
+          yield assertTrue(response.code == StatusCode.Unauthorized)
+        }
+      ),
       suite("GET /api/v1/airlines")(
         test("returns 200 with the full airline list") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/airlines")
                           .response(asJson[List[AirlineDto]])
                           .send(makeBackend())
@@ -107,38 +134,38 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
         },
         test("accepts custom page and pageSize query params") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/airlines?page=2&pageSize=5")
                           .send(makeBackend())
           yield assertTrue(response.code == StatusCode.Ok)
         },
         test("propagates the mapped domain error when the use case fails") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/airlines")
                           .send(makeBackend(find = notFoundFind))
           yield assertTrue(response.code == StatusCode.NotFound)
         },
         test("returns 400 when pageSize is 0") {
           for
-            response <- basicRequest.get(uri"https://test.com/api/v1/airlines?pageSize=0").send(makeBackend())
+            response <- authedRequest.get(uri"https://test.com/api/v1/airlines?pageSize=0").send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         },
         test("returns 400 when pageSize is over 100") {
           for
-            response <- basicRequest.get(uri"https://test.com/api/v1/airlines?pageSize=101").send(makeBackend())
+            response <- authedRequest.get(uri"https://test.com/api/v1/airlines?pageSize=101").send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         },
         test("returns 400 when page is 0") {
           for
-            response <- basicRequest.get(uri"https://test.com/api/v1/airlines?page=0").send(makeBackend())
+            response <- authedRequest.get(uri"https://test.com/api/v1/airlines?page=0").send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         }
       ),
       suite("GET /api/v1/airlines/search")(
         test("returns 200 with matching airlines") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/airlines/search?q=Iberia")
                           .response(asJson[List[AirlineDto]])
                           .send(makeBackend())
@@ -150,14 +177,14 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
         },
         test("returns 400 when query is shorter than 3 characters") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/airlines/search?q=ab")
                           .send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         },
         test("propagates the mapped domain error when the use case fails") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/airlines/search?q=Iberia")
                           .send(makeBackend(find = notFoundFind))
           yield assertTrue(response.code == StatusCode.NotFound)
@@ -166,7 +193,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
       suite("GET /api/v1/airlines/{icao}")(
         test("returns 200 with the requested airline") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/airlines/IBE")
                           .response(asJson[AirlineDto])
                           .send(makeBackend())
@@ -178,24 +205,24 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
         },
         test("returns 404 when the airline does not exist") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/airlines/XXX")
                           .send(makeBackend(find = notFoundFind))
           yield assertTrue(response.code == StatusCode.NotFound)
         },
         test("returns 400 when the icao code is not exactly 3 letters") {
           for
-            response <- basicRequest.get(uri"https://test.com/api/v1/airlines/IB").send(makeBackend())
+            response <- authedRequest.get(uri"https://test.com/api/v1/airlines/IB").send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         },
         test("returns 400 when the icao code is longer than 3 letters") {
           for
-            response <- basicRequest.get(uri"https://test.com/api/v1/airlines/IBEX").send(makeBackend())
+            response <- authedRequest.get(uri"https://test.com/api/v1/airlines/IBEX").send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         },
         test("returns 400 when the icao code contains non-alpha characters") {
           for
-            response <- basicRequest.get(uri"https://test.com/api/v1/airlines/123").send(makeBackend())
+            response <- authedRequest.get(uri"https://test.com/api/v1/airlines/123").send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         }
       ),
@@ -203,7 +230,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
         test("returns 201 with a Location header pointing to the new resource") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .post(uri"https://test.com/api/v1/airlines")
                 .body("""{"icao":"IBE","name":"Iberia","alias":null,"callsign":"IBERIA","countryCode":"ES"}""")
                 .contentType("application/json")
@@ -219,7 +246,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
         test("returns 409 when the airline already exists") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .post(uri"https://test.com/api/v1/airlines")
                 .body("""{"icao":"IBE","name":"Iberia","alias":null,"callsign":"IBERIA","countryCode":"ES"}""")
                 .contentType("application/json")
@@ -229,7 +256,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
         test("returns 404 when the referenced country does not exist") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .post(uri"https://test.com/api/v1/airlines")
                 .body("""{"icao":"IBE","name":"Iberia","alias":null,"callsign":"IBERIA","countryCode":"XX"}""")
                 .contentType("application/json")
@@ -239,7 +266,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
         test("returns 400 when the icao code is not exactly 3 letters") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .post(uri"https://test.com/api/v1/airlines")
                 .body("""{"icao":"I","name":"Iberia","alias":null,"callsign":"IBERIA","countryCode":"ES"}""")
                 .contentType("application/json")
@@ -249,7 +276,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
         test("returns 400 when icao is 3 chars but not alphabetic (real AirlineIcaoCode.make check, not a stub)") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .post(uri"https://test.com/api/v1/airlines")
                 .body("""{"icao":"123","name":"Nowhere","alias":null,"callsign":"IBERIA","countryCode":"ES"}""")
                 .contentType("application/json")
@@ -259,7 +286,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
         test("returns 400 when name is empty") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .post(uri"https://test.com/api/v1/airlines")
                 .body("""{"icao":"IBE","name":"","alias":null,"callsign":"IBERIA","countryCode":"ES"}""")
                 .contentType("application/json")
@@ -271,7 +298,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
         test("returns 200 with the updated airline") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .put(uri"https://test.com/api/v1/airlines/IBE")
                 .body("""{"name":"Iberia Airlines","alias":null,"callsign":"IBERIA","countryCode":"ES"}""")
                 .contentType("application/json")
@@ -286,7 +313,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
         test("returns 404 when the airline does not exist") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .put(uri"https://test.com/api/v1/airlines/XXX")
                 .body("""{"name":"Nowhere","alias":null,"callsign":"IBERIA","countryCode":"ES"}""")
                 .contentType("application/json")
@@ -296,7 +323,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
         test("returns 404 when the referenced country does not exist") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .put(uri"https://test.com/api/v1/airlines/IBE")
                 .body("""{"name":"Iberia","alias":null,"callsign":"IBERIA","countryCode":"XX"}""")
                 .contentType("application/json")
@@ -306,7 +333,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
         test("returns 400 when the icao code is not exactly 3 letters") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .put(uri"https://test.com/api/v1/airlines/IB")
                 .body("""{"name":"Iberia","alias":null,"callsign":"IBERIA","countryCode":"ES"}""")
                 .contentType("application/json")
@@ -316,7 +343,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
         test("returns 400 when the request body is invalid") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .put(uri"https://test.com/api/v1/airlines/IBE")
                 .body("""{"name":"","alias":null,"callsign":"IBERIA","countryCode":"ES"}""")
                 .contentType("application/json")
@@ -327,7 +354,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
       suite("GET /api/v1/countries/{code}/airlines")(
         test("returns 200 with the airlines in the country") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/countries/ES/airlines")
                           .response(asJson[List[AirlineDto]])
                           .send(makeBackend())
@@ -339,67 +366,67 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
         },
         test("returns 404 when the country does not exist") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/countries/XX/airlines")
                           .send(makeBackend(findByCountry = countryNotFoundFindByCountry))
           yield assertTrue(response.code == StatusCode.NotFound)
         },
         test("returns 400 when the code is shorter than 2 characters") {
           for
-            response <- basicRequest.get(uri"https://test.com/api/v1/countries/X/airlines").send(makeBackend())
+            response <- authedRequest.get(uri"https://test.com/api/v1/countries/X/airlines").send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         },
         test("returns 400 when the code is longer than 2 characters") {
           for
-            response <- basicRequest.get(uri"https://test.com/api/v1/countries/ESP/airlines").send(makeBackend())
+            response <- authedRequest.get(uri"https://test.com/api/v1/countries/ESP/airlines").send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         },
         test("returns 400 when the code contains non-alpha characters") {
           for
-            response <- basicRequest.get(uri"https://test.com/api/v1/countries/12/airlines").send(makeBackend())
+            response <- authedRequest.get(uri"https://test.com/api/v1/countries/12/airlines").send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         },
         test("returns 400 when pageSize is 0") {
           for
             response <-
-              basicRequest.get(uri"https://test.com/api/v1/countries/ES/airlines?pageSize=0").send(makeBackend())
+              authedRequest.get(uri"https://test.com/api/v1/countries/ES/airlines?pageSize=0").send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         },
         test("returns 400 when pageSize is over 100") {
           for
             response <-
-              basicRequest.get(uri"https://test.com/api/v1/countries/ES/airlines?pageSize=101").send(makeBackend())
+              authedRequest.get(uri"https://test.com/api/v1/countries/ES/airlines?pageSize=101").send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         },
         test("returns 400 when page is 0") {
           for
-            response <- basicRequest.get(uri"https://test.com/api/v1/countries/ES/airlines?page=0").send(makeBackend())
+            response <- authedRequest.get(uri"https://test.com/api/v1/countries/ES/airlines?page=0").send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         }
       ),
       suite("DELETE /api/v1/airlines/{icao}")(
         test("returns 204 on successful deletion") {
           for
-            response <- basicRequest.delete(uri"https://test.com/api/v1/airlines/IBE").send(makeBackend())
+            response <- authedRequest.delete(uri"https://test.com/api/v1/airlines/IBE").send(makeBackend())
           yield assertTrue(response.code == StatusCode.NoContent)
         },
         test("returns 404 when the airline does not exist") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .delete(uri"https://test.com/api/v1/airlines/XXX")
                           .send(makeBackend(delete = notFoundDelete))
           yield assertTrue(response.code == StatusCode.NotFound)
         },
         test("returns 400 when the icao code is not exactly 3 letters") {
           for
-            response <- basicRequest.delete(uri"https://test.com/api/v1/airlines/IB").send(makeBackend())
+            response <- authedRequest.delete(uri"https://test.com/api/v1/airlines/IB").send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         }
       ),
       suite("GET /api/v1/routes/{origin}/{destination}/airlines")(
         test("returns 200 with the airlines operating the route") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/routes/MAD/TFN/airlines")
                           .response(asJson[List[AirlineDto]])
                           .send(makeBackend())
@@ -411,7 +438,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
         },
         test("propagates the mapped domain error when the use case fails") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/routes/MAD/TFN/airlines")
                           .send(makeBackend(findByRoute = failingFindByRoute))
           yield assertTrue(response.code == StatusCode.NotFound)
@@ -429,6 +456,7 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
                                  ZLayer.succeed(defaultUpdate),
                                  ZLayer.succeed(defaultDelete),
                                  ZLayer.succeed(defaultFindByRoute),
+                                 ZLayer.succeed(validToken),
                                  AirlineRoutes.layer
                                )
           yield assertTrue(endpointCount == 8)

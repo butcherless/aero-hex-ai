@@ -22,12 +22,14 @@ object CountryEndpoints {
 
   private val notFoundErrorOut: EndpointOutput[(StatusCode, HttpErrorResponse)] =
     oneOf[(StatusCode, HttpErrorResponse)](
+      EndpointErrors.unauthorizedVariant("Missing or invalid token."),
       EndpointErrors.notFoundVariant("Country not found."),
       EndpointErrors.unexpectedError
     )
 
   private val createErrorOut: EndpointOutput[(StatusCode, HttpErrorResponse)] =
     oneOf[(StatusCode, HttpErrorResponse)](
+      EndpointErrors.unauthorizedVariant("Missing or invalid token."),
       EndpointErrors.conflictVariant("Country already exists."),
       EndpointErrors.badRequestVariant("Not a real ISO 3166-1 alpha-2 country code."),
       EndpointErrors.unexpectedError
@@ -37,8 +39,9 @@ object CountryEndpoints {
   // #6 `name` unifies the former dedicated /search endpoint into this collection endpoint as an
   // optional filter — REST best practice treats filtering as a query on the collection resource
   // rather than a separate path.
-  val findAll: PublicEndpoint[(Option[String], Int, Int), (StatusCode, HttpErrorResponse), List[CountryDto], Any] =
+  val findAll: Endpoint[String, (Option[String], Int, Int), (StatusCode, HttpErrorResponse), List[CountryDto], Any] =
     base.get
+      .securityIn(auth.bearer[String]())
       .summary("List or search countries")
       .description(
         "Returns a paginated list of countries. If `name` is provided, filters to countries whose " +
@@ -66,13 +69,15 @@ object CountryEndpoints {
       )
       .errorOut(
         oneOf[(StatusCode, HttpErrorResponse)](
+          EndpointErrors.unauthorizedVariant("Missing or invalid token."),
           EndpointErrors.badRequestVariant("Invalid query parameters."),
           EndpointErrors.unexpectedError
         )
       )
 
-  val findByCode: PublicEndpoint[String, (StatusCode, HttpErrorResponse), CountryDto, Any] =
+  val findByCode: Endpoint[String, String, (StatusCode, HttpErrorResponse), CountryDto, Any] =
     base.get
+      .securityIn(auth.bearer[String]())
       .summary("Find country by code")
       .description("Returns a single country identified by its ISO 3166-1 alpha-2 code.")
       .tag("Countries")
@@ -81,8 +86,10 @@ object CountryEndpoints {
       .errorOut(notFoundErrorOut)
 
   // #4 Location header carries the canonical URL of the created resource (HTTP best practice)
-  val create: PublicEndpoint[CreateCountryRequest, (StatusCode, HttpErrorResponse), (CountryDto, String), Any] =
+  val create
+      : Endpoint[String, CreateCountryRequest, (StatusCode, HttpErrorResponse), (CountryDto, String), Any] =
     base.post
+      .securityIn(auth.bearer[String]())
       .summary("Create country")
       .description("Creates a new country.")
       .tag("Countries")
@@ -94,8 +101,10 @@ object CountryEndpoints {
       )
       .errorOut(createErrorOut)
 
-  val update: PublicEndpoint[(String, UpdateCountryRequest), (StatusCode, HttpErrorResponse), CountryDto, Any] =
+  val update
+      : Endpoint[String, (String, UpdateCountryRequest), (StatusCode, HttpErrorResponse), CountryDto, Any] =
     base.put
+      .securityIn(auth.bearer[String]())
       .summary("Update country")
       .description("Updates the name of an existing country.")
       .tag("Countries")
@@ -104,8 +113,9 @@ object CountryEndpoints {
       .out(jsonBody[CountryDto].description("The updated country."))
       .errorOut(notFoundErrorOut)
 
-  val delete: PublicEndpoint[String, (StatusCode, HttpErrorResponse), Unit, Any] =
+  val delete: Endpoint[String, String, (StatusCode, HttpErrorResponse), Unit, Any] =
     base.delete
+      .securityIn(auth.bearer[String]())
       .summary("Delete country")
       .description("Deletes a country by its ISO 3166-1 alpha-2 code.")
       .tag("Countries")

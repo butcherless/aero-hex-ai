@@ -4,6 +4,7 @@ import dev.cmartin.aerohex.domain.airport.IataCode
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.route.{AssociateAirlineUseCase, CreateRouteCommand, CreateRouteUseCase}
 import dev.cmartin.aerohex.domain.route.{DisassociateAirlineUseCase, FindRoutesByAirlineUseCase, Route}
+import dev.cmartin.aerohex.domain.user.{AccessToken, TokenService}
 import dev.cmartin.aerohex.shared.Pagination
 import io.circe.generic.auto.*
 import sttp.client4.*
@@ -13,7 +14,7 @@ import sttp.client4.testing.BackendStub
 import sttp.model.StatusCode
 import sttp.tapir.server.stub4.TapirStubInterpreter
 import zio.test.*
-import zio.{Scope, Task, ZIO, ZLayer}
+import zio.{IO, Scope, Task, UIO, ZIO, ZLayer}
 
 object RouteEndpointsSpec extends ZIOSpecDefault:
 
@@ -53,27 +54,57 @@ object RouteEndpointsSpec extends ZIOSpecDefault:
   private val failingFindByAirline: FindRoutesByAirlineUseCase =
     (icao: String, _: Pagination) => ZIO.fail(DomainError.AirlineNotFound(icao))
 
+  // Every endpoint now requires a bearer token (plans/security/protect-endpoints.md).
+  private val validToken: TokenService = new TokenService:
+    def generate(username: String): UIO[AccessToken]     = ZIO.die(new NotImplementedError("generate"))
+    def validate(token: String): IO[DomainError, String] = ZIO.succeed("test-user")
+
+  private val rejectingToken: TokenService = new TokenService:
+    def generate(username: String): UIO[AccessToken]     = ZIO.die(new NotImplementedError("generate"))
+    def validate(token: String): IO[DomainError, String] = ZIO.fail(DomainError.InvalidToken("rejected"))
+
+  private val authedRequest = basicRequest.header("Authorization", "Bearer test-token")
+
   // ── Backend factory ────────────────────────────────────────────────────────
 
   private def makeBackend(
       create: CreateRouteUseCase = defaultCreate,
       associate: AssociateAirlineUseCase = defaultAssociate,
       disassociate: DisassociateAirlineUseCase = defaultDisassociate,
-      findByAirline: FindRoutesByAirlineUseCase = defaultFindByAirline
+      findByAirline: FindRoutesByAirlineUseCase = defaultFindByAirline,
+      tokenService: TokenService = validToken
   ): Backend[Task] =
     TapirStubInterpreter(BackendStub(new RIOMonadAsyncError[Any]))
-      .whenServerEndpointsRunLogic(new RouteRoutes(create, associate, disassociate, findByAirline).serverEndpoints)
+      .whenServerEndpointsRunLogic(
+        new RouteRoutes(create, associate, disassociate, findByAirline, tokenService).serverEndpoints
+      )
       .backend()
 
   // ── Spec ──────────────────────────────────────────────────────────────────
 
   override def spec: Spec[TestEnvironment & Scope, Any] =
     suite("RouteEndpoints")(
+      suite("Authentication")(
+        test("returns 401 when the Authorization header is missing") {
+          for
+            response <- basicRequest
+                          .get(uri"https://test.com/api/v1/airlines/AEA/routes")
+                          .send(makeBackend())
+          yield assertTrue(response.code == StatusCode.Unauthorized)
+        },
+        test("returns 401 when the token is rejected") {
+          for
+            response <- authedRequest
+                          .get(uri"https://test.com/api/v1/airlines/AEA/routes")
+                          .send(makeBackend(tokenService = rejectingToken))
+          yield assertTrue(response.code == StatusCode.Unauthorized)
+        }
+      ),
       suite("POST /api/v1/routes")(
         test("returns 201 with the created route") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .post(uri"https://test.com/api/v1/routes")
                 .body("""{"originIata":"MAD","destinationIata":"TFN","distanceKm":1740}""")
                 .contentType("application/json")
@@ -88,7 +119,7 @@ object RouteEndpointsSpec extends ZIOSpecDefault:
         test("returns 409 when the route already exists") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .post(uri"https://test.com/api/v1/routes")
                 .body("""{"originIata":"MAD","destinationIata":"TFN","distanceKm":1740}""")
                 .contentType("application/json")
@@ -98,7 +129,7 @@ object RouteEndpointsSpec extends ZIOSpecDefault:
         test("returns 404 when the origin airport is not found") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .post(uri"https://test.com/api/v1/routes")
                 .body("""{"originIata":"XXX","destinationIata":"TFN","distanceKm":1740}""")
                 .contentType("application/json")
@@ -108,7 +139,7 @@ object RouteEndpointsSpec extends ZIOSpecDefault:
         test("returns 400 when the use case reports an invalid route") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .post(uri"https://test.com/api/v1/routes")
                 .body("""{"originIata":"MAD","destinationIata":"MAD","distanceKm":1740}""")
                 .contentType("application/json")
@@ -118,7 +149,7 @@ object RouteEndpointsSpec extends ZIOSpecDefault:
         test("returns 400 when originIata is not exactly 3 letters") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .post(uri"https://test.com/api/v1/routes")
                 .body("""{"originIata":"MA","destinationIata":"TFN","distanceKm":1740}""")
                 .contentType("application/json")
@@ -128,7 +159,7 @@ object RouteEndpointsSpec extends ZIOSpecDefault:
         test("returns 400 when destinationIata is longer than 3 letters") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .post(uri"https://test.com/api/v1/routes")
                 .body("""{"originIata":"MAD","destinationIata":"TFNX","distanceKm":1740}""")
                 .contentType("application/json")
@@ -138,7 +169,7 @@ object RouteEndpointsSpec extends ZIOSpecDefault:
         test("returns 400 when distanceKm is less than 1") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .post(uri"https://test.com/api/v1/routes")
                 .body("""{"originIata":"MAD","destinationIata":"TFN","distanceKm":0}""")
                 .contentType("application/json")
@@ -149,17 +180,17 @@ object RouteEndpointsSpec extends ZIOSpecDefault:
       suite("POST /api/v1/routes/{origin}/{destination}/airlines/{icao}")(
         test("returns 204 when the association succeeds") {
           for response <-
-              basicRequest.post(uri"https://test.com/api/v1/routes/MAD/TFN/airlines/AEA").send(makeBackend())
+              authedRequest.post(uri"https://test.com/api/v1/routes/MAD/TFN/airlines/AEA").send(makeBackend())
           yield assertTrue(response.code == StatusCode.NoContent)
         },
         test("returns 409 when the airline is already associated") {
-          for response <- basicRequest
+          for response <- authedRequest
                             .post(uri"https://test.com/api/v1/routes/MAD/TFN/airlines/AEA")
                             .send(makeBackend(associate = conflictAssociate))
           yield assertTrue(response.code == StatusCode.Conflict)
         },
         test("returns 404 when the route does not exist") {
-          for response <- basicRequest
+          for response <- authedRequest
                             .post(uri"https://test.com/api/v1/routes/XXX/TFN/airlines/AEA")
                             .send(makeBackend(associate = notFoundAssociate))
           yield assertTrue(response.code == StatusCode.NotFound)
@@ -168,11 +199,11 @@ object RouteEndpointsSpec extends ZIOSpecDefault:
       suite("DELETE /api/v1/routes/{origin}/{destination}/airlines/{icao}")(
         test("returns 204 when the disassociation succeeds") {
           for response <-
-              basicRequest.delete(uri"https://test.com/api/v1/routes/MAD/TFN/airlines/AEA").send(makeBackend())
+              authedRequest.delete(uri"https://test.com/api/v1/routes/MAD/TFN/airlines/AEA").send(makeBackend())
           yield assertTrue(response.code == StatusCode.NoContent)
         },
         test("returns 404 when the airline is not associated with the route") {
-          for response <- basicRequest
+          for response <- authedRequest
                             .delete(uri"https://test.com/api/v1/routes/MAD/TFN/airlines/AEA")
                             .send(makeBackend(disassociate = notFoundDisassociate))
           yield assertTrue(response.code == StatusCode.NotFound)
@@ -181,7 +212,7 @@ object RouteEndpointsSpec extends ZIOSpecDefault:
       suite("GET /api/v1/airlines/{icao}/routes")(
         test("returns 200 with the routes operated by the airline") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/airlines/AEA/routes")
                           .response(asJson[List[RouteDto]])
                           .send(makeBackend())
@@ -193,7 +224,7 @@ object RouteEndpointsSpec extends ZIOSpecDefault:
         },
         test("propagates the mapped domain error when the use case fails") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/airlines/AEA/routes")
                           .send(makeBackend(findByAirline = failingFindByAirline))
           yield assertTrue(response.code == StatusCode.NotFound)
@@ -209,6 +240,7 @@ object RouteEndpointsSpec extends ZIOSpecDefault:
                                  ZLayer.succeed(defaultAssociate),
                                  ZLayer.succeed(defaultDisassociate),
                                  ZLayer.succeed(defaultFindByAirline),
+                                 ZLayer.succeed(validToken),
                                  RouteRoutes.layer
                                )
           yield assertTrue(endpointCount == 4)

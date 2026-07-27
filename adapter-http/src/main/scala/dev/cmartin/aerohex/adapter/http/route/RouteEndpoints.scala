@@ -35,12 +35,14 @@ object RouteEndpoints {
 
   private val associationErrorOut: EndpointOutput[(StatusCode, HttpErrorResponse)] =
     oneOf[(StatusCode, HttpErrorResponse)](
+      EndpointErrors.unauthorizedVariant("Missing or invalid token."),
       EndpointErrors.notFoundVariant("Route or airline not found."),
       EndpointErrors.unexpectedError
     )
 
-  val create: PublicEndpoint[CreateRouteRequest, (StatusCode, HttpErrorResponse), RouteDto, Any] =
+  val create: Endpoint[String, CreateRouteRequest, (StatusCode, HttpErrorResponse), RouteDto, Any] =
     base.post
+      .securityIn(auth.bearer[String]())
       .summary("Create route")
       .description("Creates a new flight route between two airports.")
       .tag("Routes")
@@ -48,6 +50,7 @@ object RouteEndpoints {
       .out(jsonBody[RouteDto].description("The created route.").and(statusCode(StatusCode.Created)))
       .errorOut(
         oneOf[(StatusCode, HttpErrorResponse)](
+          EndpointErrors.unauthorizedVariant("Missing or invalid token."),
           EndpointErrors.notFoundVariant("Airport not found."),
           EndpointErrors.conflictVariant("A route between these airports already exists."),
           EndpointErrors.badRequestVariant("Invalid route parameters."),
@@ -55,8 +58,9 @@ object RouteEndpoints {
         )
       )
 
-  val associate: PublicEndpoint[(String, String, String), (StatusCode, HttpErrorResponse), Unit, Any] =
+  val associate: Endpoint[String, (String, String, String), (StatusCode, HttpErrorResponse), Unit, Any] =
     base.post
+      .securityIn(auth.bearer[String]())
       .summary("Associate airline with route")
       .description("Marks the given airline as operating the given route.")
       .tag("Routes")
@@ -64,14 +68,16 @@ object RouteEndpoints {
       .out(statusCode(StatusCode.NoContent))
       .errorOut(
         oneOf[(StatusCode, HttpErrorResponse)](
+          EndpointErrors.unauthorizedVariant("Missing or invalid token."),
           EndpointErrors.notFoundVariant("Route or airline not found."),
           EndpointErrors.conflictVariant("Airline is already associated with this route."),
           EndpointErrors.unexpectedError
         )
       )
 
-  val disassociate: PublicEndpoint[(String, String, String), (StatusCode, HttpErrorResponse), Unit, Any] =
+  val disassociate: Endpoint[String, (String, String, String), (StatusCode, HttpErrorResponse), Unit, Any] =
     base.delete
+      .securityIn(auth.bearer[String]())
       .summary("Disassociate airline from route")
       .description("Removes the given airline as an operator of the given route.")
       .tag("Routes")
@@ -80,8 +86,9 @@ object RouteEndpoints {
       .errorOut(associationErrorOut)
 
   val findByAirline
-      : PublicEndpoint[(String, Int, Int), (StatusCode, HttpErrorResponse), List[RouteDto], Any] =
+      : Endpoint[String, (String, Int, Int), (StatusCode, HttpErrorResponse), List[RouteDto], Any] =
     endpoint.get
+      .securityIn(auth.bearer[String]())
       .in("api" / "v1" / "airlines" / icaoParam / "routes")
       .summary("List routes operated by an airline")
       .description("Returns a paginated list of routes operated by the given airline.")
@@ -89,5 +96,10 @@ object RouteEndpoints {
       .in(PaginationParams.page)
       .in(PaginationParams.pageSize)
       .out(jsonBody[List[RouteDto]].description("Routes operated by the given airline."))
-      .errorOut(oneOf[(StatusCode, HttpErrorResponse)](EndpointErrors.unexpectedError))
+      .errorOut(
+        oneOf[(StatusCode, HttpErrorResponse)](
+          EndpointErrors.unauthorizedVariant("Missing or invalid token."),
+          EndpointErrors.unexpectedError
+        )
+      )
 }

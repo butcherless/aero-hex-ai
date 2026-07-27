@@ -1,6 +1,7 @@
 # Authentication — JWT with Tapir + ZIO
 
-> **Status:** Analysis, with Step 1 implemented — see `plans/security/login.md`.
+> **Status:** Analysis, with Steps 1–2 implemented — see `plans/security/login.md` and
+> `plans/security/protect-endpoints.md`.
 > Covers library selection, architectural fit, API design, implementation patterns, role-based authorisation, and open decisions.
 
 ---
@@ -18,7 +19,7 @@ each it adapted.
 | # | Step | Status | Where |
 |---|---|---|---|
 | 1 | **Login** — `POST /api/v1/auth/login`, issues a self-signed JWT (RFC 7519 registered claims only) | Implemented and verified live | `plans/security/login.md` |
-| 2 | **Protect endpoints** — validate bearer tokens on existing routes via Tapir's `securityIn`/`zServerSecurityLogic` two-phase security (confirmed against Tapir's own docs — not a raw `zio-http` `HandlerAspect`, which would bypass OpenAPI documentation of the 401) | Analyzed, no plan doc yet | §4.3 below; `security-analysis-aero-hex-ai.md` §4; `plans/security/login.md` decision 4 |
+| 2 | **Protect endpoints** — validate bearer tokens on existing routes via Tapir's `securityIn`/`zServerSecurityLogic` two-phase security (confirmed against Tapir's own docs — not a raw `zio-http` `HandlerAspect`, which would bypass OpenAPI documentation of the 401) | Implemented and verified live — all seven resources (Country/Airport/Airline/Aircraft/Flight/FlightInstance/Route) require a valid token; `/health/*` and login stay public | `plans/security/protect-endpoints.md` |
 | 3 | **Coarse-grained roles/permissions** — Tapir `PartialServerEndpoint`/`prependSecurity` layered on top of step 2's base secured endpoint | Analyzed, no plan doc yet | §6 below; `security-analysis-aero-hex-ai.md` §3–4 |
 | 4 | **Fine-grained per-resource ACL** — resource-specific checks (e.g. "can this user edit *this* route"), which need the resource loaded and so live in `application/`, never in Tapir's security phase or `domain/` | Analyzed, no plan doc yet | `security-analysis-aero-hex-ai.md` §4 (Levels 2–3) |
 | — | Registration endpoint, `/auth/me`, refresh tokens, token revocation | Deliberately deferred, not analyzed in depth | `plans/security/login.md` § Deliberately out of scope |

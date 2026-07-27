@@ -41,12 +41,14 @@ object AirlineEndpoints {
 
   private val notFoundErrorOut: EndpointOutput[(StatusCode, HttpErrorResponse)] =
     oneOf[(StatusCode, HttpErrorResponse)](
+      EndpointErrors.unauthorizedVariant("Missing or invalid token."),
       EndpointErrors.notFoundVariant("Airline not found."),
       EndpointErrors.unexpectedError
     )
 
   private val createErrorOut: EndpointOutput[(StatusCode, HttpErrorResponse)] =
     oneOf[(StatusCode, HttpErrorResponse)](
+      EndpointErrors.unauthorizedVariant("Missing or invalid token."),
       EndpointErrors.conflictVariant("Airline already exists."),
       EndpointErrors.notFoundVariant("Referenced country not found."),
       EndpointErrors.badRequestVariant("Invalid ICAO code."),
@@ -55,22 +57,30 @@ object AirlineEndpoints {
 
   private val updateErrorOut: EndpointOutput[(StatusCode, HttpErrorResponse)] =
     oneOf[(StatusCode, HttpErrorResponse)](
+      EndpointErrors.unauthorizedVariant("Missing or invalid token."),
       EndpointErrors.notFoundVariant("Airline not found, or referenced country not found."),
       EndpointErrors.unexpectedError
     )
 
-  val findAll: PublicEndpoint[(Int, Int), (StatusCode, HttpErrorResponse), List[AirlineDto], Any] =
+  val findAll: Endpoint[String, (Int, Int), (StatusCode, HttpErrorResponse), List[AirlineDto], Any] =
     base.get
+      .securityIn(auth.bearer[String]())
       .summary("List airlines")
       .description("Returns a paginated list of all airlines.")
       .tag("Airlines")
       .in(PaginationParams.page)
       .in(PaginationParams.pageSize)
       .out(jsonBody[List[AirlineDto]].description("List of airlines."))
-      .errorOut(oneOf[(StatusCode, HttpErrorResponse)](EndpointErrors.unexpectedError))
+      .errorOut(
+        oneOf[(StatusCode, HttpErrorResponse)](
+          EndpointErrors.unauthorizedVariant("Missing or invalid token."),
+          EndpointErrors.unexpectedError
+        )
+      )
 
-  val searchByName: PublicEndpoint[String, (StatusCode, HttpErrorResponse), List[AirlineDto], Any] =
+  val searchByName: Endpoint[String, String, (StatusCode, HttpErrorResponse), List[AirlineDto], Any] =
     base.get
+      .securityIn(auth.bearer[String]())
       .summary("Search airlines by name")
       .description(
         "Returns all airlines whose name contains the given query string (case-insensitive). Query must be at least 3 characters."
@@ -86,13 +96,15 @@ object AirlineEndpoints {
       .out(jsonBody[List[AirlineDto]].description("Matching airlines."))
       .errorOut(
         oneOf[(StatusCode, HttpErrorResponse)](
+          EndpointErrors.unauthorizedVariant("Missing or invalid token."),
           EndpointErrors.badRequestVariant("Invalid search query."),
           EndpointErrors.unexpectedError
         )
       )
 
-  val findByIcao: PublicEndpoint[String, (StatusCode, HttpErrorResponse), AirlineDto, Any] =
+  val findByIcao: Endpoint[String, String, (StatusCode, HttpErrorResponse), AirlineDto, Any] =
     base.get
+      .securityIn(auth.bearer[String]())
       .summary("Find airline by ICAO code")
       .description("Returns a single airline identified by its 3-letter ICAO code.")
       .tag("Airlines")
@@ -101,8 +113,9 @@ object AirlineEndpoints {
       .errorOut(notFoundErrorOut)
 
   val findByCountry
-      : PublicEndpoint[(String, Int, Int), (StatusCode, HttpErrorResponse), List[AirlineDto], Any] =
+      : Endpoint[String, (String, Int, Int), (StatusCode, HttpErrorResponse), List[AirlineDto], Any] =
     endpoint.get
+      .securityIn(auth.bearer[String]())
       .in("api" / "v1" / "countries" / countryCodeParam / "airlines")
       .summary("List airlines in a country")
       .description("Returns a paginated list of airlines registered in the given country.")
@@ -112,23 +125,31 @@ object AirlineEndpoints {
       .out(jsonBody[List[AirlineDto]].description("Airlines registered in the given country."))
       .errorOut(
         oneOf[(StatusCode, HttpErrorResponse)](
+          EndpointErrors.unauthorizedVariant("Missing or invalid token."),
           EndpointErrors.notFoundVariant("Country not found."),
           EndpointErrors.unexpectedError
         )
       )
 
-  val findByRoute: PublicEndpoint[(String, String), (StatusCode, HttpErrorResponse), List[AirlineDto], Any] =
+  val findByRoute: Endpoint[String, (String, String), (StatusCode, HttpErrorResponse), List[AirlineDto], Any] =
     endpoint.get
+      .securityIn(auth.bearer[String]())
       .in("api" / "v1" / "routes" / originParam / destinationParam / "airlines")
       .summary("List airlines operating a route")
       .description("Returns the airlines operating the given route.")
       .tag("Airlines")
       .out(jsonBody[List[AirlineDto]].description("Airlines operating the given route."))
-      .errorOut(oneOf[(StatusCode, HttpErrorResponse)](EndpointErrors.unexpectedError))
+      .errorOut(
+        oneOf[(StatusCode, HttpErrorResponse)](
+          EndpointErrors.unauthorizedVariant("Missing or invalid token."),
+          EndpointErrors.unexpectedError
+        )
+      )
 
   // #4 Location header carries the canonical URL of the created resource (HTTP best practice)
-  val create: PublicEndpoint[CreateAirlineRequest, (StatusCode, HttpErrorResponse), (AirlineDto, String), Any] =
+  val create: Endpoint[String, CreateAirlineRequest, (StatusCode, HttpErrorResponse), (AirlineDto, String), Any] =
     base.post
+      .securityIn(auth.bearer[String]())
       .summary("Create airline")
       .description("Creates a new airline.")
       .tag("Airlines")
@@ -140,8 +161,10 @@ object AirlineEndpoints {
       )
       .errorOut(createErrorOut)
 
-  val update: PublicEndpoint[(String, UpdateAirlineRequest), (StatusCode, HttpErrorResponse), AirlineDto, Any] =
+  val update
+      : Endpoint[String, (String, UpdateAirlineRequest), (StatusCode, HttpErrorResponse), AirlineDto, Any] =
     base.put
+      .securityIn(auth.bearer[String]())
       .summary("Update airline")
       .description("Updates an existing airline's name, foundation date, and country.")
       .tag("Airlines")
@@ -150,8 +173,9 @@ object AirlineEndpoints {
       .out(jsonBody[AirlineDto].description("The updated airline."))
       .errorOut(updateErrorOut)
 
-  val delete: PublicEndpoint[String, (StatusCode, HttpErrorResponse), Unit, Any] =
+  val delete: Endpoint[String, String, (StatusCode, HttpErrorResponse), Unit, Any] =
     base.delete
+      .securityIn(auth.bearer[String]())
       .summary("Delete airline")
       .description("Deletes an airline by its 3-letter ICAO code.")
       .tag("Airlines")

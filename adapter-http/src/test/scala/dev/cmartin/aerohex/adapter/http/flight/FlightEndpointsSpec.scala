@@ -5,6 +5,7 @@ import dev.cmartin.aerohex.domain.airline.{Airline, AirlineIcaoCode}
 import dev.cmartin.aerohex.domain.airport.IataCode
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.flight.*
+import dev.cmartin.aerohex.domain.user.{AccessToken, TokenService}
 import dev.cmartin.aerohex.shared.Pagination
 import io.circe.generic.auto.*
 import java.time.LocalTime
@@ -15,7 +16,7 @@ import sttp.client4.testing.BackendStub
 import sttp.model.StatusCode
 import sttp.tapir.server.stub4.TapirStubInterpreter
 import zio.test.*
-import zio.{IO, Scope, Task, ZIO, ZLayer}
+import zio.{IO, Scope, Task, UIO, ZIO, ZLayer}
 
 object FlightEndpointsSpec extends ZIOSpecDefault:
 
@@ -86,6 +87,17 @@ object FlightEndpointsSpec extends ZIOSpecDefault:
   private val notFoundDelete: DeleteFlightUseCase =
     (code: FlightCode) => ZIO.fail(DomainError.FlightNotFound(code.value))
 
+  // Every endpoint now requires a bearer token (plans/security/protect-endpoints.md).
+  private val validToken: TokenService = new TokenService:
+    def generate(username: String): UIO[AccessToken]     = ZIO.die(new NotImplementedError("generate"))
+    def validate(token: String): IO[DomainError, String] = ZIO.succeed("test-user")
+
+  private val rejectingToken: TokenService = new TokenService:
+    def generate(username: String): UIO[AccessToken]     = ZIO.die(new NotImplementedError("generate"))
+    def validate(token: String): IO[DomainError, String] = ZIO.fail(DomainError.InvalidToken("rejected"))
+
+  private val authedRequest = basicRequest.header("Authorization", "Bearer test-token")
+
   // ── Backend factory ────────────────────────────────────────────────────────
 
   private def makeBackend(
@@ -94,11 +106,12 @@ object FlightEndpointsSpec extends ZIOSpecDefault:
       update: UpdateFlightUseCase = defaultUpdate,
       delete: DeleteFlightUseCase = defaultDelete,
       findByAirline: FindFlightsByAirlineUseCase = defaultFindByAirline,
-      findAirline: FindAirlineForFlightUseCase = defaultFindAirline
+      findAirline: FindAirlineForFlightUseCase = defaultFindAirline,
+      tokenService: TokenService = validToken
   ): Backend[Task] =
     TapirStubInterpreter(BackendStub(new RIOMonadAsyncError[Any]))
       .whenServerEndpointsRunLogic(
-        new FlightRoutes(find, create, update, delete, findByAirline, findAirline).serverEndpoints
+        new FlightRoutes(find, create, update, delete, findByAirline, findAirline, tokenService).serverEndpoints
       )
       .backend()
 
@@ -106,10 +119,24 @@ object FlightEndpointsSpec extends ZIOSpecDefault:
 
   override def spec: Spec[TestEnvironment & Scope, Any] =
     suite("FlightEndpoints")(
+      suite("Authentication")(
+        test("returns 401 when the Authorization header is missing") {
+          for
+            response <- basicRequest.get(uri"https://test.com/api/v1/flights").send(makeBackend())
+          yield assertTrue(response.code == StatusCode.Unauthorized)
+        },
+        test("returns 401 when the token is rejected") {
+          for
+            response <- authedRequest
+                          .get(uri"https://test.com/api/v1/flights")
+                          .send(makeBackend(tokenService = rejectingToken))
+          yield assertTrue(response.code == StatusCode.Unauthorized)
+        }
+      ),
       suite("GET /api/v1/flights")(
         test("returns 200 with the full flight list, including flights with and without an alias") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/flights")
                           .response(asJson[List[FlightDto]])
                           .send(makeBackend())
@@ -123,38 +150,38 @@ object FlightEndpointsSpec extends ZIOSpecDefault:
         },
         test("accepts custom page and pageSize query params") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/flights?page=2&pageSize=5")
                           .send(makeBackend())
           yield assertTrue(response.code == StatusCode.Ok)
         },
         test("propagates the mapped domain error when the use case fails") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/flights")
                           .send(makeBackend(find = notFoundFind))
           yield assertTrue(response.code == StatusCode.NotFound)
         },
         test("returns 400 when pageSize is 0") {
           for
-            response <- basicRequest.get(uri"https://test.com/api/v1/flights?pageSize=0").send(makeBackend())
+            response <- authedRequest.get(uri"https://test.com/api/v1/flights?pageSize=0").send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         },
         test("returns 400 when pageSize is over 100") {
           for
-            response <- basicRequest.get(uri"https://test.com/api/v1/flights?pageSize=101").send(makeBackend())
+            response <- authedRequest.get(uri"https://test.com/api/v1/flights?pageSize=101").send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         },
         test("returns 400 when page is 0") {
           for
-            response <- basicRequest.get(uri"https://test.com/api/v1/flights?page=0").send(makeBackend())
+            response <- authedRequest.get(uri"https://test.com/api/v1/flights?page=0").send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         }
       ),
       suite("GET /api/v1/flights/{code}")(
         test("returns 200 with the requested flight") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/flights/UX9117")
                           .response(asJson[FlightDto])
                           .send(makeBackend())
@@ -166,14 +193,14 @@ object FlightEndpointsSpec extends ZIOSpecDefault:
         },
         test("returns 404 when the flight does not exist") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/flights/XXXXXX")
                           .send(makeBackend(find = notFoundFind))
           yield assertTrue(response.code == StatusCode.NotFound)
         },
         test("returns 400 when the code is longer than 8 characters") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/flights/EXTREMELYLONGCODE")
                           .send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
@@ -183,7 +210,7 @@ object FlightEndpointsSpec extends ZIOSpecDefault:
         test("returns 201 with a Location header pointing to the new resource") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .post(uri"https://test.com/api/v1/flights")
                 .body(
                   """{"code":"UX9117","alias":"AEA9117","schedDeparture":"07:05","schedArrival":"08:55",""" +
@@ -202,7 +229,7 @@ object FlightEndpointsSpec extends ZIOSpecDefault:
         test("returns 409 when the flight already exists") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .post(uri"https://test.com/api/v1/flights")
                 .body(
                   """{"code":"UX9117","alias":null,"schedDeparture":"07:05","schedArrival":"08:55",""" +
@@ -215,7 +242,7 @@ object FlightEndpointsSpec extends ZIOSpecDefault:
         test("returns 404 when the referenced origin airport does not exist") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .post(uri"https://test.com/api/v1/flights")
                 .body(
                   """{"code":"UX9117","alias":null,"schedDeparture":"07:05","schedArrival":"08:55",""" +
@@ -228,7 +255,7 @@ object FlightEndpointsSpec extends ZIOSpecDefault:
         test("returns 400 when the code is empty (schema-level length validator, not a stub)") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .post(uri"https://test.com/api/v1/flights")
                 .body(
                   """{"code":"","alias":null,"schedDeparture":"07:05","schedArrival":"08:55",""" +
@@ -247,7 +274,7 @@ object FlightEndpointsSpec extends ZIOSpecDefault:
           // orElseFail(InvalidFlightCode(...)) branch.
           for
             response <-
-              basicRequest
+              authedRequest
                 .post(uri"https://test.com/api/v1/flights")
                 .body(
                   """{"code":"A\nB","alias":null,"schedDeparture":"07:05","schedArrival":"08:55",""" +
@@ -260,7 +287,7 @@ object FlightEndpointsSpec extends ZIOSpecDefault:
         test("returns 400 when the code in the create body is longer than 8 characters") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .post(uri"https://test.com/api/v1/flights")
                 .body(
                   """{"code":"EXTREMELYLONGCODE","alias":null,"schedDeparture":"07:05","schedArrival":"08:55",""" +
@@ -275,7 +302,7 @@ object FlightEndpointsSpec extends ZIOSpecDefault:
         test("returns 200 with the updated flight") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .put(uri"https://test.com/api/v1/flights/UX9117")
                 .body(
                   """{"alias":"AEA9117","schedDeparture":"07:30","schedArrival":"09:15",""" +
@@ -293,7 +320,7 @@ object FlightEndpointsSpec extends ZIOSpecDefault:
         test("returns 404 when the flight does not exist") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .put(uri"https://test.com/api/v1/flights/XXXXXX")
                 .body(
                   """{"alias":null,"schedDeparture":"07:30","schedArrival":"09:15",""" +
@@ -307,19 +334,19 @@ object FlightEndpointsSpec extends ZIOSpecDefault:
       suite("DELETE /api/v1/flights/{code}")(
         test("returns 204 on successful deletion") {
           for
-            response <- basicRequest.delete(uri"https://test.com/api/v1/flights/UX9117").send(makeBackend())
+            response <- authedRequest.delete(uri"https://test.com/api/v1/flights/UX9117").send(makeBackend())
           yield assertTrue(response.code == StatusCode.NoContent)
         },
         test("returns 404 when the flight does not exist") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .delete(uri"https://test.com/api/v1/flights/XXXXXX")
                           .send(makeBackend(delete = notFoundDelete))
           yield assertTrue(response.code == StatusCode.NotFound)
         },
         test("returns 400 when the code is longer than 8 characters") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .delete(uri"https://test.com/api/v1/flights/EXTREMELYLONGCODE")
                           .send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
@@ -328,7 +355,7 @@ object FlightEndpointsSpec extends ZIOSpecDefault:
       suite("GET /api/v1/airlines/{icao}/flights")(
         test("returns 200 with the flights operated by the airline") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/airlines/AEA/flights")
                           .response(asJson[List[FlightDto]])
                           .send(makeBackend())
@@ -337,7 +364,7 @@ object FlightEndpointsSpec extends ZIOSpecDefault:
         },
         test("returns 200 with an empty list when the airline operates no flights") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/airlines/VLG/flights")
                           .response(asJson[List[FlightDto]])
                           .send(makeBackend(findByAirline = emptyFindByAirline))
@@ -346,14 +373,14 @@ object FlightEndpointsSpec extends ZIOSpecDefault:
         },
         test("returns 400 when the ICAO code is not 3 letters") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/airlines/AE/flights")
                           .send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         },
         test("propagates the mapped domain error when the use case fails") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/airlines/AEA/flights")
                           .send(makeBackend(findByAirline = failingFindByAirline))
           yield assertTrue(response.code == StatusCode.NotFound)
@@ -362,7 +389,7 @@ object FlightEndpointsSpec extends ZIOSpecDefault:
       suite("GET /api/v1/flights/{code}/airline")(
         test("returns 200 with the flight's operating airline") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/flights/UX9117/airline")
                           .response(asJson[AirlineDto])
                           .send(makeBackend())
@@ -374,14 +401,14 @@ object FlightEndpointsSpec extends ZIOSpecDefault:
         },
         test("returns 404 when the flight does not exist") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/flights/XXXXXX/airline")
                           .send(makeBackend(findAirline = notFoundFindAirline))
           yield assertTrue(response.code == StatusCode.NotFound)
         },
         test("returns 400 when the code is longer than 8 characters") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/flights/EXTREMELYLONGCODE/airline")
                           .send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
@@ -399,6 +426,7 @@ object FlightEndpointsSpec extends ZIOSpecDefault:
                                  ZLayer.succeed(defaultDelete),
                                  ZLayer.succeed(defaultFindByAirline),
                                  ZLayer.succeed(defaultFindAirline),
+                                 ZLayer.succeed(validToken),
                                  FlightRoutes.layer
                                )
           yield assertTrue(endpointCount == 7)

@@ -133,14 +133,20 @@ object WiringModule {
       (flightRepoLayer >>> FindFlightsByAirlineService.layer) ++
       (flightRepoLayer >>> FindAirlineForFlightService.layer)
 
+  // Every business resource's XxxRoutes now also needs TokenService (step 2 of the security
+  // rollout, plans/security/protect-endpoints.md) — merged in here rather than threaded through
+  // each *UseCaseLayers val, since it's an HTTP-layer concern (SecuredEndpoint), not a use-case
+  // dependency. Auth (login) and Health stay unprotected, so jwtServiceLayer isn't merged into
+  // authUseCaseLayers (it already has its own, for token *issuance*) or HealthRoutes.layer.
   val appLayer: TaskLayer[HttpServer.AppRoutes] =
-    (countryUseCaseLayers >>> CountryRoutes.layer) ++
-      (airportUseCaseLayers >>> AirportRoutes.layer) ++
-      (airlineUseCaseLayers >>> AirlineRoutes.layer) ++
-      (routeUseCaseLayers >>> RouteRoutes.layer) ++
-      (aircraftUseCaseLayers >>> AircraftRoutes.layer) ++
-      (flightUseCaseLayers >>> FlightRoutes.layer) ++
-      (flightInstanceRepoLayer >>> FindFlightInstanceService.layer >>> FlightInstanceRoutes.layer) ++
+    ((countryUseCaseLayers ++ jwtServiceLayer) >>> CountryRoutes.layer) ++
+      ((airportUseCaseLayers ++ jwtServiceLayer) >>> AirportRoutes.layer) ++
+      ((airlineUseCaseLayers ++ jwtServiceLayer) >>> AirlineRoutes.layer) ++
+      ((routeUseCaseLayers ++ jwtServiceLayer) >>> RouteRoutes.layer) ++
+      ((aircraftUseCaseLayers ++ jwtServiceLayer) >>> AircraftRoutes.layer) ++
+      ((flightUseCaseLayers ++ jwtServiceLayer) >>> FlightRoutes.layer) ++
+      (((flightInstanceRepoLayer >>> FindFlightInstanceService.layer) ++ jwtServiceLayer) >>>
+        FlightInstanceRoutes.layer) ++
       (authUseCaseLayers >>> AuthRoutes.layer) ++
       (QuillDataSourceLayer.live >>> HealthRoutes.layer)
 }

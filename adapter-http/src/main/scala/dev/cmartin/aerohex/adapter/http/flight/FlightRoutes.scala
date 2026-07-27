@@ -1,6 +1,7 @@
 package dev.cmartin.aerohex.adapter.http.flight
 
 import dev.cmartin.aerohex.adapter.http.airline.AirlineDto
+import dev.cmartin.aerohex.adapter.http.common.SecuredEndpoint
 import dev.cmartin.aerohex.adapter.http.error.ErrorMapper
 import dev.cmartin.aerohex.domain.airline.AirlineIcaoCode
 import dev.cmartin.aerohex.domain.flight.{
@@ -12,6 +13,7 @@ import dev.cmartin.aerohex.domain.flight.{
   FlightCode,
   UpdateFlightUseCase
 }
+import dev.cmartin.aerohex.domain.user.TokenService
 import dev.cmartin.aerohex.shared.Pagination
 import sttp.tapir.ztapir.{RichZEndpoint, ZServerEndpoint}
 import zio.*
@@ -22,22 +24,25 @@ class FlightRoutes(
     updateSvc: UpdateFlightUseCase,
     deleteSvc: DeleteFlightUseCase,
     findByAirlineSvc: FindFlightsByAirlineUseCase,
-    findAirlineSvc: FindAirlineForFlightUseCase
+    findAirlineSvc: FindAirlineForFlightUseCase,
+    tokenService: TokenService
 ):
+  private val secured = SecuredEndpoint.securityLogic(tokenService)
+
   val serverEndpoints: List[ZServerEndpoint[Any, Any]] = List(
-    FlightEndpoints.findAll.zServerLogic { (page, pageSize) =>
+    FlightEndpoints.findAll.zServerSecurityLogic(secured).serverLogic { _ => (page, pageSize) =>
       useCase
         .findAll(Pagination(page, pageSize))
         .map(_.map(FlightDto.fromDomain))
         .mapError(ErrorMapper.toHttpError)
     },
-    FlightEndpoints.findByCode.zServerLogic { code =>
+    FlightEndpoints.findByCode.zServerSecurityLogic(secured).serverLogic { _ => code =>
       useCase
         .findByCode(code)
         .map(FlightDto.fromDomain)
         .mapError(ErrorMapper.toHttpError)
     },
-    FlightEndpoints.create.zServerLogic { req =>
+    FlightEndpoints.create.zServerSecurityLogic(secured).serverLogic { _ => req =>
       CreateFlightRequest
         .toCommand(req)
         .flatMap(createSvc.create)
@@ -47,24 +52,24 @@ class FlightRoutes(
         }
         .mapError(ErrorMapper.toHttpError)
     },
-    FlightEndpoints.update.zServerLogic { (code, req) =>
+    FlightEndpoints.update.zServerSecurityLogic(secured).serverLogic { _ => (code, req) =>
       updateSvc
         .update(UpdateFlightRequest.toCommand(code, req))
         .map(FlightDto.fromDomain)
         .mapError(ErrorMapper.toHttpError)
     },
-    FlightEndpoints.delete.zServerLogic { code =>
+    FlightEndpoints.delete.zServerSecurityLogic(secured).serverLogic { _ => code =>
       deleteSvc
         .delete(FlightCode.unsafeMake(code))
         .mapError(ErrorMapper.toHttpError)
     },
-    FlightEndpoints.findByAirline.zServerLogic { (icao, page, pageSize) =>
+    FlightEndpoints.findByAirline.zServerSecurityLogic(secured).serverLogic { _ => (icao, page, pageSize) =>
       findByAirlineSvc
         .findByAirline(AirlineIcaoCode.unsafeMake(icao), Pagination(page, pageSize))
         .map(_.map(FlightDto.fromDomain))
         .mapError(ErrorMapper.toHttpError)
     },
-    FlightEndpoints.findAirline.zServerLogic { code =>
+    FlightEndpoints.findAirline.zServerSecurityLogic(secured).serverLogic { _ => code =>
       findAirlineSvc
         .findAirline(FlightCode.unsafeMake(code))
         .map(AirlineDto.fromDomain)
@@ -75,7 +80,7 @@ class FlightRoutes(
 object FlightRoutes:
   val layer: URLayer[
     FindFlightUseCase & CreateFlightUseCase & UpdateFlightUseCase & DeleteFlightUseCase &
-      FindFlightsByAirlineUseCase & FindAirlineForFlightUseCase,
+      FindFlightsByAirlineUseCase & FindAirlineForFlightUseCase & TokenService,
     FlightRoutes
   ] =
-    ZLayer.fromFunction(new FlightRoutes(_, _, _, _, _, _))
+    ZLayer.fromFunction(new FlightRoutes(_, _, _, _, _, _, _))

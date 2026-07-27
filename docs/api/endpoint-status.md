@@ -8,6 +8,11 @@ Never maintain a hand-written spec file — always regenerate from code.
 
 Swagger UI: `http://localhost:8080/docs`
 
+**Authentication:** every endpoint below except `POST /api/v1/auth/login` and `/health/*` requires
+a valid `Authorization: Bearer <token>` header (obtained from login) — see
+`plans/security/protect-endpoints.md`. No role/permission distinction yet: any valid token grants
+access to everything.
+
 | Resource | Method | Path | Status |
 |---|---|---|---|
 | Auth | POST | `/api/v1/auth/login` | ✓ implemented |

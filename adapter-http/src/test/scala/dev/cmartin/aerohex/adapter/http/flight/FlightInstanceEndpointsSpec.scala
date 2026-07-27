@@ -3,6 +3,7 @@ package dev.cmartin.aerohex.adapter.http.flight
 import dev.cmartin.aerohex.domain.aircraft.Registration
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.flight.{FindFlightInstanceUseCase, FlightCode, FlightInstance, FlightInstanceId}
+import dev.cmartin.aerohex.domain.user.{AccessToken, TokenService}
 import dev.cmartin.aerohex.shared.Pagination
 import io.circe.generic.auto.*
 import java.time.LocalDateTime
@@ -14,7 +15,7 @@ import sttp.client4.testing.BackendStub
 import sttp.model.StatusCode
 import sttp.tapir.server.stub4.TapirStubInterpreter
 import zio.test.*
-import zio.{IO, Scope, Task, ZIO, ZLayer}
+import zio.{IO, Scope, Task, UIO, ZIO, ZLayer}
 
 object FlightInstanceEndpointsSpec extends ZIOSpecDefault:
 
@@ -40,21 +41,49 @@ object FlightInstanceEndpointsSpec extends ZIOSpecDefault:
     def findAll(p: Pagination): IO[DomainError, List[FlightInstance]] =
       ZIO.fail(DomainError.FlightInstanceNotFound("n/a"))
 
+  // Every endpoint now requires a bearer token (plans/security/protect-endpoints.md).
+  private val validToken: TokenService = new TokenService:
+    def generate(username: String): UIO[AccessToken]     = ZIO.die(new NotImplementedError("generate"))
+    def validate(token: String): IO[DomainError, String] = ZIO.succeed("test-user")
+
+  private val rejectingToken: TokenService = new TokenService:
+    def generate(username: String): UIO[AccessToken]     = ZIO.die(new NotImplementedError("generate"))
+    def validate(token: String): IO[DomainError, String] = ZIO.fail(DomainError.InvalidToken("rejected"))
+
+  private val authedRequest = basicRequest.header("Authorization", "Bearer test-token")
+
   // ── Backend factory ────────────────────────────────────────────────────────
 
-  private def makeBackend(find: FindFlightInstanceUseCase = defaultFind): Backend[Task] =
+  private def makeBackend(
+      find: FindFlightInstanceUseCase = defaultFind,
+      tokenService: TokenService = validToken
+  ): Backend[Task] =
     TapirStubInterpreter(BackendStub(new RIOMonadAsyncError[Any]))
-      .whenServerEndpointsRunLogic(new FlightInstanceRoutes(find).serverEndpoints)
+      .whenServerEndpointsRunLogic(new FlightInstanceRoutes(find, tokenService).serverEndpoints)
       .backend()
 
   // ── Spec ──────────────────────────────────────────────────────────────────
 
   override def spec: Spec[TestEnvironment & Scope, Any] =
     suite("FlightInstanceEndpoints")(
+      suite("Authentication")(
+        test("returns 401 when the Authorization header is missing") {
+          for
+            response <- basicRequest.get(uri"https://test.com/api/v1/flight-instances").send(makeBackend())
+          yield assertTrue(response.code == StatusCode.Unauthorized)
+        },
+        test("returns 401 when the token is rejected") {
+          for
+            response <- authedRequest
+                          .get(uri"https://test.com/api/v1/flight-instances")
+                          .send(makeBackend(tokenService = rejectingToken))
+          yield assertTrue(response.code == StatusCode.Unauthorized)
+        }
+      ),
       suite("GET /api/v1/flight-instances")(
         test("returns 200 with the full flight instance list") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/flight-instances")
                           .response(asJson[List[FlightInstanceDto]])
                           .send(makeBackend())
@@ -66,14 +95,14 @@ object FlightInstanceEndpointsSpec extends ZIOSpecDefault:
         },
         test("accepts custom page and pageSize query params") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/flight-instances?page=2&pageSize=5")
                           .send(makeBackend())
           yield assertTrue(response.code == StatusCode.Ok)
         },
         test("propagates the mapped domain error when the use case fails") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/flight-instances")
                           .send(makeBackend(find = notFoundFind))
           yield assertTrue(response.code == StatusCode.NotFound)
@@ -81,25 +110,25 @@ object FlightInstanceEndpointsSpec extends ZIOSpecDefault:
         test("returns 400 when pageSize is 0") {
           for
             response <-
-              basicRequest.get(uri"https://test.com/api/v1/flight-instances?pageSize=0").send(makeBackend())
+              authedRequest.get(uri"https://test.com/api/v1/flight-instances?pageSize=0").send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         },
         test("returns 400 when pageSize is over 100") {
           for
             response <-
-              basicRequest.get(uri"https://test.com/api/v1/flight-instances?pageSize=101").send(makeBackend())
+              authedRequest.get(uri"https://test.com/api/v1/flight-instances?pageSize=101").send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         },
         test("returns 400 when page is 0") {
           for
-            response <- basicRequest.get(uri"https://test.com/api/v1/flight-instances?page=0").send(makeBackend())
+            response <- authedRequest.get(uri"https://test.com/api/v1/flight-instances?page=0").send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         }
       ),
       suite("GET /api/v1/flight-instances/{id}")(
         test("returns 200 with the requested flight instance") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/flight-instances/b1c2d3e4-f5a6-7890-bcde-f01234567890")
                           .response(asJson[FlightInstanceDto])
                           .send(makeBackend())
@@ -111,23 +140,24 @@ object FlightInstanceEndpointsSpec extends ZIOSpecDefault:
         },
         test("returns 404 when the flight instance does not exist") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/flight-instances/00000000-0000-0000-0000-000000000000")
                           .send(makeBackend(find = notFoundFind))
           yield assertTrue(response.code == StatusCode.NotFound)
         },
         test("returns 400 when the id is not a valid UUID") {
           for
-            response <- basicRequest.get(uri"https://test.com/api/v1/flight-instances/not-a-uuid").send(makeBackend())
+            response <- authedRequest.get(uri"https://test.com/api/v1/flight-instances/not-a-uuid").send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         }
       ),
       suite("FlightInstanceRoutes.layer")(
         test("wires the use case into the route list") {
           for
-            endpointCount <- ZIO
-                               .serviceWith[FlightInstanceRoutes](_.serverEndpoints.size)
-                               .provide(ZLayer.succeed(defaultFind), FlightInstanceRoutes.layer)
+            endpointCount <-
+              ZIO
+                .serviceWith[FlightInstanceRoutes](_.serverEndpoints.size)
+                .provide(ZLayer.succeed(defaultFind), ZLayer.succeed(validToken), FlightInstanceRoutes.layer)
           yield assertTrue(endpointCount == 2)
         }
       )

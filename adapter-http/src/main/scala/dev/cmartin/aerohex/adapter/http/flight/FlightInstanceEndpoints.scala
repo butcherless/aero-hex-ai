@@ -16,18 +16,25 @@ object FlightInstanceEndpoints {
       .description("Flight instance UUID.")
       .validate(Validator.pattern("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"))
 
-  val findAll: PublicEndpoint[(Int, Int), (StatusCode, HttpErrorResponse), List[FlightInstanceDto], Any] =
+  val findAll: Endpoint[String, (Int, Int), (StatusCode, HttpErrorResponse), List[FlightInstanceDto], Any] =
     base.get
+      .securityIn(auth.bearer[String]())
       .summary("List flight instances")
       .description("Returns a paginated list of all flight instances.")
       .tag("Flight Instances")
       .in(PaginationParams.page)
       .in(PaginationParams.pageSize)
       .out(jsonBody[List[FlightInstanceDto]].description("List of flight instances."))
-      .errorOut(oneOf[(StatusCode, HttpErrorResponse)](EndpointErrors.unexpectedError))
+      .errorOut(
+        oneOf[(StatusCode, HttpErrorResponse)](
+          EndpointErrors.unauthorizedVariant("Missing or invalid token."),
+          EndpointErrors.unexpectedError
+        )
+      )
 
-  val findById: PublicEndpoint[String, (StatusCode, HttpErrorResponse), FlightInstanceDto, Any] =
+  val findById: Endpoint[String, String, (StatusCode, HttpErrorResponse), FlightInstanceDto, Any] =
     base.get
+      .securityIn(auth.bearer[String]())
       .summary("Find flight instance by ID")
       .description("Returns a single flight instance identified by its UUID.")
       .tag("Flight Instances")
@@ -35,6 +42,7 @@ object FlightInstanceEndpoints {
       .out(jsonBody[FlightInstanceDto].description("The requested flight instance."))
       .errorOut(
         oneOf[(StatusCode, HttpErrorResponse)](
+          EndpointErrors.unauthorizedVariant("Missing or invalid token."),
           EndpointErrors.notFoundVariant("Flight instance not found."),
           EndpointErrors.unexpectedError
         )

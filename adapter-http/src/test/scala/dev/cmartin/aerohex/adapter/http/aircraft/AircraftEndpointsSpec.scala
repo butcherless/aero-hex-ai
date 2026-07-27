@@ -3,6 +3,7 @@ package dev.cmartin.aerohex.adapter.http.aircraft
 import dev.cmartin.aerohex.domain.aircraft.*
 import dev.cmartin.aerohex.domain.airline.AirlineIcaoCode
 import dev.cmartin.aerohex.domain.error.DomainError
+import dev.cmartin.aerohex.domain.user.{AccessToken, TokenService}
 import dev.cmartin.aerohex.shared.Pagination
 import io.circe.generic.auto.*
 import sttp.client4.*
@@ -12,7 +13,7 @@ import sttp.client4.testing.BackendStub
 import sttp.model.StatusCode
 import sttp.tapir.server.stub4.TapirStubInterpreter
 import zio.test.*
-import zio.{IO, Scope, Task, ZIO, ZLayer}
+import zio.{IO, Scope, Task, UIO, ZIO, ZLayer}
 
 object AircraftEndpointsSpec extends ZIOSpecDefault:
 
@@ -53,26 +54,52 @@ object AircraftEndpointsSpec extends ZIOSpecDefault:
   private val notFoundDelete: DeleteAircraftUseCase =
     (reg: Registration) => ZIO.fail(DomainError.AircraftNotFound(reg.value))
 
+  // Every endpoint now requires a bearer token (plans/security/protect-endpoints.md).
+  private val validToken: TokenService = new TokenService:
+    def generate(username: String): UIO[AccessToken]     = ZIO.die(new NotImplementedError("generate"))
+    def validate(token: String): IO[DomainError, String] = ZIO.succeed("test-user")
+
+  private val rejectingToken: TokenService = new TokenService:
+    def generate(username: String): UIO[AccessToken]     = ZIO.die(new NotImplementedError("generate"))
+    def validate(token: String): IO[DomainError, String] = ZIO.fail(DomainError.InvalidToken("rejected"))
+
+  private val authedRequest = basicRequest.header("Authorization", "Bearer test-token")
+
   // ── Backend factory ────────────────────────────────────────────────────────
 
   private def makeBackend(
       find: FindAircraftUseCase = defaultFind,
       create: CreateAircraftUseCase = defaultCreate,
       update: UpdateAircraftUseCase = defaultUpdate,
-      delete: DeleteAircraftUseCase = defaultDelete
+      delete: DeleteAircraftUseCase = defaultDelete,
+      tokenService: TokenService = validToken
   ): Backend[Task] =
     TapirStubInterpreter(BackendStub(new RIOMonadAsyncError[Any]))
-      .whenServerEndpointsRunLogic(new AircraftRoutes(find, create, update, delete).serverEndpoints)
+      .whenServerEndpointsRunLogic(new AircraftRoutes(find, create, update, delete, tokenService).serverEndpoints)
       .backend()
 
   // ── Spec ──────────────────────────────────────────────────────────────────
 
   override def spec: Spec[TestEnvironment & Scope, Any] =
     suite("AircraftEndpoints")(
+      suite("Authentication")(
+        test("returns 401 when the Authorization header is missing") {
+          for
+            response <- basicRequest.get(uri"https://test.com/api/v1/aircraft").send(makeBackend())
+          yield assertTrue(response.code == StatusCode.Unauthorized)
+        },
+        test("returns 401 when the token is rejected") {
+          for
+            response <- authedRequest
+                          .get(uri"https://test.com/api/v1/aircraft")
+                          .send(makeBackend(tokenService = rejectingToken))
+          yield assertTrue(response.code == StatusCode.Unauthorized)
+        }
+      ),
       suite("GET /api/v1/aircraft")(
         test("returns 200 with the full aircraft list") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/aircraft")
                           .response(asJson[List[AircraftDto]])
                           .send(makeBackend())
@@ -84,38 +111,38 @@ object AircraftEndpointsSpec extends ZIOSpecDefault:
         },
         test("accepts custom page and pageSize query params") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/aircraft?page=2&pageSize=5")
                           .send(makeBackend())
           yield assertTrue(response.code == StatusCode.Ok)
         },
         test("propagates the mapped domain error when the use case fails") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/aircraft")
                           .send(makeBackend(find = notFoundFind))
           yield assertTrue(response.code == StatusCode.NotFound)
         },
         test("returns 400 when pageSize is 0") {
           for
-            response <- basicRequest.get(uri"https://test.com/api/v1/aircraft?pageSize=0").send(makeBackend())
+            response <- authedRequest.get(uri"https://test.com/api/v1/aircraft?pageSize=0").send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         },
         test("returns 400 when pageSize is over 100") {
           for
-            response <- basicRequest.get(uri"https://test.com/api/v1/aircraft?pageSize=101").send(makeBackend())
+            response <- authedRequest.get(uri"https://test.com/api/v1/aircraft?pageSize=101").send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         },
         test("returns 400 when page is 0") {
           for
-            response <- basicRequest.get(uri"https://test.com/api/v1/aircraft?page=0").send(makeBackend())
+            response <- authedRequest.get(uri"https://test.com/api/v1/aircraft?page=0").send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
         }
       ),
       suite("GET /api/v1/aircraft/{registration}")(
         test("returns 200 with the requested aircraft") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/aircraft/EC-MIG")
                           .response(asJson[AircraftDto])
                           .send(makeBackend())
@@ -127,14 +154,14 @@ object AircraftEndpointsSpec extends ZIOSpecDefault:
         },
         test("returns 404 when the aircraft does not exist") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/aircraft/N00000")
                           .send(makeBackend(find = notFoundFind))
           yield assertTrue(response.code == StatusCode.NotFound)
         },
         test("returns 400 when the registration is longer than 10 characters") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .get(uri"https://test.com/api/v1/aircraft/EXTREMELYLONGREG")
                           .send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
@@ -144,7 +171,7 @@ object AircraftEndpointsSpec extends ZIOSpecDefault:
         test("returns 201 with a Location header pointing to the new resource") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .post(uri"https://test.com/api/v1/aircraft")
                 .body(
                   """{"registration":"EC-MIG","typeCode":"B788","description":"Boeing 787-8","airlineIcao":"IBE"}"""
@@ -162,7 +189,7 @@ object AircraftEndpointsSpec extends ZIOSpecDefault:
         test("returns 409 when the aircraft already exists") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .post(uri"https://test.com/api/v1/aircraft")
                 .body(
                   """{"registration":"EC-MIG","typeCode":"B788","description":"Boeing 787-8","airlineIcao":"IBE"}"""
@@ -174,7 +201,7 @@ object AircraftEndpointsSpec extends ZIOSpecDefault:
         test("returns 404 when the referenced airline does not exist") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .post(uri"https://test.com/api/v1/aircraft")
                 .body(
                   """{"registration":"EC-MIG","typeCode":"B788","description":"Boeing 787-8","airlineIcao":"XXX"}"""
@@ -186,7 +213,7 @@ object AircraftEndpointsSpec extends ZIOSpecDefault:
         test("returns 400 when the registration is empty") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .post(uri"https://test.com/api/v1/aircraft")
                 .body("""{"registration":"","typeCode":"B788","description":"Boeing 787-8","airlineIcao":"IBE"}""")
                 .contentType("application/json")
@@ -196,7 +223,7 @@ object AircraftEndpointsSpec extends ZIOSpecDefault:
         test("returns 400 when the registration in the create body is longer than 10 characters") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .post(uri"https://test.com/api/v1/aircraft")
                 .body(
                   """{"registration":"EXTREMELYLONGREG","typeCode":"B788","description":"Boeing 787-8","airlineIcao":"IBE"}"""
@@ -214,7 +241,7 @@ object AircraftEndpointsSpec extends ZIOSpecDefault:
           // orElseFail(InvalidRegistration(...)) branch.
           for
             response <-
-              basicRequest
+              authedRequest
                 .post(uri"https://test.com/api/v1/aircraft")
                 .body("""{"registration":"A\nB","typeCode":"B788","description":"Boeing 787-8","airlineIcao":"IBE"}""")
                 .contentType("application/json")
@@ -224,7 +251,7 @@ object AircraftEndpointsSpec extends ZIOSpecDefault:
         test("returns 400 when description is empty") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .post(uri"https://test.com/api/v1/aircraft")
                 .body("""{"registration":"EC-MIG","typeCode":"B788","description":"","airlineIcao":"IBE"}""")
                 .contentType("application/json")
@@ -236,7 +263,7 @@ object AircraftEndpointsSpec extends ZIOSpecDefault:
         test("returns 200 with the updated aircraft") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .put(uri"https://test.com/api/v1/aircraft/EC-MIG")
                 .body("""{"typeCode":"B789","description":"Boeing 787-9","airlineIcao":"IBE"}""")
                 .contentType("application/json")
@@ -251,7 +278,7 @@ object AircraftEndpointsSpec extends ZIOSpecDefault:
         test("returns 404 when the aircraft does not exist") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .put(uri"https://test.com/api/v1/aircraft/XXX")
                 .body("""{"typeCode":"B789","description":"Nowhere","airlineIcao":"IBE"}""")
                 .contentType("application/json")
@@ -261,7 +288,7 @@ object AircraftEndpointsSpec extends ZIOSpecDefault:
         test("returns 404 when the referenced airline does not exist") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .put(uri"https://test.com/api/v1/aircraft/EC-MIG")
                 .body("""{"typeCode":"B789","description":"Boeing 787-9","airlineIcao":"XXX"}""")
                 .contentType("application/json")
@@ -271,7 +298,7 @@ object AircraftEndpointsSpec extends ZIOSpecDefault:
         test("returns 400 when the request body is invalid") {
           for
             response <-
-              basicRequest
+              authedRequest
                 .put(uri"https://test.com/api/v1/aircraft/EC-MIG")
                 .body("""{"typeCode":"B789","description":"","airlineIcao":"IBE"}""")
                 .contentType("application/json")
@@ -282,19 +309,19 @@ object AircraftEndpointsSpec extends ZIOSpecDefault:
       suite("DELETE /api/v1/aircraft/{registration}")(
         test("returns 204 on successful deletion") {
           for
-            response <- basicRequest.delete(uri"https://test.com/api/v1/aircraft/EC-MIG").send(makeBackend())
+            response <- authedRequest.delete(uri"https://test.com/api/v1/aircraft/EC-MIG").send(makeBackend())
           yield assertTrue(response.code == StatusCode.NoContent)
         },
         test("returns 404 when the aircraft does not exist") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .delete(uri"https://test.com/api/v1/aircraft/XXX")
                           .send(makeBackend(delete = notFoundDelete))
           yield assertTrue(response.code == StatusCode.NotFound)
         },
         test("returns 400 when the registration is longer than 10 characters") {
           for
-            response <- basicRequest
+            response <- authedRequest
                           .delete(uri"https://test.com/api/v1/aircraft/EXTREMELYLONGREG")
                           .send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
@@ -310,6 +337,7 @@ object AircraftEndpointsSpec extends ZIOSpecDefault:
                                  ZLayer.succeed(defaultCreate),
                                  ZLayer.succeed(defaultUpdate),
                                  ZLayer.succeed(defaultDelete),
+                                 ZLayer.succeed(validToken),
                                  AircraftRoutes.layer
                                )
           yield assertTrue(endpointCount == 5)

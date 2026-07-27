@@ -31,12 +31,14 @@ object FlightEndpoints {
   // (findAirline) would otherwise triplicate it.
   private val notFoundErrorOut: EndpointOutput[(StatusCode, HttpErrorResponse)] =
     oneOf[(StatusCode, HttpErrorResponse)](
+      EndpointErrors.unauthorizedVariant("Missing or invalid token."),
       EndpointErrors.notFoundVariant("Flight not found."),
       EndpointErrors.unexpectedError
     )
 
   private val createErrorOut: EndpointOutput[(StatusCode, HttpErrorResponse)] =
     oneOf[(StatusCode, HttpErrorResponse)](
+      EndpointErrors.unauthorizedVariant("Missing or invalid token."),
       EndpointErrors.conflictVariant("Flight already exists."),
       EndpointErrors.notFoundVariant("Referenced airport or airline not found."),
       EndpointErrors.badRequestVariant("Invalid flight code."),
@@ -45,22 +47,30 @@ object FlightEndpoints {
 
   private val updateErrorOut: EndpointOutput[(StatusCode, HttpErrorResponse)] =
     oneOf[(StatusCode, HttpErrorResponse)](
+      EndpointErrors.unauthorizedVariant("Missing or invalid token."),
       EndpointErrors.notFoundVariant("Flight not found, or referenced airport/airline not found."),
       EndpointErrors.unexpectedError
     )
 
-  val findAll: PublicEndpoint[(Int, Int), (StatusCode, HttpErrorResponse), List[FlightDto], Any] =
+  val findAll: Endpoint[String, (Int, Int), (StatusCode, HttpErrorResponse), List[FlightDto], Any] =
     base.get
+      .securityIn(auth.bearer[String]())
       .summary("List flights")
       .description("Returns a paginated list of all scheduled flights.")
       .tag("Flights")
       .in(PaginationParams.page)
       .in(PaginationParams.pageSize)
       .out(jsonBody[List[FlightDto]].description("List of flights."))
-      .errorOut(oneOf[(StatusCode, HttpErrorResponse)](EndpointErrors.unexpectedError))
+      .errorOut(
+        oneOf[(StatusCode, HttpErrorResponse)](
+          EndpointErrors.unauthorizedVariant("Missing or invalid token."),
+          EndpointErrors.unexpectedError
+        )
+      )
 
-  val findByCode: PublicEndpoint[String, (StatusCode, HttpErrorResponse), FlightDto, Any] =
+  val findByCode: Endpoint[String, String, (StatusCode, HttpErrorResponse), FlightDto, Any] =
     base.get
+      .securityIn(auth.bearer[String]())
       .summary("Find flight by code")
       .description("Returns a single scheduled flight identified by its airline flight code.")
       .tag("Flights")
@@ -68,8 +78,9 @@ object FlightEndpoints {
       .out(jsonBody[FlightDto].description("The requested flight."))
       .errorOut(notFoundErrorOut)
 
-  val findAirline: PublicEndpoint[String, (StatusCode, HttpErrorResponse), AirlineDto, Any] =
+  val findAirline: Endpoint[String, String, (StatusCode, HttpErrorResponse), AirlineDto, Any] =
     base.get
+      .securityIn(auth.bearer[String]())
       .summary("Find the airline operating a flight")
       .description("Returns the airline operating the flight identified by its airline flight code.")
       .tag("Flights")
@@ -79,8 +90,9 @@ object FlightEndpoints {
       .errorOut(notFoundErrorOut)
 
   val findByAirline
-      : PublicEndpoint[(String, Int, Int), (StatusCode, HttpErrorResponse), List[FlightDto], Any] =
+      : Endpoint[String, (String, Int, Int), (StatusCode, HttpErrorResponse), List[FlightDto], Any] =
     endpoint.get
+      .securityIn(auth.bearer[String]())
       .in("api" / "v1" / "airlines" / icaoParam / "flights")
       .summary("List flights operated by an airline")
       .description("Returns a paginated list of scheduled flights operated by the given airline.")
@@ -88,11 +100,17 @@ object FlightEndpoints {
       .in(PaginationParams.page)
       .in(PaginationParams.pageSize)
       .out(jsonBody[List[FlightDto]].description("Flights operated by the given airline."))
-      .errorOut(oneOf[(StatusCode, HttpErrorResponse)](EndpointErrors.unexpectedError))
+      .errorOut(
+        oneOf[(StatusCode, HttpErrorResponse)](
+          EndpointErrors.unauthorizedVariant("Missing or invalid token."),
+          EndpointErrors.unexpectedError
+        )
+      )
 
   // #4 Location header carries the canonical URL of the created resource (HTTP best practice)
-  val create: PublicEndpoint[CreateFlightRequest, (StatusCode, HttpErrorResponse), (FlightDto, String), Any] =
+  val create: Endpoint[String, CreateFlightRequest, (StatusCode, HttpErrorResponse), (FlightDto, String), Any] =
     base.post
+      .securityIn(auth.bearer[String]())
       .summary("Create flight")
       .description("Creates a new scheduled flight.")
       .tag("Flights")
@@ -104,8 +122,9 @@ object FlightEndpoints {
       )
       .errorOut(createErrorOut)
 
-  val update: PublicEndpoint[(String, UpdateFlightRequest), (StatusCode, HttpErrorResponse), FlightDto, Any] =
+  val update: Endpoint[String, (String, UpdateFlightRequest), (StatusCode, HttpErrorResponse), FlightDto, Any] =
     base.put
+      .securityIn(auth.bearer[String]())
       .summary("Update flight")
       .description("Updates an existing flight's schedule, route, and operating airline.")
       .tag("Flights")
@@ -114,8 +133,9 @@ object FlightEndpoints {
       .out(jsonBody[FlightDto].description("The updated flight."))
       .errorOut(updateErrorOut)
 
-  val delete: PublicEndpoint[String, (StatusCode, HttpErrorResponse), Unit, Any] =
+  val delete: Endpoint[String, String, (StatusCode, HttpErrorResponse), Unit, Any] =
     base.delete
+      .securityIn(auth.bearer[String]())
       .summary("Delete flight")
       .description("Deletes a flight by its airline flight code.")
       .tag("Flights")

@@ -21,6 +21,7 @@ object AircraftEndpoints {
 
   private val createErrorOut: EndpointOutput[(StatusCode, HttpErrorResponse)] =
     oneOf[(StatusCode, HttpErrorResponse)](
+      EndpointErrors.unauthorizedVariant("Missing or invalid token."),
       EndpointErrors.conflictVariant("Aircraft already exists."),
       EndpointErrors.notFoundVariant("Referenced airline not found."),
       EndpointErrors.badRequestVariant("Invalid registration."),
@@ -29,22 +30,30 @@ object AircraftEndpoints {
 
   private val updateErrorOut: EndpointOutput[(StatusCode, HttpErrorResponse)] =
     oneOf[(StatusCode, HttpErrorResponse)](
+      EndpointErrors.unauthorizedVariant("Missing or invalid token."),
       EndpointErrors.notFoundVariant("Aircraft not found, or referenced airline not found."),
       EndpointErrors.unexpectedError
     )
 
-  val findAll: PublicEndpoint[(Int, Int), (StatusCode, HttpErrorResponse), List[AircraftDto], Any] =
+  val findAll: Endpoint[String, (Int, Int), (StatusCode, HttpErrorResponse), List[AircraftDto], Any] =
     base.get
+      .securityIn(auth.bearer[String]())
       .summary("List aircraft")
       .description("Returns a paginated list of all aircraft.")
       .tag("Aircraft")
       .in(PaginationParams.page)
       .in(PaginationParams.pageSize)
       .out(jsonBody[List[AircraftDto]].description("List of aircraft."))
-      .errorOut(oneOf[(StatusCode, HttpErrorResponse)](EndpointErrors.unexpectedError))
+      .errorOut(
+        oneOf[(StatusCode, HttpErrorResponse)](
+          EndpointErrors.unauthorizedVariant("Missing or invalid token."),
+          EndpointErrors.unexpectedError
+        )
+      )
 
-  val findByRegistration: PublicEndpoint[String, (StatusCode, HttpErrorResponse), AircraftDto, Any] =
+  val findByRegistration: Endpoint[String, String, (StatusCode, HttpErrorResponse), AircraftDto, Any] =
     base.get
+      .securityIn(auth.bearer[String]())
       .summary("Find aircraft by registration")
       .description("Returns a single aircraft identified by its international registration code.")
       .tag("Aircraft")
@@ -52,14 +61,17 @@ object AircraftEndpoints {
       .out(jsonBody[AircraftDto].description("The requested aircraft."))
       .errorOut(
         oneOf[(StatusCode, HttpErrorResponse)](
+          EndpointErrors.unauthorizedVariant("Missing or invalid token."),
           EndpointErrors.notFoundVariant("Aircraft not found."),
           EndpointErrors.unexpectedError
         )
       )
 
   // #4 Location header carries the canonical URL of the created resource (HTTP best practice)
-  val create: PublicEndpoint[CreateAircraftRequest, (StatusCode, HttpErrorResponse), (AircraftDto, String), Any] =
+  val create
+      : Endpoint[String, CreateAircraftRequest, (StatusCode, HttpErrorResponse), (AircraftDto, String), Any] =
     base.post
+      .securityIn(auth.bearer[String]())
       .summary("Create aircraft")
       .description("Creates a new aircraft.")
       .tag("Aircraft")
@@ -72,8 +84,9 @@ object AircraftEndpoints {
       .errorOut(createErrorOut)
 
   val update
-      : PublicEndpoint[(String, UpdateAircraftRequest), (StatusCode, HttpErrorResponse), AircraftDto, Any] =
+      : Endpoint[String, (String, UpdateAircraftRequest), (StatusCode, HttpErrorResponse), AircraftDto, Any] =
     base.put
+      .securityIn(auth.bearer[String]())
       .summary("Update aircraft")
       .description("Updates an existing aircraft's type code and operating airline.")
       .tag("Aircraft")
@@ -82,8 +95,9 @@ object AircraftEndpoints {
       .out(jsonBody[AircraftDto].description("The updated aircraft."))
       .errorOut(updateErrorOut)
 
-  val delete: PublicEndpoint[String, (StatusCode, HttpErrorResponse), Unit, Any] =
+  val delete: Endpoint[String, String, (StatusCode, HttpErrorResponse), Unit, Any] =
     base.delete
+      .securityIn(auth.bearer[String]())
       .summary("Delete aircraft")
       .description("Deletes an aircraft by its registration code.")
       .tag("Aircraft")
@@ -91,6 +105,7 @@ object AircraftEndpoints {
       .out(statusCode(StatusCode.NoContent))
       .errorOut(
         oneOf[(StatusCode, HttpErrorResponse)](
+          EndpointErrors.unauthorizedVariant("Missing or invalid token."),
           EndpointErrors.notFoundVariant("Aircraft not found."),
           EndpointErrors.unexpectedError
         )
