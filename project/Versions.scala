@@ -16,4 +16,6 @@ object Versions {
   val sttpClient4    = "4.0.26"
   val protoQuill     = "4.8.6"
   val testcontainers = "2.0.5"
+  val jwtScala       = "11.0.4"
+  val jbcrypt        = "0.4"
 }

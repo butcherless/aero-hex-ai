@@ -10,6 +10,7 @@ Swagger UI: `http://localhost:8080/docs`
 
 | Resource | Method | Path | Status |
 |---|---|---|---|
+| Auth | POST | `/api/v1/auth/login` | ✓ implemented |
 | Countries | GET | `/api/v1/countries` (optional `name` filter, ≥3 chars) | ✓ implemented |
 | Countries | POST | `/api/v1/countries` | ✓ implemented |
 | Countries | GET | `/api/v1/countries/{code}` | ✓ implemented |

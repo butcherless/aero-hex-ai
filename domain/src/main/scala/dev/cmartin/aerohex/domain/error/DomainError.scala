@@ -25,4 +25,7 @@ object DomainError {
   case class FlightAlreadyExists(code: String)                                            extends DomainError
   case class InvalidFlightCode(errors: List[String])                                      extends DomainError
   case class FlightInstanceNotFound(id: String)                                           extends DomainError
+  case object InvalidCredentials                                                          extends DomainError
+  case class InvalidToken(reason: String)                                                 extends DomainError
+  case object TokenExpired                                                                extends DomainError
 }

@@ -43,6 +43,12 @@ object ErrorMapper {
       ApiError(StatusCode.Conflict, s"Airline $icao is already associated with route $o -> $d")
     case RouteAirlineNotFound(o, d, icao)      =>
       ApiError(StatusCode.NotFound, s"Airline $icao is not associated with route $o -> $d")
+    case InvalidCredentials                    => ApiError(StatusCode.Unauthorized, "Invalid credentials")
+    // Unreachable via HTTP in this step — no endpoint calls TokenService.validate yet — but
+    // required for this match to stay exhaustive over the sealed DomainError (see
+    // plans/security/login.md's ErrorMapper implementation note).
+    case InvalidToken(_)                       => ApiError(StatusCode.Unauthorized, "Invalid token")
+    case TokenExpired                          => ApiError(StatusCode.Unauthorized, "Token expired")
   }
 
   def toMessage(error: DomainError): String = toApiError(error).message

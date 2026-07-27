@@ -3,6 +3,7 @@ package dev.cmartin.aerohex.adapter.http
 import dev.cmartin.aerohex.adapter.http.aircraft.AircraftEndpoints
 import dev.cmartin.aerohex.adapter.http.airline.AirlineEndpoints
 import dev.cmartin.aerohex.adapter.http.airport.AirportEndpoints
+import dev.cmartin.aerohex.adapter.http.auth.AuthEndpoints
 import dev.cmartin.aerohex.adapter.http.country.CountryEndpoints
 import dev.cmartin.aerohex.adapter.http.flight.{FlightEndpoints, FlightInstanceEndpoints}
 import dev.cmartin.aerohex.adapter.http.health.HealthEndpoints
@@ -23,6 +24,7 @@ object ApiSpec:
   )
 
   val topLevelTags: List[ApiTag] = List(
+    ApiTag("Auth", description = Some("Authentication operations.")),
     ApiTag("Countries", description = Some("Country lookup operations.")),
     ApiTag("Airports", description = Some("Airport lookup operations.")),
     ApiTag("Airlines", description = Some("Airline lookup operations.")),
@@ -37,6 +39,7 @@ object ApiSpec:
   )
 
   val allEndpoints: List[AnyEndpoint] = List(
+    AuthEndpoints.login,
     CountryEndpoints.findAll,
     CountryEndpoints.findByCode,
     CountryEndpoints.create,

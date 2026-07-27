@@ -39,10 +39,11 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 shared-kernel
     └── domain
             ├── application
-            ├── persistence-quill      (infrastructure — wired into bootstrap; Country + Airport + Airline + Aircraft + Flight)
+            ├── persistence-quill      (infrastructure — wired into bootstrap; Country + Airport + Airline + Aircraft + Flight + User)
             ├── messaging-kafka        (infrastructure — not wired into bootstrap)
+            ├── security               (infrastructure — JWT issuance/validation + password hashing; TokenService/PasswordHasher port impls; wired into bootstrap; see plans/security/)
             └── adapter-http
-                        └── bootstrap  (composition root: domain + application + adapter-http + persistence-quill + migration)
+                        └── bootstrap  (composition root: domain + application + adapter-http + persistence-quill + migration + security)
                 migration              (SQL + Flyway only; no domain dependency — wired into bootstrap for migrate-on-start)
                 integration-tests      (opt-in — domain + migration + persistence-quill, real-Postgres tests; NOT in root's aggregate)
                 master-data-sync       (opt-in — domain + application + persistence-quill; downloads/parses/syncs Country + Airport + Airline against real Postgres; NOT in root's aggregate; see plans/masterdata/)
@@ -54,14 +55,19 @@ Rule: inner modules never depend on outer ones. `domain` has zero framework depe
 
 - **`domain/`** — pure logic, no I/O, no framework imports. Opaque types for identifiers. Ports are plain Scala traits.
   - `model/` — Country, Airport, Airline, Route, Aircraft, Flight, FlightInstance, OutboxEvent
+  - `user/` — `User` (authentication only, not part of the aviation business domain — see
+    `plans/security/login.md`), `UserRepository`, `TokenService`, `PasswordHasher`, `LoginUseCase`
   - `error/DomainError.scala` — sealed error hierarchy
   - `service/` — pure domain services (RouteValidator)
   - `port/in/` — driving ports / use-case interfaces
   - `port/out/` — driven ports / repository + publisher interfaces
 - **`application/`** — orchestrates ports, implements `port/in`. Each service has a companion `ZLayer`.
-- **`persistence-quill/`** — Quill implementations of `CountryRepository`/`AirportRepository`/`AirlineRepository`/`AircraftRepository`/`FlightRepository`; all five wired via `WiringModule`, sharing one `QuillDataSourceLayer.live` `DataSource`. Route/RouteAirline/FlightInstance are still an in-memory stub.
+- **`persistence-quill/`** — Quill implementations of `CountryRepository`/`AirportRepository`/`AirlineRepository`/`AircraftRepository`/`FlightRepository`/`UserRepository`; all six wired via `WiringModule`, sharing one `QuillDataSourceLayer.live` `DataSource`. Route/RouteAirline/FlightInstance are still an in-memory stub.
 - **Persistence policy:** all wired repositories must use the same implementation — switching is all-or-nothing across every entity, in one commit (see the header comment in `WiringModule.scala`).
 - **`messaging-kafka/`** — ZIO Kafka producer and outbox relay. Not wired into bootstrap.
+- **`security/`** — implements `TokenService` (`JwtService`, `jwt-scala`/`jwt-circe`, HS256, RFC
+  7519 registered claims only) and `PasswordHasher` (`BcryptPasswordHasher`, `jbcrypt`). Depends
+  only on `domain`, mirroring `persistence-quill`/`messaging-kafka`. See `plans/security/login.md`.
 - **`migration/`** — Flyway SQL migrations; no domain dependency. `Main` runs `FlywayMigration.migrateFromEnv` at startup (see the `bootstrap` bullet).
 - **`adapter-http/`** — Tapir endpoint definitions + ZIO HTTP server. DTOs live here; `ErrorMapper` maps `DomainError` → HTTP status.
 - **`bootstrap/`** — sole composition root. `WiringModule` wires all `ZLayer`s. `Main` runs Flyway migrations in-process (skip with `FLYWAY_MIGRATE_ON_START=false`), then starts the HTTP server (`WiringModule.appLayer`) — no outbox relay.
@@ -178,7 +184,8 @@ in `plans/` before implementation: goal, decisions with a recommendation + rejec
 steps, files touched. Keep docs after their work lands — they're the record of *why* — and update
 one instead of duplicating it if a later change revises the same decision. Most plans are flat
 `plans/*.md` files; a multi-increment effort gets its own subdirectory instead — one doc per
-increment (e.g. `plans/masterdata/`, built up over the master-data-sync module's rollout).
+increment (e.g. `plans/masterdata/`, built up over the master-data-sync module's rollout;
+`plans/security/`, tracked by `docs/todo/auth-jwt.md`'s `## Roadmap`, one step at a time).
 
 ## Docs directory
 
@@ -210,8 +217,8 @@ sbt coverageAggregate
 Four independent layers, each catching a different class of problem — run the ones relevant to
 what changed, not always all four:
 
-1. **Local build** — `sbt clean` → `compile` → `test` (354 unit tests, in-memory stubs / Tapir
-   stub server) → `integrationTests/test` (58 tests, real Postgres via Testcontainers, needs
+1. **Local build** — `sbt clean` → `compile` → `test` (370 unit tests, in-memory stubs / Tapir
+   stub server) → `integrationTests/test` (60 tests, real Postgres via Testcontainers, needs
    Docker — see `## Integration tests` above) → `bootstrap/assembly` (package) →
    `coverageAggregate` (see `## Coverage` above for the `mkdir -p .coverage-data/...` step first).
 2. **OpenAPI spec** — `/validate-openapi` skill (`bash .claude/skills/validate-openapi/scripts/run.sh`).

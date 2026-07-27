@@ -49,6 +49,10 @@ object Dependencies {
   // ProtoQuill (ZIO JDBC)
   val quillJdbcZio = "io.getquill" %% "quill-jdbc-zio" % Versions.protoQuill
 
+  // JWT + password hashing (infrastructure/security)
+  val jwtCirce = "com.github.jwt-scala" %% "jwt-circe" % Versions.jwtScala
+  val jbcrypt  = "org.mindrot"           % "jbcrypt"   % Versions.jbcrypt
+
   // Test — integration tests (real Postgres via Testcontainers)
   val testcontainersCore     = "org.testcontainers" % "testcontainers"            % Versions.testcontainers % Test
   val testcontainersPostgres = "org.testcontainers" % "testcontainers-postgresql" % Versions.testcontainers % Test

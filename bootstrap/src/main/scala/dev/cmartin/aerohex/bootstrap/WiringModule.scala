@@ -3,6 +3,7 @@ package dev.cmartin.aerohex.bootstrap
 import dev.cmartin.aerohex.adapter.http.aircraft.AircraftRoutes
 import dev.cmartin.aerohex.adapter.http.airline.AirlineRoutes
 import dev.cmartin.aerohex.adapter.http.airport.AirportRoutes
+import dev.cmartin.aerohex.adapter.http.auth.AuthRoutes
 import dev.cmartin.aerohex.adapter.http.country.CountryRoutes
 import dev.cmartin.aerohex.adapter.http.flight.{FlightInstanceRoutes, FlightRoutes}
 import dev.cmartin.aerohex.adapter.http.health.HealthRoutes
@@ -11,6 +12,7 @@ import dev.cmartin.aerohex.adapter.http.server.HttpServer
 import dev.cmartin.aerohex.application.aircraft.*
 import dev.cmartin.aerohex.application.airline.*
 import dev.cmartin.aerohex.application.airport.*
+import dev.cmartin.aerohex.application.auth.LoginService
 import dev.cmartin.aerohex.application.country.*
 import dev.cmartin.aerohex.application.flight.*
 import dev.cmartin.aerohex.application.route.*
@@ -21,12 +23,15 @@ import dev.cmartin.aerohex.domain.country.*
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.flight.*
 import dev.cmartin.aerohex.domain.route.*
+import dev.cmartin.aerohex.domain.user.{LoginUseCase, PasswordHasher, TokenService, UserRepository}
 import dev.cmartin.aerohex.infrastructure.persistence.quill.aircraft.QuillAircraftRepository
 import dev.cmartin.aerohex.infrastructure.persistence.quill.airline.QuillAirlineRepository
 import dev.cmartin.aerohex.infrastructure.persistence.quill.airport.QuillAirportRepository
 import dev.cmartin.aerohex.infrastructure.persistence.quill.config.QuillDataSourceLayer
 import dev.cmartin.aerohex.infrastructure.persistence.quill.country.QuillCountryRepository
 import dev.cmartin.aerohex.infrastructure.persistence.quill.flight.QuillFlightRepository
+import dev.cmartin.aerohex.infrastructure.persistence.quill.user.QuillUserRepository
+import dev.cmartin.aerohex.infrastructure.security.{BcryptPasswordHasher, JwtConfig, JwtService}
 import dev.cmartin.aerohex.shared.Pagination
 import zio.*
 
@@ -49,6 +54,14 @@ object WiringModule {
 
   private val aircraftRepoLayer: TaskLayer[AircraftRepository] =
     QuillDataSourceLayer.live >>> QuillAircraftRepository.layer
+
+  private val userRepoLayer: TaskLayer[UserRepository] =
+    QuillDataSourceLayer.live >>> QuillUserRepository.layer
+
+  private val jwtServiceLayer: ULayer[TokenService] =
+    ZLayer.succeed(JwtConfig.default) >>> JwtService.layer
+
+  private val passwordHasherLayer: ULayer[PasswordHasher] = BcryptPasswordHasher.layer
 
   private val routeRepoLayer: ULayer[RouteRepository] = ZLayer.succeed(
     new RouteRepository:
@@ -103,6 +116,9 @@ object WiringModule {
     (aircraftRepoLayer >>> UpdateAircraftService.layer) ++
     (aircraftRepoLayer >>> DeleteAircraftService.layer)
 
+  private val authUseCaseLayers: TaskLayer[LoginUseCase] =
+    (userRepoLayer ++ passwordHasherLayer ++ jwtServiceLayer) >>> LoginService.layer
+
   private val routeUseCaseLayers =
     (((airportRepoLayer >>> FindAirportService.layer) ++ routeRepoLayer) >>> CreateRouteService.layer) ++
       (routeAirlineRepoLayer >>> AssociateAirlineService.layer) ++
@@ -125,5 +141,6 @@ object WiringModule {
       (aircraftUseCaseLayers >>> AircraftRoutes.layer) ++
       (flightUseCaseLayers >>> FlightRoutes.layer) ++
       (flightInstanceRepoLayer >>> FindFlightInstanceService.layer >>> FlightInstanceRoutes.layer) ++
+      (authUseCaseLayers >>> AuthRoutes.layer) ++
       (QuillDataSourceLayer.live >>> HealthRoutes.layer)
 }

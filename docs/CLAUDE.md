@@ -17,7 +17,11 @@
   via the `run-e2e-tests` skill — see the root `CLAUDE.md`'s `## Validation` section.
 - `docs/api/endpoint-status.md` — per-endpoint implementation status table (see the root
   `CLAUDE.md`'s `## REST API` section); update whenever an endpoint's status changes.
-- `docs/todo/` — analysis for future work. `auth-jwt.md` (JWT auth with Tapir + ZIO) is still
-  idea-stage; `master-data/analysis.md` is further along — architecture decided and fully
+- `docs/todo/` — analysis for future work. `auth-jwt.md` (JWT auth with Tapir + ZIO) now carries
+  the security-rollout `## Roadmap` (step-by-step status tracker) and its own `plans/security/`
+  subdirectory of per-step design docs, the first of which (`plans/security/login.md`, step 1:
+  login) is implemented and verified; `security/security-analysis-aero-hex-ai.md` is an
+  earlier, more abstract pass over the same ground, kept as historical rationale rather than the
+  living tracker. `master-data/analysis.md` is further along — architecture decided and fully
   implemented (Country, Airport, and Airline sync all end-to-end against real Postgres), with its
   own `plans/masterdata/` subdirectory of implementation-increment docs.

@@ -28,3 +28,9 @@ object EndpointErrors:
       StatusCode.BadRequest,
       statusCode.and(jsonBody[HttpErrorResponse].description(message))
     ) { case (s, _) => s == StatusCode.BadRequest }
+
+  def unauthorizedVariant(message: String) =
+    oneOfVariantValueMatcher(
+      StatusCode.Unauthorized,
+      statusCode.and(jsonBody[HttpErrorResponse].description(message))
+    ) { case (s, _) => s == StatusCode.Unauthorized }

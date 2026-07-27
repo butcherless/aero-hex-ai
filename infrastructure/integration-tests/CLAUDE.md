@@ -9,15 +9,17 @@ never touch it; invoke it explicitly:
 sbt integrationTests/test   # or: sbt integrationTest (alias)
 ```
 
-Coverage so far: `FlywayMigrationItSpec` (migrations reach `V15`), Country
+Coverage so far: `FlywayMigrationItSpec` (migrations reach `V16`), Country
 (`QuillCountryRepositoryItSpec`, incl. `validateCode` success/failure against the `country_codes`
 master table), Airport (`QuillAirportRepositoryItSpec`), Airline (`QuillAirlineRepositoryItSpec`),
 Aircraft (`QuillAircraftRepositoryItSpec`, seeding a `Country` then an `Airline` first since
 `aircraft.airline_id` FKs to `airlines.id`), Flight (`QuillFlightRepositoryItSpec`, seeding a
 `Country`, two `Airport`s (origin + destination), and an `Airline` first since `flights.origin_airport_id`/
 `destination_airport_id`/`airline_id` FK to `airports.id`/`airlines.id`) — each seeding its own `Country`
-row first since `airports.country_id`/`airlines.country_id` FK to `countries.id` — 58 tests total, all
-green. Route is not implemented yet.
+row first since `airports.country_id`/`airlines.country_id` FK to `countries.id` — plus User
+(`QuillUserRepositoryItSpec`; `UserRepository` has no `save`, so its "found" case seeds a row via a
+raw JDBC insert against the shared `DataSource` rather than through the port — see
+`plans/security/login.md` decision 5) — 60 tests total, all green. Route is not implemented yet.
 See `plans/add-persistence-integration-tests.md` for the full scope table and design rationale (why a
 plain subproject instead of sbt's deprecated `IntegrationTest` config, why one module instead of
 three, why fresh-container-per-suite).

@@ -62,6 +62,7 @@ lazy val coverageProjects: Seq[Project] = Seq(
   messagingKafka,
   migration,
   adapterHttp,
+  security,
   bootstrap
 )
 
@@ -131,6 +132,19 @@ lazy val messagingKafka = project
   .settings(coverageSettings*)
   .disablePlugins(AssemblyPlugin)
 
+// JWT issuance/validation + password hashing (TokenService/PasswordHasher port implementations).
+// Depends only on domain, mirroring persistenceQuill/messagingKafka — see
+// plans/security/login.md decision 3.
+lazy val security = project
+  .in(file("infrastructure/security"))
+  .dependsOn(domain)
+  .settings(
+    name := "security",
+    libraryDependencies ++= Seq(jwtCirce, jbcrypt)
+  )
+  .settings(coverageSettings*)
+  .disablePlugins(AssemblyPlugin)
+
 lazy val migration = project
   .in(file("infrastructure/migration"))
   .settings(
@@ -169,7 +183,7 @@ lazy val adapterHttp = project
 
 lazy val bootstrap = project
   .in(file("bootstrap"))
-  .dependsOn(domain, application, adapterHttp, persistenceQuill, migration)
+  .dependsOn(domain, application, adapterHttp, persistenceQuill, migration, security)
   .settings(
     name := "bootstrap",
     libraryDependencies ++= Seq(
