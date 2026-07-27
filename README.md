@@ -4,7 +4,8 @@
 
 A Scala 3 / ZIO multi-module application built from scratch to demonstrate **Hexagonal Architecture**
 (ports & adapters). The domain models a small slice of the aviation world — **Country → Airport →
-Airline → Route** — with a Kafka outbox pattern for domain events still being wired in.
+Airline → Aircraft → Route → Flight**, plus FlightInstance — with a Kafka outbox pattern for
+domain events still being wired in.
 
 ## Tech stack
 
@@ -59,10 +60,10 @@ Swagger UI is served at `http://localhost:8080/docs`.
 ## API status
 
 **Countries** (CRUD + search), **Airports** (list, search, find, create, update,
-list-by-country), **Airlines** (CRUD), and **Aircraft** (CRUD) are implemented end-to-end
-against real Postgres; Flights, Flight Instances, and Route creation are stubbed. Liveness/readiness
-probes are available at `/health/live` and `/health/ready` (unversioned, no `/api/v1` prefix). See
-[CLAUDE.md](./CLAUDE.md#rest-api) for the per-endpoint status table.
+list-by-country), **Airlines** (CRUD + search), **Aircraft** (CRUD), and **Flights** (CRUD) are
+implemented end-to-end against real Postgres; Flight Instances and Route creation are stubbed.
+Liveness/readiness probes are available at `/health/live` and `/health/ready` (unversioned, no
+`/api/v1` prefix). See [CLAUDE.md](./CLAUDE.md#rest-api) for the per-endpoint status table.
 
 ## Development
 
@@ -83,6 +84,3 @@ A third, opt-in layer exercises the actual running app end to end: real Postgres
 server, and the Postman collection's `E2E — ...` folders run against it via Newman. Use the
 `run-e2e-tests` skill (Claude Code) or see [CLAUDE.md](./CLAUDE.md#validation) for the manual steps.
 
-## TODO
-
-- Create validation for domain using ZIO Prelude Validation, smart constructor, or validation layer.
