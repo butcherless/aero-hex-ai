@@ -24,4 +24,19 @@ object AuthEndpoints {
           EndpointErrors.unexpectedError
         )
       )
+
+  val logout: Endpoint[String, Unit, (StatusCode, HttpErrorResponse), Unit, Any] =
+    base.post
+      .securityIn(auth.bearer[String]())
+      .summary("Logout")
+      .description("Revokes the calling token, so it can no longer authenticate even before its natural expiry.")
+      .tag("Auth")
+      .in("logout")
+      .out(statusCode(StatusCode.NoContent))
+      .errorOut(
+        oneOf[(StatusCode, HttpErrorResponse)](
+          EndpointErrors.unauthorizedVariant("Missing or invalid token."),
+          EndpointErrors.unexpectedError
+        )
+      )
 }

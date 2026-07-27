@@ -16,6 +16,7 @@ access to everything.
 | Resource | Method | Path | Status |
 |---|---|---|---|
 | Auth | POST | `/api/v1/auth/login` | ✓ implemented |
+| Auth | POST | `/api/v1/auth/logout` | ✓ implemented |
 | Countries | GET | `/api/v1/countries` (optional `name` filter, ≥3 chars) | ✓ implemented |
 | Countries | POST | `/api/v1/countries` | ✓ implemented |
 | Countries | GET | `/api/v1/countries/{code}` | ✓ implemented |

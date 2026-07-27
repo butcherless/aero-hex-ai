@@ -28,4 +28,5 @@ object DomainError {
   case object InvalidCredentials                                                          extends DomainError
   case class InvalidToken(reason: String)                                                 extends DomainError
   case object TokenExpired                                                                extends DomainError
+  case object TokenRevoked                                                                extends DomainError
 }

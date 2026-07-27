@@ -3,9 +3,10 @@ package dev.cmartin.aerohex.adapter.http.flight
 import dev.cmartin.aerohex.domain.aircraft.Registration
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.flight.{FindFlightInstanceUseCase, FlightCode, FlightInstance, FlightInstanceId}
-import dev.cmartin.aerohex.domain.user.{AccessToken, TokenService}
+import dev.cmartin.aerohex.domain.user.{AccessToken, TokenService, ValidatedToken}
 import dev.cmartin.aerohex.shared.Pagination
 import io.circe.generic.auto.*
+import java.time.Instant
 import java.time.LocalDateTime
 import java.util.UUID
 import sttp.client4.*
@@ -43,12 +44,15 @@ object FlightInstanceEndpointsSpec extends ZIOSpecDefault:
 
   // Every endpoint now requires a bearer token (plans/security/protect-endpoints.md).
   private val validToken: TokenService = new TokenService:
-    def generate(username: String): UIO[AccessToken]     = ZIO.die(new NotImplementedError("generate"))
-    def validate(token: String): IO[DomainError, String] = ZIO.succeed("test-user")
+    def generate(username: String): UIO[AccessToken]             = ZIO.die(new NotImplementedError("generate"))
+    def validate(token: String): IO[DomainError, ValidatedToken] =
+      ZIO.succeed(ValidatedToken("test-user", "test-jti", Instant.parse("2026-01-01T01:00:00Z")))
+    def revoke(jti: String, expiresAt: Instant): UIO[Unit]       = ZIO.die(new NotImplementedError("revoke"))
 
   private val rejectingToken: TokenService = new TokenService:
-    def generate(username: String): UIO[AccessToken]     = ZIO.die(new NotImplementedError("generate"))
-    def validate(token: String): IO[DomainError, String] = ZIO.fail(DomainError.InvalidToken("rejected"))
+    def generate(username: String): UIO[AccessToken]             = ZIO.die(new NotImplementedError("generate"))
+    def validate(token: String): IO[DomainError, ValidatedToken] = ZIO.fail(DomainError.InvalidToken("rejected"))
+    def revoke(jti: String, expiresAt: Instant): UIO[Unit]       = ZIO.die(new NotImplementedError("revoke"))
 
   private val authedRequest = basicRequest.header("Authorization", "Bearer test-token")
 

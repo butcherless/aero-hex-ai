@@ -40,6 +40,7 @@ object ApiSpec:
 
   val allEndpoints: List[AnyEndpoint] = List(
     AuthEndpoints.login,
+    AuthEndpoints.logout,
     CountryEndpoints.findAll,
     CountryEndpoints.findByCode,
     CountryEndpoints.create,

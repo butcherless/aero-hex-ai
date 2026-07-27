@@ -1,7 +1,7 @@
 # Authentication — JWT with Tapir + ZIO
 
-> **Status:** Analysis, with Steps 1–2 implemented — see `plans/security/login.md` and
-> `plans/security/protect-endpoints.md`.
+> **Status:** Analysis, with Steps 1–3 implemented — see `plans/security/login.md`,
+> `plans/security/protect-endpoints.md`, and `plans/security/logout.md`.
 > Covers library selection, architectural fit, API design, implementation patterns, role-based authorisation, and open decisions.
 
 ---
@@ -20,9 +20,10 @@ each it adapted.
 |---|---|---|---|
 | 1 | **Login** — `POST /api/v1/auth/login`, issues a self-signed JWT (RFC 7519 registered claims only) | Implemented and verified live | `plans/security/login.md` |
 | 2 | **Protect endpoints** — validate bearer tokens on existing routes via Tapir's `securityIn`/`zServerSecurityLogic` two-phase security (confirmed against Tapir's own docs — not a raw `zio-http` `HandlerAspect`, which would bypass OpenAPI documentation of the 401) | Implemented and verified live — all seven resources (Country/Airport/Airline/Aircraft/Flight/FlightInstance/Route) require a valid token; `/health/*` and login stay public | `plans/security/protect-endpoints.md` |
-| 3 | **Coarse-grained roles/permissions** — Tapir `PartialServerEndpoint`/`prependSecurity` layered on top of step 2's base secured endpoint | Analyzed, no plan doc yet | §6 below; `security-analysis-aero-hex-ai.md` §3–4 |
-| 4 | **Fine-grained per-resource ACL** — resource-specific checks (e.g. "can this user edit *this* route"), which need the resource loaded and so live in `application/`, never in Tapir's security phase or `domain/` | Analyzed, no plan doc yet | `security-analysis-aero-hex-ai.md` §4 (Levels 2–3) |
-| — | Registration endpoint, `/auth/me`, refresh tokens, token revocation | Deliberately deferred, not analyzed in depth | `plans/security/login.md` § Deliberately out of scope |
+| 3 | **Logout** — `POST /api/v1/auth/logout`, revokes the calling token by `jti` in a new `revoked_tokens` table; `TokenService.validate` checks revocation for every protected endpoint | Implemented and verified live | `plans/security/logout.md` |
+| 4 | **Coarse-grained roles/permissions** — Tapir `PartialServerEndpoint`/`prependSecurity` layered on top of step 2's base secured endpoint | Analyzed, no plan doc yet | §6 below; `security-analysis-aero-hex-ai.md` §3–4 |
+| 5 | **Fine-grained per-resource ACL** — resource-specific checks (e.g. "can this user edit *this* route"), which need the resource loaded and so live in `application/`, never in Tapir's security phase or `domain/` | Analyzed, no plan doc yet | `security-analysis-aero-hex-ai.md` §4 (Levels 2–3) |
+| — | Registration endpoint, `/auth/me`, refresh tokens | Deliberately deferred, not analyzed in depth | `plans/security/login.md` § Deliberately out of scope |
 | — | Signing algorithm HS256 → RS256 | Decided: stay on HS256 until a second, independent service needs to verify tokens without the shared secret — cheap to flip later, confined to `infrastructure/security` | `plans/security/login.md` decision 9 |
 | — | Extraction into a standalone microservice | Design constraint documented (no cross-imports, independent schema, isolated deps, stateless tokens); not scheduled — would follow the `master-data-sync` precedent (own `Main`, own module, outside `bootstrap`) when actually pursued | `plans/security/login.md` § Future: extracting Auth into its own service |
 

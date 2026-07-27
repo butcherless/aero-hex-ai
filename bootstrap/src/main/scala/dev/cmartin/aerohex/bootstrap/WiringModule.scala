@@ -12,7 +12,7 @@ import dev.cmartin.aerohex.adapter.http.server.HttpServer
 import dev.cmartin.aerohex.application.aircraft.*
 import dev.cmartin.aerohex.application.airline.*
 import dev.cmartin.aerohex.application.airport.*
-import dev.cmartin.aerohex.application.auth.LoginService
+import dev.cmartin.aerohex.application.auth.{LoginService, LogoutService}
 import dev.cmartin.aerohex.application.country.*
 import dev.cmartin.aerohex.application.flight.*
 import dev.cmartin.aerohex.application.route.*
@@ -23,14 +23,21 @@ import dev.cmartin.aerohex.domain.country.*
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.flight.*
 import dev.cmartin.aerohex.domain.route.*
-import dev.cmartin.aerohex.domain.user.{LoginUseCase, PasswordHasher, TokenService, UserRepository}
+import dev.cmartin.aerohex.domain.user.{
+  LoginUseCase,
+  LogoutUseCase,
+  PasswordHasher,
+  RevokedTokenRepository,
+  TokenService,
+  UserRepository
+}
 import dev.cmartin.aerohex.infrastructure.persistence.quill.aircraft.QuillAircraftRepository
 import dev.cmartin.aerohex.infrastructure.persistence.quill.airline.QuillAirlineRepository
 import dev.cmartin.aerohex.infrastructure.persistence.quill.airport.QuillAirportRepository
 import dev.cmartin.aerohex.infrastructure.persistence.quill.config.QuillDataSourceLayer
 import dev.cmartin.aerohex.infrastructure.persistence.quill.country.QuillCountryRepository
 import dev.cmartin.aerohex.infrastructure.persistence.quill.flight.QuillFlightRepository
-import dev.cmartin.aerohex.infrastructure.persistence.quill.user.QuillUserRepository
+import dev.cmartin.aerohex.infrastructure.persistence.quill.user.{QuillRevokedTokenRepository, QuillUserRepository}
 import dev.cmartin.aerohex.infrastructure.security.{BcryptPasswordHasher, JwtConfig, JwtService}
 import dev.cmartin.aerohex.shared.Pagination
 import zio.*
@@ -58,8 +65,11 @@ object WiringModule {
   private val userRepoLayer: TaskLayer[UserRepository] =
     QuillDataSourceLayer.live >>> QuillUserRepository.layer
 
-  private val jwtServiceLayer: ULayer[TokenService] =
-    ZLayer.succeed(JwtConfig.default) >>> JwtService.layer
+  private val revokedTokenRepoLayer: TaskLayer[RevokedTokenRepository] =
+    QuillDataSourceLayer.live >>> QuillRevokedTokenRepository.layer
+
+  private val jwtServiceLayer: TaskLayer[TokenService] =
+    (ZLayer.succeed(JwtConfig.default) ++ revokedTokenRepoLayer) >>> JwtService.layer
 
   private val passwordHasherLayer: ULayer[PasswordHasher] = BcryptPasswordHasher.layer
 
@@ -119,6 +129,9 @@ object WiringModule {
   private val authUseCaseLayers: TaskLayer[LoginUseCase] =
     (userRepoLayer ++ passwordHasherLayer ++ jwtServiceLayer) >>> LoginService.layer
 
+  private val logoutUseCaseLayer: TaskLayer[LogoutUseCase] =
+    jwtServiceLayer >>> LogoutService.layer
+
   private val routeUseCaseLayers =
     (((airportRepoLayer >>> FindAirportService.layer) ++ routeRepoLayer) >>> CreateRouteService.layer) ++
       (routeAirlineRepoLayer >>> AssociateAirlineService.layer) ++
@@ -136,8 +149,9 @@ object WiringModule {
   // Every business resource's XxxRoutes now also needs TokenService (step 2 of the security
   // rollout, plans/security/protect-endpoints.md) — merged in here rather than threaded through
   // each *UseCaseLayers val, since it's an HTTP-layer concern (SecuredEndpoint), not a use-case
-  // dependency. Auth (login) and Health stay unprotected, so jwtServiceLayer isn't merged into
-  // authUseCaseLayers (it already has its own, for token *issuance*) or HealthRoutes.layer.
+  // dependency. AuthRoutes also needs it directly (login already required it for issuance;
+  // logout's own SecuredEndpoint wrapper needs it too, step 3 — plans/security/logout.md).
+  // Health stays fully unprotected, so jwtServiceLayer isn't merged into HealthRoutes.layer.
   val appLayer: TaskLayer[HttpServer.AppRoutes] =
     ((countryUseCaseLayers ++ jwtServiceLayer) >>> CountryRoutes.layer) ++
       ((airportUseCaseLayers ++ jwtServiceLayer) >>> AirportRoutes.layer) ++
@@ -147,6 +161,6 @@ object WiringModule {
       ((flightUseCaseLayers ++ jwtServiceLayer) >>> FlightRoutes.layer) ++
       (((flightInstanceRepoLayer >>> FindFlightInstanceService.layer) ++ jwtServiceLayer) >>>
         FlightInstanceRoutes.layer) ++
-      (authUseCaseLayers >>> AuthRoutes.layer) ++
+      ((authUseCaseLayers ++ logoutUseCaseLayer ++ jwtServiceLayer) >>> AuthRoutes.layer) ++
       (QuillDataSourceLayer.live >>> HealthRoutes.layer)
 }

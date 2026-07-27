@@ -1,7 +1,16 @@
 package dev.cmartin.aerohex.application.auth
 
 import dev.cmartin.aerohex.domain.error.DomainError
-import dev.cmartin.aerohex.domain.user.{AccessToken, LoginUseCase, PasswordHasher, TokenService, User, UserRepository}
+import dev.cmartin.aerohex.domain.user.{
+  AccessToken,
+  LoginUseCase,
+  PasswordHasher,
+  TokenService,
+  User,
+  UserRepository,
+  ValidatedToken
+}
+import java.time.Instant
 import zio.test.*
 import zio.{IO, Scope, UIO, ZIO, ZLayer}
 
@@ -16,8 +25,10 @@ object LoginServiceSpec extends ZIOSpecDefault:
     (_: String, _: String) => ZIO.succeed(valid)
 
   private val issuingTokenService: TokenService = new TokenService:
-    def generate(username: String): UIO[AccessToken]     = ZIO.succeed(AccessToken(s"token-for-$username", 3600))
-    def validate(token: String): IO[DomainError, String] = ZIO.die(new NotImplementedError("validate"))
+    def generate(username: String): UIO[AccessToken]             =
+      ZIO.succeed(AccessToken(s"token-for-$username", 3600))
+    def validate(token: String): IO[DomainError, ValidatedToken] = ZIO.die(new NotImplementedError("validate"))
+    def revoke(jti: String, expiresAt: Instant): UIO[Unit]       = ZIO.die(new NotImplementedError("revoke"))
 
   override def spec: Spec[TestEnvironment & Scope, Any] =
     suite("LoginService")(

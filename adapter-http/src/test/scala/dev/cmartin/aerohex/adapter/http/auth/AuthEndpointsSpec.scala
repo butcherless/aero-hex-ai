@@ -1,8 +1,9 @@
 package dev.cmartin.aerohex.adapter.http.auth
 
 import dev.cmartin.aerohex.domain.error.DomainError
-import dev.cmartin.aerohex.domain.user.{AccessToken, LoginUseCase}
+import dev.cmartin.aerohex.domain.user.{AccessToken, LoginUseCase, LogoutUseCase, TokenService, ValidatedToken}
 import io.circe.generic.auto.*
+import java.time.Instant
 import sttp.client4.*
 import sttp.client4.circe.*
 import sttp.client4.impl.zio.RIOMonadAsyncError
@@ -10,7 +11,7 @@ import sttp.client4.testing.BackendStub
 import sttp.model.StatusCode
 import sttp.tapir.server.stub4.TapirStubInterpreter
 import zio.test.*
-import zio.{Scope, Task, ZIO, ZLayer}
+import zio.{IO, Scope, Task, UIO, ZIO, ZLayer}
 
 object AuthEndpointsSpec extends ZIOSpecDefault:
 
@@ -20,9 +21,32 @@ object AuthEndpointsSpec extends ZIOSpecDefault:
   private val invalidCredentialsLogin: LoginUseCase =
     (_: String, _: String) => ZIO.fail(DomainError.InvalidCredentials)
 
-  private def makeBackend(login: LoginUseCase = defaultLogin): Backend[Task] =
+  private val defaultLogout: LogoutUseCase =
+    (_: String, _: Instant) => ZIO.unit
+
+  // Every endpoint now requires a bearer token except login itself (plans/security/
+  // protect-endpoints.md, plans/security/logout.md) — these two stubs stand in for the real
+  // JwtService.
+  private val validToken: TokenService = new TokenService:
+    def generate(username: String): UIO[AccessToken]             = ZIO.die(new NotImplementedError("generate"))
+    def validate(token: String): IO[DomainError, ValidatedToken] =
+      ZIO.succeed(ValidatedToken("test-user", "test-jti", Instant.parse("2026-01-01T01:00:00Z")))
+    def revoke(jti: String, expiresAt: Instant): UIO[Unit]       = ZIO.die(new NotImplementedError("revoke"))
+
+  private val rejectingToken: TokenService = new TokenService:
+    def generate(username: String): UIO[AccessToken]             = ZIO.die(new NotImplementedError("generate"))
+    def validate(token: String): IO[DomainError, ValidatedToken] = ZIO.fail(DomainError.InvalidToken("rejected"))
+    def revoke(jti: String, expiresAt: Instant): UIO[Unit]       = ZIO.die(new NotImplementedError("revoke"))
+
+  private val authedRequest = basicRequest.header("Authorization", "Bearer test-token")
+
+  private def makeBackend(
+      login: LoginUseCase = defaultLogin,
+      logout: LogoutUseCase = defaultLogout,
+      tokenService: TokenService = validToken
+  ): Backend[Task] =
     TapirStubInterpreter(BackendStub(new RIOMonadAsyncError[Any]))
-      .whenServerEndpointsRunLogic(new AuthRoutes(login).serverEndpoints)
+      .whenServerEndpointsRunLogic(new AuthRoutes(login, logout, tokenService).serverEndpoints)
       .backend()
 
   override def spec: Spec[TestEnvironment & Scope, Any] =
@@ -72,13 +96,37 @@ object AuthEndpointsSpec extends ZIOSpecDefault:
           yield assertTrue(response.code == StatusCode.BadRequest)
         }
       ),
+      suite("POST /api/v1/auth/logout")(
+        test("returns 204 on a valid token") {
+          for
+            response <- authedRequest.post(uri"https://test.com/api/v1/auth/logout").send(makeBackend())
+          yield assertTrue(response.code == StatusCode.NoContent)
+        },
+        test("returns 401 when the Authorization header is missing") {
+          for
+            response <- basicRequest.post(uri"https://test.com/api/v1/auth/logout").send(makeBackend())
+          yield assertTrue(response.code == StatusCode.Unauthorized)
+        },
+        test("returns 401 when the token is rejected") {
+          for
+            response <- authedRequest
+                          .post(uri"https://test.com/api/v1/auth/logout")
+                          .send(makeBackend(tokenService = rejectingToken))
+          yield assertTrue(response.code == StatusCode.Unauthorized)
+        }
+      ),
       suite("AuthRoutes.layer")(
-        test("wires the login use case into the route list") {
+        test("wires the login and logout use cases into the route list") {
           for
             endpointCount <- ZIO
                                .serviceWith[AuthRoutes](_.serverEndpoints.size)
-                               .provide(ZLayer.succeed(defaultLogin), AuthRoutes.layer)
-          yield assertTrue(endpointCount == 1)
+                               .provide(
+                                 ZLayer.succeed(defaultLogin),
+                                 ZLayer.succeed(defaultLogout),
+                                 ZLayer.succeed(validToken),
+                                 AuthRoutes.layer
+                               )
+          yield assertTrue(endpointCount == 2)
         }
       )
     )

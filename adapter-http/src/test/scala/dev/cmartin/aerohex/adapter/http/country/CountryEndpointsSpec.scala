@@ -3,9 +3,10 @@ package dev.cmartin.aerohex.adapter.http.country
 import dev.cmartin.aerohex.adapter.http.error.HttpErrorResponse
 import dev.cmartin.aerohex.domain.country.*
 import dev.cmartin.aerohex.domain.error.DomainError
-import dev.cmartin.aerohex.domain.user.{AccessToken, TokenService}
+import dev.cmartin.aerohex.domain.user.{AccessToken, TokenService, ValidatedToken}
 import dev.cmartin.aerohex.shared.Pagination
 import io.circe.generic.auto.*
+import java.time.Instant
 import sttp.client4.*
 import sttp.client4.circe.*
 import sttp.client4.impl.zio.RIOMonadAsyncError
@@ -58,12 +59,15 @@ object CountryEndpointsSpec extends ZIOSpecDefault:
   // fails, regardless of the token string actually sent (that string-vs-signature distinction is
   // JwtServiceSpec's job, not this file's).
   private val validToken: TokenService = new TokenService:
-    def generate(username: String): UIO[AccessToken]     = ZIO.die(new NotImplementedError("generate"))
-    def validate(token: String): IO[DomainError, String] = ZIO.succeed("test-user")
+    def generate(username: String): UIO[AccessToken]             = ZIO.die(new NotImplementedError("generate"))
+    def validate(token: String): IO[DomainError, ValidatedToken] =
+      ZIO.succeed(ValidatedToken("test-user", "test-jti", Instant.parse("2026-01-01T01:00:00Z")))
+    def revoke(jti: String, expiresAt: Instant): UIO[Unit]       = ZIO.die(new NotImplementedError("revoke"))
 
   private val rejectingToken: TokenService = new TokenService:
-    def generate(username: String): UIO[AccessToken]     = ZIO.die(new NotImplementedError("generate"))
-    def validate(token: String): IO[DomainError, String] = ZIO.fail(DomainError.InvalidToken("rejected"))
+    def generate(username: String): UIO[AccessToken]             = ZIO.die(new NotImplementedError("generate"))
+    def validate(token: String): IO[DomainError, ValidatedToken] = ZIO.fail(DomainError.InvalidToken("rejected"))
+    def revoke(jti: String, expiresAt: Instant): UIO[Unit]       = ZIO.die(new NotImplementedError("revoke"))
 
   // Every pre-existing test needs this Authorization header now, or it fails with 401 instead of
   // its expected status — see the "missing header" test below for the one path that doesn't want it.
