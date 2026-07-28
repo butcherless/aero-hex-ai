@@ -83,7 +83,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Setup build environment
@@ -93,7 +93,7 @@ jobs:
         # — reuses the exact target/ state build already compiled this commit for the shared modules
         # (domain, migration, persistenceQuill), so this job only compiles
         # integrationTests itself instead of the whole dependency chain again.
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        uses: actions/cache@v6
         with:
           path: |
             **/target
