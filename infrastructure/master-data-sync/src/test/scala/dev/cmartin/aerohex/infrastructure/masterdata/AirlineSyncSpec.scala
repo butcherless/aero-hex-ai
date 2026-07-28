@@ -27,11 +27,11 @@ object AirlineSyncSpec extends ZIOSpecDefault:
   private def stubUseCases(initial: List[(Airline, CountryCode)]): UIO[StubUseCases] =
     Ref.make(initial).map { state =>
       val create: CreateAirlineUseCase = (command: CreateAirlineCommand) =>
-        val airline = Airline(command.icao, command.name, command.alias, command.callsign)
+        val airline = Airline(command.icao, command.name, command.alias, command.callsign, command.iata)
         state.update((airline, command.countryCode) :: _).as(airline)
 
       val update: UpdateAirlineUseCase = (command: UpdateAirlineCommand) =>
-        val airline = Airline(command.icao, command.name, command.alias, command.callsign)
+        val airline = Airline(command.icao, command.name, command.alias, command.callsign, command.iata)
         state
           .update(_.map { case (a, c) => if a.icao == command.icao then (airline, command.countryCode) else (a, c) })
           .as(airline)
@@ -45,6 +45,8 @@ object AirlineSyncSpec extends ZIOSpecDefault:
           ZIO.die(new NotImplementedError("findAll"))
         def findAllUnbounded: IO[DomainError, List[Airline]]                           = state.get.map(_.map(_._1))
         def findAllUnboundedWithCountry: IO[DomainError, List[(Airline, CountryCode)]] = state.get
+        def searchByName(query: String): IO[DomainError, List[Airline]]                =
+          ZIO.die(new NotImplementedError("searchByName"))
 
       val findCountry: FindCountryUseCase = new FindCountryUseCase:
         def findByCode(code: CountryCode): IO[DomainError, Country] =
@@ -90,38 +92,49 @@ object AirlineSyncSpec extends ZIOSpecDefault:
         yield assertTrue(
           report ==
             SyncReport(created = 1, updated = 0, deleted = 0, unchanged = 0, skippedInvalid = 0, skippedConflict = 0),
-          finalState == List((Airline(AirlineIcaoCode("IBE"), "Iberia", None, Some("IBERIA")), CountryCode("ES")))
+          finalState ==
+            List((Airline(AirlineIcaoCode("IBE"), "Iberia", None, Some("IBERIA"), Some("XX")), CountryCode("ES")))
         )
       },
       test("updates an existing airline whose name changed") {
         for
           fixture    <- writeDat(List(row("IBE", "Iberia", "IBERIA", "Spain")))
           useCases   <-
-            stubUseCases(List((Airline(AirlineIcaoCode("IBE"), "Old Name", None, Some("IBERIA")), CountryCode("ES"))))
+            stubUseCases(
+              List(
+                (Airline(AirlineIcaoCode("IBE"), "Old Name", None, Some("IBERIA"), Some("XX")), CountryCode("ES"))
+              )
+            )
           report     <- runSync(fixture, useCases)
           finalState <- useCases.currentState
           _          <- TempDirectory.delete(fixture.dir)
         yield assertTrue(
           report ==
             SyncReport(created = 0, updated = 1, deleted = 0, unchanged = 0, skippedInvalid = 0, skippedConflict = 0),
-          finalState == List((Airline(AirlineIcaoCode("IBE"), "Iberia", None, Some("IBERIA")), CountryCode("ES")))
+          finalState ==
+            List((Airline(AirlineIcaoCode("IBE"), "Iberia", None, Some("IBERIA"), Some("XX")), CountryCode("ES")))
         )
       },
-      // The airline's own fields (icao/name/alias/callsign) are identical to the source — only the
-      // stored country differs. EntitySync.reconcile's `==` now runs over (Airline, CountryCode)
+      // The airline's own fields (icao/name/alias/callsign/iata) are identical to the source — only
+      // the stored country differs. EntitySync.reconcile's `==` now runs over (Airline, CountryCode)
       // pairs (§9 of docs/todo/master-data/analysis.md), so this must still surface as an update.
       test("updates an existing airline whose country changed, with identical airline fields") {
         for
           fixture    <- writeDat(List(row("IBE", "Iberia", "IBERIA", "Spain")))
           useCases   <-
-            stubUseCases(List((Airline(AirlineIcaoCode("IBE"), "Iberia", None, Some("IBERIA")), CountryCode("FR"))))
+            stubUseCases(
+              List(
+                (Airline(AirlineIcaoCode("IBE"), "Iberia", None, Some("IBERIA"), Some("XX")), CountryCode("FR"))
+              )
+            )
           report     <- runSync(fixture, useCases)
           finalState <- useCases.currentState
           _          <- TempDirectory.delete(fixture.dir)
         yield assertTrue(
           report ==
             SyncReport(created = 0, updated = 1, deleted = 0, unchanged = 0, skippedInvalid = 0, skippedConflict = 0),
-          finalState == List((Airline(AirlineIcaoCode("IBE"), "Iberia", None, Some("IBERIA")), CountryCode("ES")))
+          finalState ==
+            List((Airline(AirlineIcaoCode("IBE"), "Iberia", None, Some("IBERIA"), Some("XX")), CountryCode("ES")))
         )
       },
       test("deletes an existing airline absent from the source") {
@@ -130,8 +143,8 @@ object AirlineSyncSpec extends ZIOSpecDefault:
           useCases   <-
             stubUseCases(
               List(
-                (Airline(AirlineIcaoCode("IBE"), "Iberia", None, Some("IBERIA")), CountryCode("ES")),
-                (Airline(AirlineIcaoCode("AFR"), "Air France", None, Some("AIRFRANS")), CountryCode("FR"))
+                (Airline(AirlineIcaoCode("IBE"), "Iberia", None, Some("IBERIA"), Some("XX")), CountryCode("ES")),
+                (Airline(AirlineIcaoCode("AFR"), "Air France", None, Some("AIRFRANS"), Some("XX")), CountryCode("FR"))
               )
             )
           report     <- runSync(fixture, useCases)
@@ -140,7 +153,8 @@ object AirlineSyncSpec extends ZIOSpecDefault:
         yield assertTrue(
           report ==
             SyncReport(created = 0, updated = 0, deleted = 1, unchanged = 1, skippedInvalid = 0, skippedConflict = 0),
-          finalState == List((Airline(AirlineIcaoCode("IBE"), "Iberia", None, Some("IBERIA")), CountryCode("ES")))
+          finalState ==
+            List((Airline(AirlineIcaoCode("IBE"), "Iberia", None, Some("IBERIA"), Some("XX")), CountryCode("ES")))
         )
       },
       // A row whose country name doesn't resolve fails at AirlineCsvParser.toCommand, counted as
@@ -157,7 +171,8 @@ object AirlineSyncSpec extends ZIOSpecDefault:
         yield assertTrue(
           report ==
             SyncReport(created = 1, updated = 0, deleted = 0, unchanged = 0, skippedInvalid = 1, skippedConflict = 0),
-          finalState == List((Airline(AirlineIcaoCode("IBE"), "Iberia", None, Some("IBERIA")), CountryCode("ES")))
+          finalState ==
+            List((Airline(AirlineIcaoCode("IBE"), "Iberia", None, Some("IBERIA"), Some("XX")), CountryCode("ES")))
         )
       },
       // OpenFlights occasionally lists two distinct airlines under the same ICAO code (§9 of
@@ -180,7 +195,12 @@ object AirlineSyncSpec extends ZIOSpecDefault:
           report ==
             SyncReport(created = 1, updated = 0, deleted = 0, unchanged = 0, skippedInvalid = 1, skippedConflict = 0),
           finalState ==
-            List((Airline(AirlineIcaoCode("JAL"), "Japan Airlines", None, Some("JAPANAIR")), CountryCode("ES")))
+            List(
+              (
+                Airline(AirlineIcaoCode("JAL"), "Japan Airlines", None, Some("JAPANAIR"), Some("XX")),
+                CountryCode("ES")
+              )
+            )
         )
       }
     )

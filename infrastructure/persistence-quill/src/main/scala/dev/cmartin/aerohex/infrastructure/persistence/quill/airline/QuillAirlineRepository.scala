@@ -20,7 +20,8 @@ final class QuillAirlineRepository(dataSource: DataSource) extends AirlineReposi
       name: String,
       alias: Option[String],
       callsign: Option[String],
-      countryId: Long
+      countryId: Long,
+      iataCode: Option[String]
   )
 
   protected val ctx = new Quill.Postgres(SnakeCase, dataSource)
@@ -28,7 +29,7 @@ final class QuillAirlineRepository(dataSource: DataSource) extends AirlineReposi
   import ctx.*
 
   private def toAirline(a: AirlineRow): Airline =
-    Airline(AirlineIcaoCode.unsafeMake(a.icaoCode), a.name, a.alias, a.callsign)
+    Airline(AirlineIcaoCode.unsafeMake(a.icaoCode), a.name, a.alias, a.callsign, a.iataCode)
 
   override def findByIcao(icao: AirlineIcaoCode): IO[DomainError, Option[Airline]] =
     ctx
@@ -112,7 +113,8 @@ final class QuillAirlineRepository(dataSource: DataSource) extends AirlineReposi
               _.name      -> lift(airline.name),
               _.alias     -> lift(airline.alias),
               _.callsign  -> lift(airline.callsign),
-              _.countryId -> lift(countryId)
+              _.countryId -> lift(countryId),
+              _.iataCode  -> lift(airline.iata)
             )
           })
           .as(airline)
@@ -129,7 +131,8 @@ final class QuillAirlineRepository(dataSource: DataSource) extends AirlineReposi
               _.name      -> lift(airline.name),
               _.alias     -> lift(airline.alias),
               _.callsign  -> lift(airline.callsign),
-              _.countryId -> lift(countryId)
+              _.countryId -> lift(countryId),
+              _.iataCode  -> lift(airline.iata)
             )
         })
       )(DomainError.AirlineNotFound(airline.icao.value), airline)

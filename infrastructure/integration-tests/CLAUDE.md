@@ -9,10 +9,11 @@ never touch it; invoke it explicitly:
 sbt integrationTests/test   # or: sbt integrationTest (alias)
 ```
 
-Coverage so far: `FlywayMigrationItSpec` (migrations reach `V17`), Country
+Coverage so far: `FlywayMigrationItSpec` (migrations reach `V18`), Country
 (`QuillCountryRepositoryItSpec`, incl. `validateCode` success/failure against the `country_codes`
-master table), Airport (`QuillAirportRepositoryItSpec`), Airline (`QuillAirlineRepositoryItSpec`),
-Aircraft (`QuillAircraftRepositoryItSpec`, seeding a `Country` then an `Airline` first since
+master table), Airport (`QuillAirportRepositoryItSpec`), Airline (`QuillAirlineRepositoryItSpec`,
+incl. an `iata` round-trip case — save with a real value, then clear it back to `None`), Aircraft
+(`QuillAircraftRepositoryItSpec`, seeding a `Country` then an `Airline` first since
 `aircraft.airline_id` FKs to `airlines.id`, plus a `findByAirline` case), Flight
 (`QuillFlightRepositoryItSpec`, seeding a `Country`, two `Airport`s (origin + destination), and an
 `Airline` first since `flights.origin_airport_id`/`destination_airport_id`/`airline_id` FK to
@@ -21,7 +22,7 @@ Aircraft (`QuillAircraftRepositoryItSpec`, seeding a `Country` then an `Airline`
 (`QuillUserRepositoryItSpec`; `UserRepository` has no `save`, so its "found" case seeds a row via a
 raw JDBC insert against the shared `DataSource` rather than through the port — see
 `plans/security/login.md` decision 5) and `RevokedTokenRepository`
-(`QuillRevokedTokenRepositoryItSpec` — see `plans/security/logout.md`) — 65 tests total, all
+(`QuillRevokedTokenRepositoryItSpec` — see `plans/security/logout.md`) — 66 tests total, all
 green. Route is not implemented yet.
 See `plans/add-persistence-integration-tests.md` for the full scope table and design rationale (why a
 plain subproject instead of sbt's deprecated `IntegrationTest` config, why one module instead of

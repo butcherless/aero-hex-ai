@@ -57,10 +57,19 @@ type AirlineIcaoCode = AirlineIcaoCode.Type
   * @param callsign
   *   the airline's radiotelephony callsign (e.g. `"IBERIA"`), if any. Plain
   *   `Option[String]`, no shape rule.
+  * @param iata
+  *   the airline's IATA designator (e.g. `"IB"`), if any. Plain
+  *   `Option[String]`, no shape rule — unlike `icao`, IATA designators are
+  *   alphanumeric (e.g. `"9W"`, `"6E"`), not letters-only, and nothing today
+  *   needs to look an airline up *by* this field, so a real validated type
+  *   isn't warranted yet (mirrors `alias`/`callsign`'s treatment exactly).
+  *   Defaults to `None` so every existing positional `Airline(...)`
+  *   construction site keeps compiling unchanged.
   */
 case class Airline(
     icao: AirlineIcaoCode,
     name: String,
     alias: Option[String],
-    callsign: Option[String]
+    callsign: Option[String],
+    iata: Option[String] = None
 )

@@ -270,7 +270,7 @@ Four independent layers, each catching a different class of problem — run the 
 what changed, not always all four:
 
 1. **Local build** — `sbt clean` → `compile` → `test` (398 unit tests, in-memory stubs / Tapir
-   stub server) → `integrationTests/test` (65 tests, real Postgres via Testcontainers, needs
+   stub server) → `integrationTests/test` (66 tests, real Postgres via Testcontainers, needs
    Docker — see `## Integration tests` above) → `bootstrap/assembly` (package) →
    `coverageAggregate` (see `## Coverage` above for the `mkdir -p .coverage-data/...` step first).
 2. **OpenAPI spec** — `/validate-openapi` skill (`bash .claude/skills/validate-openapi/scripts/run.sh`).

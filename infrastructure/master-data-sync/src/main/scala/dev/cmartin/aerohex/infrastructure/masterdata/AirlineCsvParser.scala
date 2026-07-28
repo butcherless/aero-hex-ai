@@ -12,7 +12,8 @@ final case class AirlineRow(
     name: String,
     alias: Option[String],
     callsign: Option[String],
-    countryName: String
+    countryName: String,
+    iata: Option[String]
 )
 
 object AirlineCsvParser:
@@ -72,12 +73,13 @@ object AirlineCsvParser:
     val name     = row(1)
     val icao     = row(4)
     val alias    = optionalField(row(2))
+    val iata     = optionalField(row(3))
     val callsign = optionalField(row(5))
     val country  = row(6)
     if !icaoShape.matches(icao) then
       ZIO.logWarning(s"Skipping Airline row with no valid ICAO code: $icao / $name").as(None)
     else
-      ZIO.succeed(Some(AirlineRow(icao, name, alias, callsign, country)))
+      ZIO.succeed(Some(AirlineRow(icao, name, alias, callsign, country, iata)))
 
   private def optionalField(value: String): Option[String] =
     if value.isEmpty || value == "\\N" then None else Some(value)
@@ -92,4 +94,4 @@ object AirlineCsvParser:
       resolvedName = countryNameAliases.getOrElse(row.countryName, row.countryName)
       countryCode <-
         ZIO.fromOption(countryNameToCode.get(resolvedName)).orElseFail(DomainError.CountryNotFound(row.countryName))
-    yield CreateAirlineCommand(icao, row.name, row.alias, row.callsign, countryCode)
+    yield CreateAirlineCommand(icao, row.name, row.alias, row.callsign, countryCode, row.iata)

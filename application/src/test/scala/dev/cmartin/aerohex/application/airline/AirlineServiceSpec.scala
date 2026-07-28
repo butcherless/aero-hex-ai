@@ -21,8 +21,8 @@ import zio.{Ref, Scope, ZIO, ZLayer}
 
 object AirlineServiceSpec extends ZIOSpecDefault:
 
-  private val iberia  = Airline(AirlineIcaoCode("IBE"), "Iberia", None, Some("IBERIA"))
-  private val vueling = Airline(AirlineIcaoCode("VLG"), "Vueling", None, Some("VUELING"))
+  private val iberia  = Airline(AirlineIcaoCode("IBE"), "Iberia", None, Some("IBERIA"), Some("IB"))
+  private val vueling = Airline(AirlineIcaoCode("VLG"), "Vueling", None, Some("VUELING"), Some("VY"))
   private val spain   = Country(CountryCode("ES"), "Spain")
 
   override def spec: Spec[TestEnvironment & Scope, Any] =
@@ -36,7 +36,14 @@ object AirlineServiceSpec extends ZIOSpecDefault:
                           onSave = (a, _) => savedRef.set(Some(a)).as(a)
                         )
             command   =
-              CreateAirlineCommand(AirlineIcaoCode("IBE"), "Iberia", None, Some("IBERIA"), CountryCode("ES"))
+              CreateAirlineCommand(
+                AirlineIcaoCode("IBE"),
+                "Iberia",
+                None,
+                Some("IBERIA"),
+                CountryCode("ES"),
+                Some("IB")
+              )
             result   <- new CreateAirlineService(repo).create(command)
             saved    <- savedRef.get
           yield assertTrue(
@@ -101,7 +108,8 @@ object AirlineServiceSpec extends ZIOSpecDefault:
                 "Iberia Airlines",
                 None,
                 Some("IBERIA"),
-                CountryCode("ES")
+                CountryCode("ES"),
+                Some("IB")
               )
             result      <- new UpdateAirlineService(repo).update(command)
             captured    <- capturedRef.get

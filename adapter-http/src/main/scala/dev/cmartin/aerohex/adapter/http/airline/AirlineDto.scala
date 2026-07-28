@@ -15,7 +15,13 @@ private val icaoSchema: Schema[String] => Schema[String] = _.description("3-lett
   .validate(Validator.maxLength(3))
   .encodedExample("IBE")
 
-case class AirlineDto(icao: String, name: String, alias: Option[String], callsign: Option[String])
+case class AirlineDto(
+    icao: String,
+    name: String,
+    alias: Option[String],
+    callsign: Option[String],
+    iata: Option[String]
+)
 
 object AirlineDto {
   def fromDomain(airline: Airline): AirlineDto =
@@ -23,7 +29,8 @@ object AirlineDto {
       icao = airline.icao.value,
       name = airline.name,
       alias = airline.alias,
-      callsign = airline.callsign
+      callsign = airline.callsign,
+      iata = airline.iata
     )
 
   given Schema[AirlineDto] = Schema.derived[AirlineDto]
@@ -31,6 +38,7 @@ object AirlineDto {
     .modify(_.name)(_.description("Full airline name.").encodedExample("Iberia"))
     .modify(_.alias)(_.description("Alternative commercial name, if any.").encodedExample("Vueling"))
     .modify(_.callsign)(_.description("Radiotelephony callsign, if any.").encodedExample("IBERIA"))
+    .modify(_.iata)(_.description("2-letter IATA designator, if any.").encodedExample("IB"))
 }
 
 case class CreateAirlineRequest(
@@ -38,7 +46,8 @@ case class CreateAirlineRequest(
     name: String,
     alias: Option[String],
     callsign: Option[String],
-    countryCode: String
+    countryCode: String,
+    iata: Option[String]
 )
 
 object CreateAirlineRequest {
@@ -55,7 +64,8 @@ object CreateAirlineRequest {
           name = req.name,
           alias = req.alias,
           callsign = req.callsign,
-          countryCode = CountryCode.unsafeMake(req.countryCode)
+          countryCode = CountryCode.unsafeMake(req.countryCode),
+          iata = req.iata
         )
       )
 
@@ -67,9 +77,16 @@ object CreateAirlineRequest {
     .modify(_.alias)(_.description("Alternative commercial name, if any.").encodedExample("Vueling"))
     .modify(_.callsign)(_.description("Radiotelephony callsign, if any.").encodedExample("IBERIA"))
     .modify(_.countryCode)(SchemaModifiers.countryCode)
+    .modify(_.iata)(_.description("2-letter IATA designator, if any.").encodedExample("IB"))
 }
 
-case class UpdateAirlineRequest(name: String, alias: Option[String], callsign: Option[String], countryCode: String)
+case class UpdateAirlineRequest(
+    name: String,
+    alias: Option[String],
+    callsign: Option[String],
+    countryCode: String,
+    iata: Option[String]
+)
 
 object UpdateAirlineRequest {
   def toCommand(icao: String, req: UpdateAirlineRequest): UpdateAirlineCommand =
@@ -78,7 +95,8 @@ object UpdateAirlineRequest {
       name = req.name,
       alias = req.alias,
       callsign = req.callsign,
-      countryCode = CountryCode.unsafeMake(req.countryCode)
+      countryCode = CountryCode.unsafeMake(req.countryCode),
+      iata = req.iata
     )
 
   given Schema[UpdateAirlineRequest] = Schema.derived[UpdateAirlineRequest]
@@ -88,4 +106,5 @@ object UpdateAirlineRequest {
     .modify(_.alias)(_.description("Alternative commercial name, if any.").encodedExample("Vueling"))
     .modify(_.callsign)(_.description("Radiotelephony callsign, if any.").encodedExample("IBERIA"))
     .modify(_.countryCode)(SchemaModifiers.countryCode)
+    .modify(_.iata)(_.description("2-letter IATA designator, if any.").encodedExample("IB"))
 }

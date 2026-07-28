@@ -19,8 +19,8 @@ import zio.{IO, Scope, Task, UIO, ZIO, ZLayer}
 
 object AirlineEndpointsSpec extends ZIOSpecDefault:
 
-  private val iberia  = Airline(AirlineIcaoCode("IBE"), "Iberia", None, Some("IBERIA"))
-  private val vueling = Airline(AirlineIcaoCode("VLG"), "Vueling", None, Some("VUELING"))
+  private val iberia  = Airline(AirlineIcaoCode("IBE"), "Iberia", None, Some("IBERIA"), Some("IB"))
+  private val vueling = Airline(AirlineIcaoCode("VLG"), "Vueling", None, Some("VUELING"), Some("VY"))
 
   // ── Stub use-case implementations ─────────────────────────────────────────
 
@@ -204,7 +204,8 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
             airline   = response.body.toOption
           yield assertTrue(
             response.code == StatusCode.Ok,
-            airline.exists(_.icao == "IBE")
+            airline.exists(_.icao == "IBE"),
+            airline.exists(_.iata.contains("IB"))
           )
         },
         test("returns 404 when the airline does not exist") {
@@ -236,7 +237,9 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
             response <-
               authedRequest
                 .post(uri"https://test.com/api/v1/airlines")
-                .body("""{"icao":"IBE","name":"Iberia","alias":null,"callsign":"IBERIA","countryCode":"ES"}""")
+                .body(
+                  """{"icao":"IBE","name":"Iberia","alias":null,"callsign":"IBERIA","countryCode":"ES","iata":"IB"}"""
+                )
                 .contentType("application/json")
                 .response(asJson[AirlineDto])
                 .send(makeBackend())
@@ -244,7 +247,8 @@ object AirlineEndpointsSpec extends ZIOSpecDefault:
           yield assertTrue(
             response.code == StatusCode.Created,
             response.headers.exists(h => h.name.equalsIgnoreCase("Location") && h.value.contains("IBE")),
-            airline.exists(_.icao == "IBE")
+            airline.exists(_.icao == "IBE"),
+            airline.exists(_.iata.contains("IB"))
           )
         },
         test("returns 409 when the airline already exists") {

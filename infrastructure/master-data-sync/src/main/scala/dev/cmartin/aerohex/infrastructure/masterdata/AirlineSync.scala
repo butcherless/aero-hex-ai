@@ -58,7 +58,8 @@ object AirlineSync:
                               )
                             }
       dedupedCommands     = commandsByIcao.values.map(_.head).toList
-      airlines            = dedupedCommands.map(c => (Airline(c.icao, c.name, c.alias, c.callsign), c.countryCode))
+      airlines            =
+        dedupedCommands.map(c => (Airline(c.icao, c.name, c.alias, c.callsign, c.iata), c.countryCode))
       createUseCase      <- ZIO.service[CreateAirlineUseCase]
       updateUseCase      <- ZIO.service[UpdateAirlineUseCase]
       deleteUseCase      <- ZIO.service[DeleteAirlineUseCase]
@@ -78,7 +79,8 @@ object AirlineSync:
                                     airline.name,
                                     airline.alias,
                                     airline.callsign,
-                                    countryCode
+                                    countryCode,
+                                    airline.iata
                                   ))
                                   .unit
                               },
@@ -89,7 +91,8 @@ object AirlineSync:
                                     airline.name,
                                     airline.alias,
                                     airline.callsign,
-                                    countryCode
+                                    countryCode,
+                                    airline.iata
                                   ))
                                   .unit
                               },

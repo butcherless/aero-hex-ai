@@ -9,7 +9,8 @@ case class UpdateAirlineCommand(
     name: String,
     alias: Option[String],
     callsign: Option[String],
-    countryCode: CountryCode
+    countryCode: CountryCode,
+    iata: Option[String] = None
 )
 
 trait UpdateAirlineUseCase:

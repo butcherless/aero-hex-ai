@@ -10,7 +10,10 @@ import zio.{IO, URLayer, ZLayer}
 final class UpdateAirlineService(repo: AirlineRepository) extends UpdateAirlineUseCase:
 
   override def update(command: UpdateAirlineCommand): IO[DomainError, Airline] =
-    repo.update(Airline(command.icao, command.name, command.alias, command.callsign), command.countryCode) @@
+    repo.update(
+      Airline(command.icao, command.name, command.alias, command.callsign, command.iata),
+      command.countryCode
+    ) @@
       ServiceAspect.logged(s"UpdateAirlineService.update(${command.icao.value})")
 
 object UpdateAirlineService:

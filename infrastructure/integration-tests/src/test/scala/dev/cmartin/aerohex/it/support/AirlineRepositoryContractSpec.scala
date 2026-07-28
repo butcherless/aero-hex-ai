@@ -57,6 +57,23 @@ object AirlineRepositoryContractSpec:
         found  <- repo.findByIcao(AirlineIcaoCode("TAP"))
       yield assertTrue(saved == updated, found.contains(updated))
     },
+    test("save and update round-trip the iata code, including clearing it back to None") {
+      for
+        _       <- seedCountry("AU", "Australia")
+        repo    <- ZIO.service[AirlineRepository]
+        qantas   = Airline(AirlineIcaoCode("QFA"), "Qantas", None, Some("QANTAS"), Some("QF"))
+        saved   <- repo.save(qantas, CountryCode("AU"))
+        found   <- repo.findByIcao(AirlineIcaoCode("QFA"))
+        cleared  = qantas.copy(iata = None)
+        updated <- repo.update(cleared, CountryCode("AU"))
+        refound <- repo.findByIcao(AirlineIcaoCode("QFA"))
+      yield assertTrue(
+        saved == qantas,
+        found.exists(_.iata.contains("QF")),
+        updated == cleared,
+        refound.exists(_.iata.isEmpty)
+      )
+    },
     test("update fails with AirlineNotFound for an unknown icao code") {
       for
         _     <- seedCountry("LU", "Luxembourg")

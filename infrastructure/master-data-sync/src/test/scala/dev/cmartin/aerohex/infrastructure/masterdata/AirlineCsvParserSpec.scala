@@ -29,12 +29,16 @@ object AirlineCsvParserSpec extends ZIOSpecDefault:
     suite("AirlineCsvParser")(
       test("parses a well-formed active row with a callsign and no alias") {
         for rows <- parseRows(List(iberia))
-        yield assertTrue(rows == List(AirlineRow("IBE", "Iberia", None, Some("IBERIA"), "Spain")))
+        yield assertTrue(
+          rows == List(AirlineRow("IBE", "Iberia", None, Some("IBERIA"), "Spain", Some("IB")))
+        )
       },
       test("parses alias and callsign when both are present") {
         for rows <- parseRows(List(aliasCallsign))
         yield assertTrue(
-          rows == List(AirlineRow("VLG", "Vueling Airlines", Some("Vueling"), Some("VUELING"), "Spain"))
+          rows == List(
+            AirlineRow("VLG", "Vueling Airlines", Some("Vueling"), Some("VUELING"), "Spain", Some("VY"))
+          )
         )
       },
       test("silently filters out an inactive row") {
@@ -47,13 +51,24 @@ object AirlineCsvParserSpec extends ZIOSpecDefault:
       },
       test("toCommand builds a valid CreateAirlineCommand from a well-formed row") {
         for command <-
-            AirlineCsvParser.toCommand(AirlineRow("IBE", "Iberia", None, Some("IBERIA"), "Spain"), countryNameToCode)
+            AirlineCsvParser.toCommand(
+              AirlineRow("IBE", "Iberia", None, Some("IBERIA"), "Spain", Some("IB")),
+              countryNameToCode
+            )
         yield assertTrue(
-          command == CreateAirlineCommand(AirlineIcaoCode("IBE"), "Iberia", None, Some("IBERIA"), CountryCode("ES"))
+          command == CreateAirlineCommand(
+            AirlineIcaoCode("IBE"),
+            "Iberia",
+            None,
+            Some("IBERIA"),
+            CountryCode("ES"),
+            Some("IB")
+          )
         )
       },
       test("toCommand fails with InvalidAirlineIcaoCode when the ICAO code is the wrong length") {
-        for error <- AirlineCsvParser.toCommand(AirlineRow("IB", "Iberia", None, None, "Spain"), countryNameToCode).flip
+        for error <-
+            AirlineCsvParser.toCommand(AirlineRow("IB", "Iberia", None, None, "Spain", None), countryNameToCode).flip
         yield assertTrue(error match
           case DomainError.InvalidAirlineIcaoCode(errors) => errors.size == 1
           case _                                          => false)
