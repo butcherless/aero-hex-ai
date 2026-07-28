@@ -5,10 +5,12 @@ import dev.cmartin.aerohex.adapter.http.error.ErrorMapper
 import dev.cmartin.aerohex.domain.aircraft.{
   CreateAircraftUseCase,
   DeleteAircraftUseCase,
+  FindAircraftByAirlineUseCase,
   FindAircraftUseCase,
   Registration,
   UpdateAircraftUseCase
 }
+import dev.cmartin.aerohex.domain.airline.AirlineIcaoCode
 import dev.cmartin.aerohex.domain.user.TokenService
 import dev.cmartin.aerohex.shared.Pagination
 import sttp.tapir.ztapir.{RichZEndpoint, ZServerEndpoint}
@@ -19,6 +21,7 @@ class AircraftRoutes(
     createSvc: CreateAircraftUseCase,
     updateSvc: UpdateAircraftUseCase,
     deleteSvc: DeleteAircraftUseCase,
+    findByAirlineSvc: FindAircraftByAirlineUseCase,
     tokenService: TokenService
 ):
   private val secured = SecuredEndpoint.securityLogic(tokenService)
@@ -34,6 +37,12 @@ class AircraftRoutes(
       useCase
         .findByRegistration(registration)
         .map(AircraftDto.fromDomain)
+        .mapError(ErrorMapper.toHttpError)
+    },
+    AircraftEndpoints.findByAirline.zServerSecurityLogic(secured).serverLogic { _ => (icao, page, pageSize) =>
+      findByAirlineSvc
+        .findByAirline(AirlineIcaoCode.unsafeMake(icao), Pagination(page, pageSize))
+        .map(_.map(AircraftDto.fromDomain))
         .mapError(ErrorMapper.toHttpError)
     },
     AircraftEndpoints.create.zServerSecurityLogic(secured).serverLogic { _ => req =>
@@ -61,7 +70,8 @@ class AircraftRoutes(
 
 object AircraftRoutes:
   val layer: URLayer[
-    FindAircraftUseCase & CreateAircraftUseCase & UpdateAircraftUseCase & DeleteAircraftUseCase & TokenService,
+    FindAircraftUseCase & CreateAircraftUseCase & UpdateAircraftUseCase & DeleteAircraftUseCase &
+      FindAircraftByAirlineUseCase & TokenService,
     AircraftRoutes
   ] =
-    ZLayer.fromFunction(new AircraftRoutes(_, _, _, _, _))
+    ZLayer.fromFunction(new AircraftRoutes(_, _, _, _, _, _))

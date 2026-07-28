@@ -55,6 +55,12 @@ object AircraftEndpointsSpec extends ZIOSpecDefault:
   private val notFoundDelete: DeleteAircraftUseCase =
     (reg: Registration) => ZIO.fail(DomainError.AircraftNotFound(reg.value))
 
+  private val defaultFindByAirline: FindAircraftByAirlineUseCase =
+    (_: AirlineIcaoCode, _: Pagination) => ZIO.succeed(List(ecMig))
+
+  private val emptyFindByAirline: FindAircraftByAirlineUseCase =
+    (_: AirlineIcaoCode, _: Pagination) => ZIO.succeed(Nil)
+
   // Every endpoint now requires a bearer token (plans/security/protect-endpoints.md).
   private val validToken: TokenService = new TokenService:
     def generate(username: String): UIO[AccessToken]             = ZIO.die(new NotImplementedError("generate"))
@@ -76,10 +82,13 @@ object AircraftEndpointsSpec extends ZIOSpecDefault:
       create: CreateAircraftUseCase = defaultCreate,
       update: UpdateAircraftUseCase = defaultUpdate,
       delete: DeleteAircraftUseCase = defaultDelete,
+      findByAirline: FindAircraftByAirlineUseCase = defaultFindByAirline,
       tokenService: TokenService = validToken
   ): Backend[Task] =
     TapirStubInterpreter(BackendStub(new RIOMonadAsyncError[Any]))
-      .whenServerEndpointsRunLogic(new AircraftRoutes(find, create, update, delete, tokenService).serverEndpoints)
+      .whenServerEndpointsRunLogic(
+        new AircraftRoutes(find, create, update, delete, findByAirline, tokenService).serverEndpoints
+      )
       .backend()
 
   // ── Spec ──────────────────────────────────────────────────────────────────
@@ -331,8 +340,40 @@ object AircraftEndpointsSpec extends ZIOSpecDefault:
           yield assertTrue(response.code == StatusCode.BadRequest)
         }
       ),
+      suite("GET /api/v1/airlines/{icao}/aircraft")(
+        test("returns 200 with the airline's aircraft") {
+          for
+            response <- authedRequest
+                          .get(uri"https://test.com/api/v1/airlines/IBE/aircraft")
+                          .response(asJson[List[AircraftDto]])
+                          .send(makeBackend())
+            aircraft  = response.body.toOption.getOrElse(Nil)
+          yield assertTrue(response.code == StatusCode.Ok, aircraft.map(_.registration) == List("EC-MIG"))
+        },
+        test("returns 200 with an empty list for an airline with no aircraft") {
+          for
+            response <- authedRequest
+                          .get(uri"https://test.com/api/v1/airlines/VLG/aircraft")
+                          .response(asJson[List[AircraftDto]])
+                          .send(makeBackend(findByAirline = emptyFindByAirline))
+            aircraft  = response.body.toOption.getOrElse(Nil)
+          yield assertTrue(response.code == StatusCode.Ok, aircraft.isEmpty)
+        },
+        test("returns 400 when the ICAO code is not 3 letters") {
+          for
+            response <- authedRequest
+                          .get(uri"https://test.com/api/v1/airlines/IB/aircraft")
+                          .send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        },
+        test("returns 401 when the Authorization header is missing") {
+          for
+            response <- basicRequest.get(uri"https://test.com/api/v1/airlines/IBE/aircraft").send(makeBackend())
+          yield assertTrue(response.code == StatusCode.Unauthorized)
+        }
+      ),
       suite("AircraftRoutes.layer")(
-        test("wires all four use cases into the route list") {
+        test("wires all five use cases into the route list") {
           for
             endpointCount <- ZIO
                                .serviceWith[AircraftRoutes](_.serverEndpoints.size)
@@ -341,10 +382,11 @@ object AircraftEndpointsSpec extends ZIOSpecDefault:
                                  ZLayer.succeed(defaultCreate),
                                  ZLayer.succeed(defaultUpdate),
                                  ZLayer.succeed(defaultDelete),
+                                 ZLayer.succeed(defaultFindByAirline),
                                  ZLayer.succeed(validToken),
                                  AircraftRoutes.layer
                                )
-          yield assertTrue(endpointCount == 5)
+          yield assertTrue(endpointCount == 6)
         }
       )
     )

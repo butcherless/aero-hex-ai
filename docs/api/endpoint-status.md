@@ -40,6 +40,7 @@ access to everything.
 | Airlines | GET | `/api/v1/routes/{origin}/{destination}/airlines` | stub |
 | Aircraft | GET | `/api/v1/aircraft` | ✓ implemented |
 | Aircraft | GET | `/api/v1/aircraft/{registration}` | ✓ implemented |
+| Aircraft | GET | `/api/v1/airlines/{icao}/aircraft` | ✓ implemented |
 | Aircraft | POST | `/api/v1/aircraft` | ✓ implemented |
 | Aircraft | PUT | `/api/v1/aircraft/{registration}` | ✓ implemented |
 | Aircraft | DELETE | `/api/v1/aircraft/{registration}` | ✓ implemented |

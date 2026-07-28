@@ -62,6 +62,24 @@ final class QuillAircraftRepository(dataSource: DataSource) extends AircraftRepo
       .orDie
   }
 
+  override def findByAirline(icao: AirlineIcaoCode, pagination: Pagination): IO[DomainError, List[Aircraft]] = {
+    val offset = pagination.offset
+    val limit  = pagination.pageSize
+    ctx
+      .run(quote {
+        (for {
+          a <- querySchema[AircraftRow]("aircraft")
+          l <- querySchema[AirlineRef]("airlines").join(l => l.id == a.airlineId)
+          if l.icaoCode == lift(icao.value)
+        } yield (a, l.icaoCode))
+          .sortBy(_._1.registration)
+          .drop(lift(offset))
+          .take(lift(limit))
+      })
+      .map(_.map { case (a, icao) => toAircraft(a, icao) })
+      .orDie
+  }
+
   override def save(aircraft: Aircraft): IO[DomainError, Aircraft] =
     resolveAirlineId(aircraft.airlineIcao).flatMap { airlineId =>
       QuillSqlState.refineUniqueViolation(

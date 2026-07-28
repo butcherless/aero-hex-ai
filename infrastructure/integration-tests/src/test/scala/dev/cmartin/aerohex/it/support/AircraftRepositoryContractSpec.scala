@@ -99,5 +99,24 @@ object AircraftRepositoryContractSpec:
         repo  <- ZIO.service[AircraftRepository]
         error <- repo.delete(Registration("ZZ-ZZZ")).flip
       yield assertTrue(error == DomainError.AircraftNotFound("ZZ-ZZZ"))
+    },
+    test("findByAirline returns only the matching airline's aircraft") {
+      for
+        _       <- seedCountry("DE", "Germany")
+        _       <- seedAirline("DLH", "Lufthansa", "DE")
+        _       <- seedAirline("CFG", "Condor", "DE")
+        repo    <- ZIO.service[AircraftRepository]
+        _       <- repo.save(Aircraft(Registration("D-AIHY"), "A346", "Airbus A340-600", AirlineIcaoCode("DLH")))
+        _       <- repo.save(Aircraft(Registration("D-ABUH"), "B753", "Boeing 757-300", AirlineIcaoCode("CFG")))
+        dlhOnly <- repo.findByAirline(AirlineIcaoCode("DLH"), Pagination(page = 1, pageSize = 100))
+      yield assertTrue(dlhOnly.map(_.registration.value) == List("D-AIHY"))
+    },
+    test("findByAirline returns an empty list for an airline with no aircraft") {
+      for
+        _      <- seedCountry("IE", "Ireland")
+        _      <- seedAirline("RYR", "Ryanair", "IE")
+        repo   <- ZIO.service[AircraftRepository]
+        result <- repo.findByAirline(AirlineIcaoCode("RYR"), Pagination(page = 1, pageSize = 100))
+      yield assertTrue(result.isEmpty)
     }
   )

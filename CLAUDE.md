@@ -54,14 +54,22 @@ Rule: inner modules never depend on outer ones. `domain` has zero framework depe
 ## Hexagonal layer conventions
 
 - **`domain/`** — pure logic, no I/O, no framework imports. Opaque types for identifiers. Ports are plain Scala traits.
-  - `model/` — Country, Airport, Airline, Route, Aircraft, Flight, FlightInstance, OutboxEvent
+  Organized by entity/feature, not by technical role — each package bundles its model, ports (both
+  driving use-case interfaces and driven repository/publisher interfaces), and any pure domain
+  service together:
+  - `country/`, `airport/`, `airline/`, `aircraft/`, `route/`, `flight/` — one package per aviation
+    entity, e.g. `route/` holds `Route`, `RouteRepository`, `CreateRouteUseCase`, and the pure
+    domain service `RouteValidator`; `flight/` holds both `Flight` and `FlightInstance`
+  - `outbox/` — `OutboxEvent`, `OutboxRepository`, `EventPublisher`
   - `user/` — `User` (authentication only, not part of the aviation business domain — see
-    `plans/security/login.md`), `UserRepository`, `TokenService`, `PasswordHasher`, `LoginUseCase`
+    `plans/security/login.md`), `UserRepository`, `TokenService`, `PasswordHasher`, `LoginUseCase`,
+    `LogoutUseCase`, `RevokedTokenRepository`
   - `error/DomainError.scala` — sealed error hierarchy
-  - `service/` — pure domain services (RouteValidator)
-  - `port/in/` — driving ports / use-case interfaces
-  - `port/out/` — driven ports / repository + publisher interfaces
-- **`application/`** — orchestrates ports, implements `port/in`. Each service has a companion `ZLayer`.
+  - `validation/FieldValidation.scala` — shared `zio.prelude.Validation` building blocks used by
+    each entity's `Newtype.validateAll`
+- **`application/`** — orchestrates ports, implements each entity's use-case interfaces (mirrors
+  `domain/`'s per-entity package layout, e.g. `application/route/CreateRouteService.scala`). Each
+  service has a companion `ZLayer`.
 - **`persistence-quill/`** — Quill implementations of `CountryRepository`/`AirportRepository`/`AirlineRepository`/`AircraftRepository`/`FlightRepository`/`UserRepository`; all six wired via `WiringModule`, sharing one `QuillDataSourceLayer.live` `DataSource`. Route/RouteAirline/FlightInstance are still an in-memory stub.
 - **Persistence policy:** all wired repositories must use the same implementation — switching is all-or-nothing across every entity, in one commit (see the header comment in `WiringModule.scala`).
 - **`messaging-kafka/`** — ZIO Kafka producer and outbox relay. Not wired into bootstrap.
@@ -148,7 +156,7 @@ object QuillAirportRepository:
 ## Database schema
 
 Flyway migrations in `infrastructure/migration/src/main/resources/db/migration/` (currently
-V1–V15) are the source of truth for the schema — read them directly rather than looking for
+V1–V17) are the source of truth for the schema — read them directly rather than looking for
 columns/constraints duplicated here. Two behavioral gotchas worth knowing without reading every
 migration:
 - Every FK targets the parent's surrogate `id BIGINT`, not its natural key (`code`/`iata_code`/
@@ -157,12 +165,56 @@ migration:
 - `country_codes` is a standalone reference of all 249 ISO 3166-1 alpha-2 codes, deliberately
   **not** FK'd to `countries` — used only by `CountryRepository.isValidCode`.
 
+V16/V17 (`users`, `revoked_tokens`) back JWT authentication (`domain/user/`) — a separate bounded
+context from the aviation entities the rest of this schema models; see `docs/todo/auth-jwt.md`.
+
 **Flyway runs at application startup**: `Main` executes `FlywayMigration.migrateFromEnv` before
 the HTTP server binds (disable with `FLYWAY_MIGRATE_ON_START=false`; a failure aborts startup).
 New migration files apply automatically on the next app start — no manual psql step. The dev
 database is migration-produced (one-time reset performed 2026-07-09; see
 `plans/run-flyway-on-startup.md` for the design and the adoption procedure for machines whose
 database predates this).
+
+## Aircraft fleet demo data (OpenSky)
+
+There's no dedicated sync module for `Aircraft` yet (unlike Country/Airport/Airline — see
+`master-data-sync` in the module graph above); real-looking fleet data can be pulled manually from
+the OpenSky Network's open aircraft database and inserted via the live API. This is a manual
+recipe, not an automated job — re-run it by hand whenever more/fresher demo aircraft are needed.
+
+**Source:** `https://s3.opensky-network.org/data-samples/metadata/aircraftDatabase.csv` — a free,
+bulk-downloadable CSV (~413k rows as of 2026-07-28) of crowdsourced aircraft-registry data. OpenSky
+states it explicitly as unlicensed/"as-is", with no freshness or completeness guarantee — treat
+counts as a lower bound on a real airline's fleet, not authoritative.
+
+**Algorithm:**
+1. Download the CSV (`curl -o aircraftDatabase.csv <url>`).
+2. Filter rows where `operatoricao` equals the target airline's `AirlineIcaoCode` (e.g. `AEA` for
+   Air Europa) — the Airline must already exist in this project's `airlines` table (create it
+   first via `POST /api/v1/airlines` if it's newer than OpenFlights' static dataset, e.g. ITA
+   Airways/`ITY`, which replaced Alitalia in 2021 and isn't in the older seed data).
+3. Skip rows with a blank `registration`/`typecode`/`model`, or a `registration` longer than 10
+   characters (`Registration`'s own shape limit — BR-15 in `docs/analysis/01-domain-model.md`).
+4. Map columns straight onto `CreateAircraftRequest`: `registration`→`registration`,
+   `typecode`→`typeCode`, `model`→`description`, plus the target `airlineIcao`.
+5. `POST /api/v1/aircraft` (bearer-protected, like every other write) for each row.
+
+A minimal end-to-end version (adjust `ICAO`/`TOKEN`):
+```bash
+python3 -c "
+import csv, json
+with open('aircraftDatabase.csv', newline='', encoding='utf-8', errors='replace') as f:
+    for row in csv.DictReader(f):
+        if row['operatoricao'].strip() != '$ICAO':
+            continue
+        reg, tc, model = row['registration'].strip(), row['typecode'].strip(), row['model'].strip()
+        if reg and tc and model and len(reg) <= 10:
+            print(json.dumps({'registration': reg, 'typeCode': tc, 'description': model, 'airlineIcao': '$ICAO'}))
+" | while IFS= read -r payload; do
+  curl -s -X POST http://localhost:8080/api/v1/aircraft \
+    -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "$payload"
+done
+```
 
 ## REST API
 
@@ -217,8 +269,8 @@ sbt coverageAggregate
 Four independent layers, each catching a different class of problem — run the ones relevant to
 what changed, not always all four:
 
-1. **Local build** — `sbt clean` → `compile` → `test` (391 unit tests, in-memory stubs / Tapir
-   stub server) → `integrationTests/test` (63 tests, real Postgres via Testcontainers, needs
+1. **Local build** — `sbt clean` → `compile` → `test` (398 unit tests, in-memory stubs / Tapir
+   stub server) → `integrationTests/test` (65 tests, real Postgres via Testcontainers, needs
    Docker — see `## Integration tests` above) → `bootstrap/assembly` (package) →
    `coverageAggregate` (see `## Coverage` above for the `mkdir -p .coverage-data/...` step first).
 2. **OpenAPI spec** — `/validate-openapi` skill (`bash .claude/skills/validate-openapi/scripts/run.sh`).

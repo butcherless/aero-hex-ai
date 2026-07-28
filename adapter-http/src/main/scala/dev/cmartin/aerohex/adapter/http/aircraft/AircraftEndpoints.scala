@@ -1,6 +1,6 @@
 package dev.cmartin.aerohex.adapter.http.aircraft
 
-import dev.cmartin.aerohex.adapter.http.common.PaginationParams
+import dev.cmartin.aerohex.adapter.http.common.{CodePatterns, PaginationParams}
 import dev.cmartin.aerohex.adapter.http.error.{EndpointErrors, HttpErrorResponse}
 import io.circe.generic.auto.*
 import sttp.model.StatusCode
@@ -10,6 +10,13 @@ import sttp.tapir.json.circe.*
 object AircraftEndpoints {
 
   private val base = endpoint.in("api" / "v1" / "aircraft")
+
+  private val icaoParam =
+    path[String]("icao")
+      .description("3-letter ICAO airline code (e.g. IBE).")
+      .validate(Validator.minLength(3))
+      .validate(Validator.maxLength(3))
+      .validate(Validator.pattern(CodePatterns.alpha3))
 
   // #6 registration marks vary in shape by country of registry (EC-MIG, N12345, G-ABCD) — no single
   // fixed pattern applies, so only non-blank + a max length are enforced, unlike IATA/ICAO path params
@@ -63,6 +70,24 @@ object AircraftEndpoints {
         oneOf[(StatusCode, HttpErrorResponse)](
           EndpointErrors.unauthorizedVariant("Missing or invalid token."),
           EndpointErrors.notFoundVariant("Aircraft not found."),
+          EndpointErrors.unexpectedError
+        )
+      )
+
+  val findByAirline
+      : Endpoint[String, (String, Int, Int), (StatusCode, HttpErrorResponse), List[AircraftDto], Any] =
+    endpoint.get
+      .securityIn(auth.bearer[String]())
+      .in("api" / "v1" / "airlines" / icaoParam / "aircraft")
+      .summary("List aircraft operated by an airline")
+      .description("Returns a paginated list of aircraft operated by the given airline.")
+      .tag("Aircraft")
+      .in(PaginationParams.page)
+      .in(PaginationParams.pageSize)
+      .out(jsonBody[List[AircraftDto]].description("Aircraft operated by the given airline."))
+      .errorOut(
+        oneOf[(StatusCode, HttpErrorResponse)](
+          EndpointErrors.unauthorizedVariant("Missing or invalid token."),
           EndpointErrors.unexpectedError
         )
       )

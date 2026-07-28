@@ -124,7 +124,8 @@ object WiringModule {
   private val aircraftUseCaseLayers = (aircraftRepoLayer >>> FindAircraftService.layer) ++
     (aircraftRepoLayer >>> CreateAircraftService.layer) ++
     (aircraftRepoLayer >>> UpdateAircraftService.layer) ++
-    (aircraftRepoLayer >>> DeleteAircraftService.layer)
+    (aircraftRepoLayer >>> DeleteAircraftService.layer) ++
+    (aircraftRepoLayer >>> FindAircraftByAirlineService.layer)
 
   private val authUseCaseLayers: TaskLayer[LoginUseCase] =
     (userRepoLayer ++ passwordHasherLayer ++ jwtServiceLayer) >>> LoginService.layer

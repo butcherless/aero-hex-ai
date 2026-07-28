@@ -6,6 +6,7 @@ import dev.cmartin.aerohex.domain.aircraft.{
   CreateAircraftCommand,
   CreateAircraftUseCase,
   DeleteAircraftUseCase,
+  FindAircraftByAirlineUseCase,
   FindAircraftUseCase,
   Registration,
   UpdateAircraftCommand,
@@ -97,6 +98,18 @@ object AircraftServiceSpec extends ZIOSpecDefault:
           yield assertTrue(error == DomainError.AircraftNotFound("XXX"))
         }
       ),
+      suite("FindAircraftByAirlineService")(
+        test("delegates to the repository unchanged") {
+          val repo = stubAircraftRepo(onFindByAirline = (_, _) => ZIO.succeed(List(ecMig)))
+          for result <- new FindAircraftByAirlineService(repo).findByAirline(AirlineIcaoCode("IBE"), Pagination(1, 20))
+          yield assertTrue(result == List(ecMig))
+        },
+        test("returns an empty list for an airline with no aircraft") {
+          val repo = stubAircraftRepo(onFindByAirline = (_, _) => ZIO.succeed(Nil))
+          for result <- new FindAircraftByAirlineService(repo).findByAirline(AirlineIcaoCode("VLG"), Pagination(1, 20))
+          yield assertTrue(result.isEmpty)
+        }
+      ),
       suite("Aircraft service layers")(
         test("CreateAircraftService.layer constructs a usable instance") {
           for _ <- ZIO
@@ -120,6 +133,12 @@ object AircraftServiceSpec extends ZIOSpecDefault:
           for _ <- ZIO
                      .service[DeleteAircraftUseCase]
                      .provide(ZLayer.succeed(unimplementedAircraftRepo), DeleteAircraftService.layer)
+          yield assertCompletes
+        },
+        test("FindAircraftByAirlineService.layer constructs a usable instance") {
+          for _ <- ZIO
+                     .service[FindAircraftByAirlineUseCase]
+                     .provide(ZLayer.succeed(unimplementedAircraftRepo), FindAircraftByAirlineService.layer)
           yield assertCompletes
         }
       )
