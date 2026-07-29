@@ -1,5 +1,6 @@
 package dev.cmartin.aerohex.domain.country
 
+import dev.cmartin.aerohex.domain.error.DomainError
 import zio.test.*
 
 object CountryCodeSpec extends ZIOSpecDefault:
@@ -27,4 +28,21 @@ object CountryCodeSpec extends ZIOSpecDefault:
           )
         )
       }
-    )
+    ) +
+      suite("CountryCode.isRecognized / validateIso")(
+        test("isRecognized is true for a real ISO 3166-1 alpha-2 code") {
+          assertTrue(CountryCode.isRecognized(CountryCode("ES")))
+        },
+        test("isRecognized is false for a syntactically-valid but fake code") {
+          assertTrue(!CountryCode.isRecognized(CountryCode("ZZ")))
+        },
+        test("validateIso succeeds for a real ISO code") {
+          assertTrue(CountryCode.validateIso(CountryCode("JP")) == Right(()))
+        },
+        test("validateIso fails with InvalidCountryCode for a fake code") {
+          assertTrue(
+            CountryCode.validateIso(CountryCode("ZZ")) ==
+              Left(DomainError.InvalidCountryCode(List("ZZ is not a recognized ISO 3166-1 alpha-2 country code")))
+          )
+        }
+      )

@@ -156,14 +156,17 @@ object QuillAirportRepository:
 ## Database schema
 
 Flyway migrations in `infrastructure/migration/src/main/resources/db/migration/` (currently
-V1–V17) are the source of truth for the schema — read them directly rather than looking for
+V1–V19) are the source of truth for the schema — read them directly rather than looking for
 columns/constraints duplicated here. Two behavioral gotchas worth knowing without reading every
 migration:
 - Every FK targets the parent's surrogate `id BIGINT`, not its natural key (`code`/`iata_code`/
   `icao_code`/etc.) — the surrogate id is persistence-only, domain/ports never see it. See
   `plans/surrogate-long-keys-country-airport.md`.
-- `country_codes` is a standalone reference of all 249 ISO 3166-1 alpha-2 codes, deliberately
-  **not** FK'd to `countries` — used only by `CountryRepository.isValidCode`.
+- V12 added a standalone `country_codes` reference table (all 249 ISO 3166-1 alpha-2 codes, no FK
+  to `countries`) so `CreateCountryService` could check "is this a real ISO code" via a DB lookup.
+  V19 drops it — that check is now `CountryCode.isRecognized`/`validateIso`, a pure in-memory `Set`
+  in `domain/country/IsoCountryCodes.scala`, since the ISO list changes on the order of years, not
+  at runtime.
 
 V16/V17 (`users`, `revoked_tokens`) back JWT authentication (`domain/user/`) — a separate bounded
 context from the aviation entities the rest of this schema models; see `docs/todo/auth-jwt.md`.

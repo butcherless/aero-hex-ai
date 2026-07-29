@@ -1,5 +1,6 @@
 package dev.cmartin.aerohex.domain.country
 
+import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.validation.FieldValidation
 import zio.prelude.Assertion.*
 import zio.prelude.{Assertion, Newtype, Validation}
@@ -37,6 +38,22 @@ object CountryCode extends Newtype[String]:
       FieldValidation.exactLength("country code", raw, 2),
       FieldValidation.lettersOnly("country code", raw)
     )((_, _, _) => unsafeMake(raw))
+
+  /** BR-16: is this a real ISO 3166-1 alpha-2 code, not just any 2-letter
+    * string. A pure, in-memory check against [[IsoCountryCodes]] -- this
+    * reference list changes on the order of years (ISO adding/retiring a
+    * country), not at runtime, so it needs no I/O, unlike BR-04's "does a
+    * referenced parent already exist in our own `countries` table" (which does,
+    * since that table is this app's own dynamic data).
+    */
+  def isRecognized(code: CountryCode): Boolean = IsoCountryCodes.all.contains(code.value)
+
+  def validateIso(code: CountryCode): Either[DomainError, Unit] =
+    Either.cond(
+      isRecognized(code),
+      (),
+      DomainError.InvalidCountryCode(List(s"${code.value} is not a recognized ISO 3166-1 alpha-2 country code"))
+    )
 type CountryCode = CountryCode.Type
 
 /** A nation with its own government, occupying a particular territory.
@@ -50,8 +67,8 @@ type CountryCode = CountryCode.Type
   * @param code
   *   the country's ISO 3166-1 alpha-2 code (e.g. `"ES"`) and natural key. Shape
   *   (BR-01) is enforced by `CountryCode`'s own smart constructor; ISO 3166-1
-  *   membership (BR-16, is this code a *real* country) is a separate, DB-backed
-  *   check — see `CountryRepository.validateCode`.
+  *   membership (BR-16, is this code a *real* country) is a separate, pure
+  *   in-memory check — see `CountryCode.isRecognized`/`validateIso`.
   * @param name
   *   the country's full name (e.g. `"Spain"`). Must not be blank in practice
   *   (BR-14), but that rule is enforced only at the HTTP write boundary

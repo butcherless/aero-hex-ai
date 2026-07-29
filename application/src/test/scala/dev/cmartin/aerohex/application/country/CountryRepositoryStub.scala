@@ -12,8 +12,6 @@ import zio.{IO, UIO, ZIO}
 private[application] object CountryRepositoryStub:
 
   val unimplementedCountryRepo: CountryRepository = new CountryRepository:
-    def validateCode(code: CountryCode): IO[DomainError, Unit]          =
-      ZIO.die(new NotImplementedError("validateCode"))
     def findByCode(code: CountryCode): IO[DomainError, Option[Country]] =
       ZIO.die(new NotImplementedError("findByCode"))
     def findAll(p: Pagination): UIO[List[Country]]                      =
@@ -30,7 +28,6 @@ private[application] object CountryRepositoryStub:
       ZIO.die(new NotImplementedError("delete"))
 
   def stubCountryRepo(
-      onValidateCode: CountryCode => IO[DomainError, Unit] = unimplementedCountryRepo.validateCode,
       onFindByCode: CountryCode => IO[DomainError, Option[Country]] = unimplementedCountryRepo.findByCode,
       onFindAll: Pagination => UIO[List[Country]] = unimplementedCountryRepo.findAll,
       onFindAllUnbounded: UIO[List[Country]] = unimplementedCountryRepo.findAllUnbounded,
@@ -39,7 +36,6 @@ private[application] object CountryRepositoryStub:
       onUpdate: Country => IO[DomainError, Country] = unimplementedCountryRepo.update,
       onDelete: CountryCode => IO[DomainError, Unit] = unimplementedCountryRepo.delete
   ): CountryRepository = new CountryRepository:
-    def validateCode(code: CountryCode): IO[DomainError, Unit]          = onValidateCode(code)
     def findByCode(code: CountryCode): IO[DomainError, Option[Country]] = onFindByCode(code)
     def findAll(p: Pagination): UIO[List[Country]]                      = onFindAll(p)
     def findAllUnbounded: UIO[List[Country]]                            = onFindAllUnbounded

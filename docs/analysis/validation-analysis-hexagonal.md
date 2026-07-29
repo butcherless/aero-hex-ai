@@ -17,6 +17,9 @@
 > None of the three gained an existence check (§2.3/§2.4's "B2"/"B3") —
 > only `CountryCode` has one, via the different, standalone mechanism in
 > §2.4a.
+> **`[SUPERSEDED]`** — §2.4a's DB-backed `CountryRepository.validateCode` (a
+> standalone `country_codes` table) was later replaced by a pure, in-memory
+> `CountryCode.isRecognized`/`validateIso` check — see §2.4a's closing note.
 
 ---
 
@@ -52,8 +55,9 @@ sit behind a `port.out`, not inside `CountryCode.apply`.
   boundary was removed once this landed — domain is now the one source of
   truth for the shape, not a second copy of it.
 - **Existence, `Country`'s own code (BR-16, is this a *real* ISO code)**:
-  `[SHIPPED]` — see §2.4a. `CountryRepository.validateCode`, backed by a
-  standalone `country_codes` reference table.
+  `[SHIPPED]` — see §2.4a. `CountryCode.isRecognized`/`validateIso`, a pure
+  in-memory check (`[SUPERSEDED]` a standalone `country_codes` reference
+  table + `CountryRepository.validateCode`).
 - **Existence, a *referenced* parent (BR-04 — an Airport's/Airline's Country,
   or an Aircraft's Airline, must already exist)**: still **not** a dedicated
   `domain/service`. It's embedded inside the **persistence adapter**:
@@ -198,6 +202,22 @@ That check lives where it always has: reactively, inside the persistence
 adapters (`QuillCountryIdResolver.resolveCountryId`,
 `QuillAirlineIdResolver.resolveAirlineId`), not proactively in `application/`.
 
+**`[SUPERSEDED]`** — the DB-backed `validateCode` shown above was later
+replaced by a pure, in-memory check: `CountryCode.isRecognized`/`validateIso`
+(`domain/country/Country.scala`), backed by a hardcoded `Set[String]` in
+`domain/country/IsoCountryCodes.scala` mirroring the same 249 codes, and the
+`country_codes` table itself was dropped (`V19__drop_country_codes.sql`).
+This isn't a reversal of §3's "don't hardcode a driftable copy of ISO 3166
+inside the domain module" warning — that warning was about a *different*
+check, BR-04 (does a referenced parent already exist in *this app's own*,
+dynamic `countries` table), where a second copy really would drift out of
+sync with live data. BR-16 is checking membership in the ISO 3166-1 standard
+itself — external, static reference data that changes on the order of years,
+not at runtime — so a database round trip bought correctness this project
+already gets for free from a plain `Set`, at the cost of a Postgres
+dependency for what is otherwise a pure function. Moving it into `domain`
+also made it unit-testable without Testcontainers (see `CountryCodeSpec`).
+
 ### 2.4 B3 — Use case orchestrates both
 
 Today, `CreateAirportService.create`
@@ -293,7 +313,7 @@ a syntactic shape and a referential existence check:
 
 | Value Object | File | Syntactic check (domain/model) | Existence check (domain/service + port.out) |
 |---|---|---|---|
-| `CountryCode` | `domain/model/Country.scala` | `[SHIPPED]` 2 letters, alphabetic (BR-01), real `Newtype` assertion, wired into `CreateCountryRequest.toCommand` | exists in `countries` — **not this pattern**; see §2.4a (`CountryRepository.validateCode` against a standalone `country_codes` table is a different, ISO-*membership* check, BR-16, not "does a row already exist") |
+| `CountryCode` | `domain/model/Country.scala` | `[SHIPPED]` 2 letters, alphabetic (BR-01), real `Newtype` assertion, wired into `CreateCountryRequest.toCommand` | exists in `countries` — **not this pattern**; see §2.4a (`CountryCode.isRecognized`/`validateIso`, a pure in-memory check, is a different, ISO-*membership* check, BR-16, not "does a row already exist") |
 | `IataCode` | `domain/model/Airport.scala` | `[SHIPPED]` 3 letters, alphabetic (BR-02), real `Newtype` assertion, wired into `CreateAirportRequest.toCommand` (Airport's own `iataCode` field only — `Route.origin`/`destination` still `unsafeMake`) | not implemented — `Route`'s referenced airports are validated via `FindAirportUseCase.findByIata` in `CreateRouteService` (BR-09), not a dedicated `domain/service` |
 | `IcaoCode` | `domain/model/Airline.scala` (shared with `Airport`/`Route`/`Flight`/`Aircraft`) | `[SHIPPED, partial]` alphabetic only, deliberately **no length** in the `Newtype` itself (Airport's own `icaoCode` is 4 letters, Airline's own `icao` is 3 — the two owning entities disagree, so length stays an HTTP-layer `Validator`, BR-03). Real `Newtype` assertion wired into both `CreateAirportRequest.toCommand` and `CreateAirlineRequest.toCommand`; every cross-entity reference field (`Route`/`Flight`/`Aircraft`'s `airlineIcao`) still `unsafeMake` | not implemented — no referential check exists anywhere `IcaoCode` is used as a reference (`Aircraft`'s `airlineIcao` only gets DB-level FK enforcement, not a domain-layer check) |
 | `Registration` | `domain/model/Aircraft.scala` | `[SHIPPED]` non-blank, ≤ 10 chars, deliberately no shape pattern (BR-15 — real-world registrations vary by country), real `Newtype` assertion wired into `CreateAircraftRequest.toCommand` — bound-for-bound identical to the HTTP `Validator` already there, so there's no input the domain check rejects that Tapir doesn't already reject | n/a — `Registration` is never used as a reference field elsewhere |
