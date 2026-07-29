@@ -2,6 +2,12 @@ import Dependencies.*
 
 addCommandAlias("xdup", "dependencyUpdates")
 addCommandAlias("integrationTest", "integrationTests/test")
+addCommandAlias("fmt", "scalafmtAll")
+addCommandAlias("fmtCheck", "scalafmtCheckAll")
+
+// Reload the build automatically when project/*.scala or build.sbt change, instead of
+// just warning and requiring a manual `reload`.
+Global / onChangedBuildSource := ReloadOnSourceChanges
 
 // quill-jdbc-zio pulls zio-schema-json → zio-json 0.9.1 while zio-kafka/http want 0.7.1.
 // Declare always-compatible so SBT silently selects the higher version.
@@ -46,14 +52,48 @@ val coverageSettings: Seq[Setting[?]] = Seq(
   coverageMinimumBranchTotal := 60
 )
 
+def instrumented(p: Project): Project =
+  p.settings(coverageSettings*).disablePlugins(AssemblyPlugin)
+
+// Shared by every project that assembles a runnable fat jar (bootstrap, masterDataSync) — both
+// pull in zio-http/quill-jdbc-zio, the libraries whose duplicate-file merge conflicts and
+// unroll-plugin scala3-compiler bloat these settings exist to work around.
+val assemblySettings: Seq[Setting[?]] = Seq(
+  // zio-http depends on com.lihaoyi:unroll-plugin (a Scala 3 compiler plugin it uses on its own
+  // source, confirmed via `sbt bootstrap/dependencyTree`), which transitively drags in the full
+  // scala3-compiler artifact (~34 MB) onto the runtime classpath — needed only to compile
+  // zio-http itself, already done when it was published; never needed to run this app. Drop it
+  // from the assembled jar specifically; it stays on the compile classpath.
+  assembly / assemblyExcludedJars := {
+    val cp = (assembly / fullClasspath).value
+    cp.filter(_.data.getName.startsWith("scala3-compiler"))
+  },
+  assembly / assemblyMergeStrategy := {
+    case PathList("module-info.class")                             => MergeStrategy.discard
+    case PathList("META-INF", "versions", _, "module-info.class") => MergeStrategy.discard
+    case PathList("META-INF", "services", _*)                     => MergeStrategy.concat
+    case PathList("META-INF", "resources", _*)                    => MergeStrategy.first
+    case PathList("META-INF", "maven", "org.webjars", _*)         => MergeStrategy.first
+    case PathList("META-INF", xs @ _*)                            => MergeStrategy.discard
+    case PathList("org", "jline", _*)                             => MergeStrategy.first
+    case PathList("scala", "tools", _*)                           => MergeStrategy.first
+    case PathList("io", "getquill", _*)                           => MergeStrategy.first
+    case "compiler.properties"                                     => MergeStrategy.first
+    case "deriving.conf"                                           => MergeStrategy.concat
+    case "reference.conf"                                          => MergeStrategy.concat
+    case x =>
+      val old = (assembly / assemblyMergeStrategy).value
+      old(x)
+  }
+)
+
 // ─── Modules ────────────────────────────────────────────────────────────────
 
-// Single source of truth for "modules aggregated at root" — the CI workflow's
-// per-module `mkdir -p .coverage-data/scoverage-data` list (a plain bash step, kept
-// separate on purpose — see CLAUDE.md's CAS caveat on why an sbt *task* doing this
-// isn't safe: sbt 2's action cache can skip a cacheable task's side effects on a
-// repeat invocation) is the one list NOT derived from this and must be kept in sync
-// by hand when a module is added or removed here.
+// Single source of truth for "modules aggregated at root". Also drives the local
+// `mkdir -p .coverage-data/scoverage-data` recipe in CLAUDE.md's Coverage section via
+// printCoverageProjects below — sbt 2's action cache can skip a cacheable task's side
+// effects on a repeat invocation, so that task only prints the id list; it doesn't
+// create the directories itself (see CLAUDE.md's Coverage section for why).
 lazy val coverageProjects: Seq[Project] = Seq(
   sharedKernel,
   domain,
@@ -66,120 +106,126 @@ lazy val coverageProjects: Seq[Project] = Seq(
   bootstrap
 )
 
+lazy val printCoverageProjects = taskKey[Unit](
+  "Prints each coverageProjects module id on its own line, for deriving the local " +
+    "mkdir -p .coverage-data/scoverage-data recipe in CLAUDE.md's Coverage section."
+)
+
 lazy val root = (project in file("."))
   .aggregate(coverageProjects.map(p => p: ProjectReference)*)
   .settings(
-    name           := "aero-hex-ai",
-    publish / skip := true
+    name                     := "aero-hex-ai",
+    publish / skip           := true,
+    printCoverageProjects := coverageProjects.foreach(p => println(p.id))
   )
   .disablePlugins(AssemblyPlugin)
 
-lazy val sharedKernel = project
-  .in(file("shared-kernel"))
-  .settings(
-    name := "shared-kernel",
-    libraryDependencies ++= Seq(zio)
-  )
-  .settings(coverageSettings*)
-  .disablePlugins(AssemblyPlugin)
-
-lazy val domain = project
-  .in(file("domain"))
-  .dependsOn(sharedKernel)
-  .settings(
-    name := "domain",
-    libraryDependencies ++= Seq(zio, zioPrelude)
-  )
-  .settings(coverageSettings*)
-  .disablePlugins(AssemblyPlugin)
-
-lazy val application = project
-  .in(file("application"))
-  .dependsOn(domain)
-  .settings(
-    name := "application",
-    libraryDependencies ++= Seq(zio)
-  )
-  .settings(coverageSettings*)
-  .disablePlugins(AssemblyPlugin)
-
-lazy val persistenceQuill = project
-  .in(file("infrastructure/persistence-quill"))
-  .dependsOn(domain)
-  .settings(
-    name := "persistence-quill",
-    libraryDependencies ++= Seq(
-      quillJdbcZio,
-      postgresql,
-      hikaricp
+lazy val sharedKernel = instrumented(
+  project
+    .in(file("shared-kernel"))
+    .settings(
+      name := "shared-kernel",
+      libraryDependencies ++= Seq(zio)
     )
-  )
-  .settings(coverageSettings*)
-  .disablePlugins(AssemblyPlugin)
+)
 
-lazy val messagingKafka = project
-  .in(file("infrastructure/messaging-kafka"))
-  .dependsOn(domain)
-  .settings(
-    name := "messaging-kafka",
-    libraryDependencies ++= Seq(
-      zioKafka,
-      circeCore,
-      circeGeneric,
-      circeParser
+lazy val domain = instrumented(
+  project
+    .in(file("domain"))
+    .dependsOn(sharedKernel)
+    .settings(
+      name := "domain",
+      libraryDependencies ++= Seq(zio, zioPrelude)
     )
-  )
-  .settings(coverageSettings*)
-  .disablePlugins(AssemblyPlugin)
+)
+
+lazy val application = instrumented(
+  project
+    .in(file("application"))
+    .dependsOn(domain)
+    .settings(
+      name := "application",
+      libraryDependencies ++= Seq(zio)
+    )
+)
+
+lazy val persistenceQuill = instrumented(
+  project
+    .in(file("infrastructure/persistence-quill"))
+    .dependsOn(domain)
+    .settings(
+      name := "persistence-quill",
+      libraryDependencies ++= Seq(
+        quillJdbcZio,
+        postgresql,
+        hikaricp
+      )
+    )
+)
+
+lazy val messagingKafka = instrumented(
+  project
+    .in(file("infrastructure/messaging-kafka"))
+    .dependsOn(domain)
+    .settings(
+      name := "messaging-kafka",
+      libraryDependencies ++= Seq(
+        zioKafka,
+        circeCore,
+        circeGeneric,
+        circeParser
+      )
+    )
+)
 
 // JWT issuance/validation + password hashing (TokenService/PasswordHasher port implementations).
 // Depends only on domain, mirroring persistenceQuill/messagingKafka — see
 // plans/security/login.md decision 3.
-lazy val security = project
-  .in(file("infrastructure/security"))
-  .dependsOn(domain)
-  .settings(
-    name := "security",
-    libraryDependencies ++= Seq(jwtCirce, jbcrypt)
-  )
-  .settings(coverageSettings*)
-  .disablePlugins(AssemblyPlugin)
-
-lazy val migration = project
-  .in(file("infrastructure/migration"))
-  .settings(
-    name := "migration",
-    libraryDependencies ++= Seq(
-      flywayCore,
-      flywayPostgres,
-      postgresql,
-      zio
+lazy val security = instrumented(
+  project
+    .in(file("infrastructure/security"))
+    .dependsOn(domain)
+    .settings(
+      name := "security",
+      libraryDependencies ++= Seq(jwtCirce, jbcrypt)
     )
-  )
-  .settings(coverageSettings*)
-  .disablePlugins(AssemblyPlugin)
+)
 
-lazy val adapterHttp = project
-  .in(file("adapter-http"))
-  .dependsOn(domain, application)
-  .settings(
-    name := "adapter-http",
-    libraryDependencies ++= Seq(
-      tapirCore,
-      tapirZioHttp,
-      tapirJsonCirce,
-      tapirSwaggerUi,
-      zioHttp,
-      circeCore,
-      circeGeneric,
-      circeParser,
-      tapirStubServer,
-      sttpClientZio,
-      sttpClientCirce
+lazy val migration = instrumented(
+  project
+    .in(file("infrastructure/migration"))
+    .settings(
+      name := "migration",
+      libraryDependencies ++= Seq(
+        flywayCore,
+        flywayPostgres,
+        postgresql,
+        zio
+      )
     )
-  )
-  .settings(coverageSettings*)
-  .disablePlugins(AssemblyPlugin)
+)
+
+lazy val adapterHttp = instrumented(
+  project
+    .in(file("adapter-http"))
+    .dependsOn(domain, application)
+    .settings(
+      name := "adapter-http",
+      libraryDependencies ++= Seq(
+        tapirCore,
+        tapirZioHttp,
+        tapirJsonCirce,
+        tapirSwaggerUi,
+        zioHttp,
+        circeCore,
+        circeGeneric,
+        circeParser,
+        tapirStubServer,
+        sttpClientZio,
+        sttpClientCirce
+      )
+    )
+)
 
 lazy val bootstrap = project
   .in(file("bootstrap"))
@@ -192,35 +238,10 @@ lazy val bootstrap = project
       zioLoggingSlf4j,
       logback
     ),
-    Compile / mainClass   := Some("dev.cmartin.aerohex.bootstrap.Main"),
-    assembly / mainClass  := Some("dev.cmartin.aerohex.bootstrap.OpenApiGenerator"),
-    // zio-http depends on com.lihaoyi:unroll-plugin (a Scala 3 compiler plugin it uses on its own
-    // source, confirmed via `sbt bootstrap/dependencyTree`), which transitively drags in the full
-    // scala3-compiler artifact (~34 MB) onto the runtime classpath — needed only to compile
-    // zio-http itself, already done when it was published; never needed to run this app. Drop it
-    // from the assembled jar specifically; it stays on the compile classpath.
-    assembly / assemblyExcludedJars := {
-      val cp = (assembly / fullClasspath).value
-      cp.filter(_.data.getName.startsWith("scala3-compiler"))
-    },
-    assembly / assemblyMergeStrategy := {
-      case PathList("module-info.class")                             => MergeStrategy.discard
-      case PathList("META-INF", "versions", _, "module-info.class") => MergeStrategy.discard
-      case PathList("META-INF", "services", _*)                     => MergeStrategy.concat
-      case PathList("META-INF", "resources", _*)                    => MergeStrategy.first
-      case PathList("META-INF", "maven", "org.webjars", _*)         => MergeStrategy.first
-      case PathList("META-INF", xs @ _*)                            => MergeStrategy.discard
-      case PathList("org", "jline", _*)                             => MergeStrategy.first
-      case PathList("scala", "tools", _*)                           => MergeStrategy.first
-      case PathList("io", "getquill", _*)                           => MergeStrategy.first
-      case "compiler.properties"                                     => MergeStrategy.first
-      case "deriving.conf"                                           => MergeStrategy.concat
-      case "reference.conf"                                          => MergeStrategy.concat
-      case x =>
-        val old = (assembly / assemblyMergeStrategy).value
-        old(x)
-    }
+    Compile / mainClass  := Some("dev.cmartin.aerohex.bootstrap.Main"),
+    assembly / mainClass := Some("dev.cmartin.aerohex.bootstrap.OpenApiGenerator")
   )
+  .settings(assemblySettings*)
   .settings(coverageSettings*)
 
 // Opt-in integration tests against a real Postgres (Testcontainers). Deliberately NOT
@@ -273,4 +294,5 @@ lazy val masterDataSync = project
     ),
     Compile / mainClass := Some("dev.cmartin.aerohex.infrastructure.masterdata.Main")
   )
+  .settings(assemblySettings*)
   .settings(coverageSettings*)
