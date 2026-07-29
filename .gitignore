@@ -24,5 +24,8 @@ target/
 # Coverage data (outside target/ so sbt clean doesn't delete it)
 .coverage-data/
 
+# scripts/start.sh runtime artifacts (PID file, app log)
+scripts/run/
+
 # Claude Code
 .claude/
