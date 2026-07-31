@@ -70,6 +70,44 @@ final class QuillRouteRepository(dataSource: DataSource) extends RouteRepository
       .map(_.map { case (r, oIata, dIata) => toRoute(r, oIata, dIata) })
       .orDie
 
+  override def findByOrigin(origin: IataCode, pagination: Pagination): IO[DomainError, List[Route]] = {
+    val offset = pagination.offset
+    val limit  = pagination.pageSize
+    ctx
+      .run(quote {
+        (for {
+          r  <- querySchema[RouteRow]("routes")
+          ao <- querySchema[AirportRef]("airports").join(a => a.id == r.originAirportId)
+          ad <- querySchema[AirportRef]("airports").join(a => a.id == r.destinationAirportId)
+          if ao.iataCode == lift(origin.value)
+        } yield (r, ao.iataCode, ad.iataCode))
+          .sortBy(_._3)
+          .drop(lift(offset))
+          .take(lift(limit))
+      })
+      .map(_.map { case (r, oIata, dIata) => toRoute(r, oIata, dIata) })
+      .orDie
+  }
+
+  override def findByDestination(destination: IataCode, pagination: Pagination): IO[DomainError, List[Route]] = {
+    val offset = pagination.offset
+    val limit  = pagination.pageSize
+    ctx
+      .run(quote {
+        (for {
+          r  <- querySchema[RouteRow]("routes")
+          ao <- querySchema[AirportRef]("airports").join(a => a.id == r.originAirportId)
+          ad <- querySchema[AirportRef]("airports").join(a => a.id == r.destinationAirportId)
+          if ad.iataCode == lift(destination.value)
+        } yield (r, ao.iataCode, ad.iataCode))
+          .sortBy(_._2)
+          .drop(lift(offset))
+          .take(lift(limit))
+      })
+      .map(_.map { case (r, oIata, dIata) => toRoute(r, oIata, dIata) })
+      .orDie
+  }
+
   override def save(route: Route): IO[DomainError, Route] =
     for {
       originId      <- resolveAirportId(route.origin)

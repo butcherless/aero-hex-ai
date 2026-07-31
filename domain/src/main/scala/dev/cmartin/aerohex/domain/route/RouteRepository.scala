@@ -9,6 +9,8 @@ trait RouteRepository {
   def findBySegment(origin: IataCode, destination: IataCode): IO[DomainError, Option[Route]]
   def findAll(pagination: Pagination): IO[DomainError, List[Route]]
   def findAllUnbounded: IO[DomainError, List[Route]]
+  def findByOrigin(origin: IataCode, pagination: Pagination): IO[DomainError, List[Route]]
+  def findByDestination(destination: IataCode, pagination: Pagination): IO[DomainError, List[Route]]
   def save(route: Route): IO[DomainError, Route]
   def update(route: Route): IO[DomainError, Route]
   def delete(origin: IataCode, destination: IataCode): IO[DomainError, Unit]

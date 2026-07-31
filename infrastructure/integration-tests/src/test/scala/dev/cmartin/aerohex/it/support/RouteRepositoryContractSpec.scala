@@ -121,5 +121,35 @@ object RouteRepositoryContractSpec:
         repo  <- ZIO.service[RouteRepository]
         error <- repo.delete(IataCode("BRU"), IataCode("LGG")).flip
       yield assertTrue(error == DomainError.RouteNotFound("BRU", "LGG"))
+    },
+    test("findByOrigin returns only routes departing from the given airport") {
+      for
+        _     <- seedCountry("SE", "Sweden")
+        _     <- seedAirport("ARN", "ESSA", "Arlanda", "Stockholm", "SE")
+        _     <- seedAirport("GOT", "ESGG", "Landvetter", "Gothenburg", "SE")
+        _     <- seedAirport("MMX", "ESMS", "Malmo", "Malmo", "SE")
+        repo  <- ZIO.service[RouteRepository]
+        _     <- repo.save(Route(IataCode("ARN"), IataCode("GOT"), 400))
+        _     <- repo.save(Route(IataCode("MMX"), IataCode("ARN"), 500))
+        found <- repo.findByOrigin(IataCode("ARN"), Pagination(page = 1, pageSize = 100))
+      yield assertTrue(
+        found.exists(r => r.origin.value == "ARN" && r.destination.value == "GOT"),
+        !found.exists(_.origin.value == "MMX")
+      )
+    },
+    test("findByDestination returns only routes arriving at the given airport") {
+      for
+        _     <- seedCountry("NO", "Norway")
+        _     <- seedAirport("OSL", "ENGM", "Gardermoen", "Oslo", "NO")
+        _     <- seedAirport("BGO", "ENBR", "Flesland", "Bergen", "NO")
+        _     <- seedAirport("TRD", "ENVA", "Vaernes", "Trondheim", "NO")
+        repo  <- ZIO.service[RouteRepository]
+        _     <- repo.save(Route(IataCode("OSL"), IataCode("BGO"), 300))
+        _     <- repo.save(Route(IataCode("TRD"), IataCode("OSL"), 350))
+        found <- repo.findByDestination(IataCode("BGO"), Pagination(page = 1, pageSize = 100))
+      yield assertTrue(
+        found.exists(r => r.origin.value == "OSL" && r.destination.value == "BGO"),
+        !found.exists(_.destination.value == "OSL")
+      )
     }
   )

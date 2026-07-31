@@ -62,6 +62,7 @@ object ApiSpec:
     AirlineEndpoints.delete,
     AirlineEndpoints.findByCountry,
     AirlineEndpoints.findByRoute,
+    RouteEndpoints.findAll,
     RouteEndpoints.create,
     RouteEndpoints.associate,
     RouteEndpoints.disassociate,

@@ -9,4 +9,6 @@ trait FindRouteUseCase {
   def findBySegment(origin: IataCode, destination: IataCode): IO[DomainError, Route]
   def findAll(pagination: Pagination): IO[DomainError, List[Route]]
   def findAllUnbounded: IO[DomainError, List[Route]]
+  def findByOrigin(origin: IataCode, pagination: Pagination): IO[DomainError, List[Route]]
+  def findByDestination(destination: IataCode, pagination: Pagination): IO[DomainError, List[Route]]
 }

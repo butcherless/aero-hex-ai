@@ -133,7 +133,8 @@ object WiringModule {
     (((airportRepoLayer >>> FindAirportService.layer) ++ routeRepoLayer) >>> CreateRouteService.layer) ++
       (routeAirlineRepoLayer >>> AssociateAirlineService.layer) ++
       (routeAirlineRepoLayer >>> DisassociateAirlineService.layer) ++
-      (routeAirlineRepoLayer >>> FindRoutesByAirlineService.layer)
+      (routeAirlineRepoLayer >>> FindRoutesByAirlineService.layer) ++
+      (routeRepoLayer >>> FindRouteService.layer)
 
   private val flightUseCaseLayers =
     (flightRepoLayer >>> FindFlightService.layer) ++

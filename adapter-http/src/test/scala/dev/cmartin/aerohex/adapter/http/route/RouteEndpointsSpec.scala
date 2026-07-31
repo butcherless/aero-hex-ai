@@ -2,8 +2,9 @@ package dev.cmartin.aerohex.adapter.http.route
 
 import dev.cmartin.aerohex.domain.airport.IataCode
 import dev.cmartin.aerohex.domain.error.DomainError
+import dev.cmartin.aerohex.domain.route.Route
 import dev.cmartin.aerohex.domain.route.{AssociateAirlineUseCase, CreateRouteCommand, CreateRouteUseCase}
-import dev.cmartin.aerohex.domain.route.{DisassociateAirlineUseCase, FindRoutesByAirlineUseCase, Route}
+import dev.cmartin.aerohex.domain.route.{DisassociateAirlineUseCase, FindRouteUseCase, FindRoutesByAirlineUseCase}
 import dev.cmartin.aerohex.domain.user.{AccessToken, TokenService, ValidatedToken}
 import dev.cmartin.aerohex.shared.Pagination
 import io.circe.generic.auto.*
@@ -55,6 +56,29 @@ object RouteEndpointsSpec extends ZIOSpecDefault:
   private val failingFindByAirline: FindRoutesByAirlineUseCase =
     (icao: String, _: Pagination) => ZIO.fail(DomainError.AirlineNotFound(icao))
 
+  private val defaultFindRoute: FindRouteUseCase = new FindRouteUseCase:
+    def findBySegment(o: IataCode, d: IataCode): IO[DomainError, Route]             =
+      if o.value == "MAD" && d.value == "TFN" then ZIO.succeed(route)
+      else ZIO.fail(DomainError.RouteNotFound(o.value, d.value))
+    def findAll(p: Pagination): IO[DomainError, List[Route]]                        = ZIO.succeed(List(route))
+    def findAllUnbounded: IO[DomainError, List[Route]]                              = ZIO.succeed(List(route))
+    def findByOrigin(o: IataCode, p: Pagination): IO[DomainError, List[Route]]      =
+      ZIO.succeed(if o.value == route.origin.value then List(route) else Nil)
+    def findByDestination(d: IataCode, p: Pagination): IO[DomainError, List[Route]] =
+      ZIO.succeed(if d.value == route.destination.value then List(route) else Nil)
+
+  private val failingFindRoute: FindRouteUseCase = new FindRouteUseCase:
+    def findBySegment(o: IataCode, d: IataCode): IO[DomainError, Route]             =
+      ZIO.die(new NotImplementedError("findBySegment"))
+    def findAll(p: Pagination): IO[DomainError, List[Route]]                        =
+      ZIO.fail(DomainError.InvalidRoute("boom"))
+    def findAllUnbounded: IO[DomainError, List[Route]]                              =
+      ZIO.die(new NotImplementedError("findAllUnbounded"))
+    def findByOrigin(o: IataCode, p: Pagination): IO[DomainError, List[Route]]      =
+      ZIO.die(new NotImplementedError("findByOrigin"))
+    def findByDestination(d: IataCode, p: Pagination): IO[DomainError, List[Route]] =
+      ZIO.die(new NotImplementedError("findByDestination"))
+
   // Every endpoint now requires a bearer token (plans/security/protect-endpoints.md).
   private val validToken: TokenService = new TokenService:
     def generate(username: String): UIO[AccessToken]             = ZIO.die(new NotImplementedError("generate"))
@@ -76,11 +100,12 @@ object RouteEndpointsSpec extends ZIOSpecDefault:
       associate: AssociateAirlineUseCase = defaultAssociate,
       disassociate: DisassociateAirlineUseCase = defaultDisassociate,
       findByAirline: FindRoutesByAirlineUseCase = defaultFindByAirline,
+      findRoute: FindRouteUseCase = defaultFindRoute,
       tokenService: TokenService = validToken
   ): Backend[Task] =
     TapirStubInterpreter(BackendStub(new RIOMonadAsyncError[Any]))
       .whenServerEndpointsRunLogic(
-        new RouteRoutes(create, associate, disassociate, findByAirline, tokenService).serverEndpoints
+        new RouteRoutes(create, associate, disassociate, findByAirline, findRoute, tokenService).serverEndpoints
       )
       .backend()
 
@@ -213,6 +238,64 @@ object RouteEndpointsSpec extends ZIOSpecDefault:
           yield assertTrue(response.code == StatusCode.NotFound)
         }
       ),
+      suite("GET /api/v1/routes")(
+        test("returns 200 with all routes when no filter is given") {
+          for
+            response <- authedRequest
+                          .get(uri"https://test.com/api/v1/routes")
+                          .response(asJson[List[RouteDto]])
+                          .send(makeBackend())
+            routes    = response.body.toOption.getOrElse(Nil)
+          yield assertTrue(response.code == StatusCode.Ok, routes == List(RouteDto.fromDomain(route)))
+        },
+        test("returns 200 filtered by origin only") {
+          for
+            response <- authedRequest
+                          .get(uri"https://test.com/api/v1/routes?origin=MAD")
+                          .response(asJson[List[RouteDto]])
+                          .send(makeBackend())
+            routes    = response.body.toOption.getOrElse(Nil)
+          yield assertTrue(response.code == StatusCode.Ok, routes == List(RouteDto.fromDomain(route)))
+        },
+        test("returns 200 filtered by destination only") {
+          for
+            response <- authedRequest
+                          .get(uri"https://test.com/api/v1/routes?destination=TFN")
+                          .response(asJson[List[RouteDto]])
+                          .send(makeBackend())
+            routes    = response.body.toOption.getOrElse(Nil)
+          yield assertTrue(response.code == StatusCode.Ok, routes == List(RouteDto.fromDomain(route)))
+        },
+        test("returns 200 with a single-element list when filtered by both origin and destination") {
+          for
+            response <- authedRequest
+                          .get(uri"https://test.com/api/v1/routes?origin=MAD&destination=TFN")
+                          .response(asJson[List[RouteDto]])
+                          .send(makeBackend())
+            routes    = response.body.toOption.getOrElse(Nil)
+          yield assertTrue(response.code == StatusCode.Ok, routes == List(RouteDto.fromDomain(route)))
+        },
+        test("returns 200 with an empty list when origin and destination don't match any route") {
+          for
+            response <- authedRequest
+                          .get(uri"https://test.com/api/v1/routes?origin=XXX&destination=YYY")
+                          .response(asJson[List[RouteDto]])
+                          .send(makeBackend())
+            routes    = response.body.toOption.getOrElse(Nil)
+          yield assertTrue(response.code == StatusCode.Ok, routes.isEmpty)
+        },
+        test("returns 400 when origin is not exactly 3 letters") {
+          for response <-
+              authedRequest.get(uri"https://test.com/api/v1/routes?origin=MA").send(makeBackend())
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        },
+        test("propagates the mapped domain error when the use case fails") {
+          for response <- authedRequest
+                            .get(uri"https://test.com/api/v1/routes")
+                            .send(makeBackend(findRoute = failingFindRoute))
+          yield assertTrue(response.code == StatusCode.BadRequest)
+        }
+      ),
       suite("GET /api/v1/airlines/{icao}/routes")(
         test("returns 200 with the routes operated by the airline") {
           for
@@ -244,10 +327,11 @@ object RouteEndpointsSpec extends ZIOSpecDefault:
                                  ZLayer.succeed(defaultAssociate),
                                  ZLayer.succeed(defaultDisassociate),
                                  ZLayer.succeed(defaultFindByAirline),
+                                 ZLayer.succeed(defaultFindRoute),
                                  ZLayer.succeed(validToken),
                                  RouteRoutes.layer
                                )
-          yield assertTrue(endpointCount == 4)
+          yield assertTrue(endpointCount == 5)
         }
       )
     )

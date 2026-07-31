@@ -19,6 +19,13 @@ final class FindRouteService(repo: RouteRepository) extends FindRouteUseCase {
 
   override def findAllUnbounded: IO[DomainError, List[Route]] =
     repo.findAllUnbounded @@ ServiceAspect.logged("FindRouteService.findAllUnbounded")
+
+  override def findByOrigin(origin: IataCode, pagination: Pagination): IO[DomainError, List[Route]] =
+    repo.findByOrigin(origin, pagination) @@ ServiceAspect.logged(s"FindRouteService.findByOrigin(${origin.value})")
+
+  override def findByDestination(destination: IataCode, pagination: Pagination): IO[DomainError, List[Route]] =
+    repo.findByDestination(destination, pagination) @@
+      ServiceAspect.logged(s"FindRouteService.findByDestination(${destination.value})")
 }
 
 object FindRouteService {

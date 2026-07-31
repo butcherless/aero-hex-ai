@@ -279,8 +279,8 @@ Doesn't apply to CI's fresh checkout — every module gets compiled from scratch
 Four independent layers, each catching a different class of problem — run the ones relevant to
 what changed, not always all four:
 
-1. **Local build** — `sbt clean` → `compile` → `test` (404 unit tests, in-memory stubs / Tapir
-   stub server) → `integrationTests/test` (74 tests, real Postgres via Testcontainers, needs
+1. **Local build** — `sbt clean` → `compile` → `test` (418 unit tests, in-memory stubs / Tapir
+   stub server) → `integrationTests/test` (76 tests, real Postgres via Testcontainers, needs
    Docker — see `## Integration tests` above) → `bootstrap/assembly` (package) →
    `coverageAggregate` (see `## Coverage` above for the `mkdir -p .coverage-data/...` step first).
 2. **OpenAPI spec** — `/validate-openapi` skill (`bash .claude/skills/validate-openapi/scripts/run.sh`).

@@ -72,6 +72,10 @@ object RouteSyncSpec extends ZIOSpecDefault:
         def findAll(p: Pagination): IO[DomainError, List[Route]]                           =
           ZIO.die(new NotImplementedError("findAll"))
         def findAllUnbounded: IO[DomainError, List[Route]]                                 = state.get
+        def findByOrigin(origin: IataCode, p: Pagination): IO[DomainError, List[Route]]    =
+          ZIO.die(new NotImplementedError("findByOrigin"))
+        def findByDestination(destination: IataCode, p: Pagination): IO[DomainError, List[Route]] =
+          ZIO.die(new NotImplementedError("findByDestination"))
 
       StubUseCases(create, update, delete, find, state.get)
     }

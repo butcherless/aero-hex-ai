@@ -33,6 +33,29 @@ object RouteEndpoints {
   private val icaoParam =
     alphaCodeParam("icao", "3-letter ICAO airline code (e.g. AEA).", 3, CodePatterns.alpha3)
 
+  private def optionalAlphaCodeQueryParam(name: String, description: String, length: Int, pattern: String) =
+    query[Option[String]](name)
+      .description(description)
+      .validateOption(Validator.minLength(length))
+      .validateOption(Validator.maxLength(length))
+      .validateOption(Validator.pattern(pattern))
+
+  private val originQueryParam =
+    optionalAlphaCodeQueryParam(
+      "origin",
+      "Optional 3-letter IATA code to filter by origin airport (e.g. MAD).",
+      3,
+      CodePatterns.alpha3
+    )
+
+  private val destinationQueryParam =
+    optionalAlphaCodeQueryParam(
+      "destination",
+      "Optional 3-letter IATA code to filter by destination airport (e.g. TFN).",
+      3,
+      CodePatterns.alpha3
+    )
+
   private val associationErrorOut: EndpointOutput[(StatusCode, HttpErrorResponse)] =
     oneOf[(StatusCode, HttpErrorResponse)](
       EndpointErrors.unauthorizedVariant("Missing or invalid token."),
@@ -54,6 +77,35 @@ object RouteEndpoints {
           EndpointErrors.notFoundVariant("Airport not found."),
           EndpointErrors.conflictVariant("A route between these airports already exists."),
           EndpointErrors.badRequestVariant("Invalid route parameters."),
+          EndpointErrors.unexpectedError
+        )
+      )
+
+  // `origin`/`destination` unify list-all, search-by-origin, search-by-destination, and
+  // search-by-both into this one collection endpoint as optional filters (same REST convention
+  // CountryEndpoints.findAll's `name` filter established) — both provided narrows to at most one
+  // matching route (the table has a UNIQUE(origin_airport_id, destination_airport_id)
+  // constraint), returned as a singleton or empty list rather than a 404.
+  val findAll: Endpoint[String, (Option[String], Option[String], Int, Int), (StatusCode, HttpErrorResponse), List[
+    RouteDto
+  ], Any] =
+    base.get
+      .securityIn(auth.bearer[String]())
+      .summary("List or search routes")
+      .description(
+        "Returns a paginated list of routes, optionally filtered by origin IATA code, " +
+          "destination IATA code, or both."
+      )
+      .tag("Routes")
+      .in(originQueryParam)
+      .in(destinationQueryParam)
+      .in(PaginationParams.page)
+      .in(PaginationParams.pageSize)
+      .out(jsonBody[List[RouteDto]].description("Routes matching the given filters."))
+      .errorOut(
+        oneOf[(StatusCode, HttpErrorResponse)](
+          EndpointErrors.unauthorizedVariant("Missing or invalid token."),
+          EndpointErrors.badRequestVariant("Invalid query parameters."),
           EndpointErrors.unexpectedError
         )
       )

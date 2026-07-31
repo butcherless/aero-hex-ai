@@ -53,7 +53,8 @@ access to everything.
 | Flights | DELETE | `/api/v1/flights/{code}` | ✓ implemented |
 | Flight Instances | GET | `/api/v1/flight-instances` | stub |
 | Flight Instances | GET | `/api/v1/flight-instances/{id}` | stub |
-| Routes | POST | `/api/v1/routes` | stub |
+| Routes | GET | `/api/v1/routes` (optional `origin`/`destination` filters, either or both) | ✓ implemented |
+| Routes | POST | `/api/v1/routes` | ✓ implemented |
 | Routes | POST | `/api/v1/routes/{origin}/{destination}/airlines/{icao}` | stub |
 | Routes | DELETE | `/api/v1/routes/{origin}/{destination}/airlines/{icao}` | stub |
 | Routes | GET | `/api/v1/airlines/{icao}/routes` | stub |
