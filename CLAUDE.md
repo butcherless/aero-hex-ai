@@ -39,7 +39,7 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 shared-kernel
     └── domain
             ├── application
-            ├── persistence-quill      (infrastructure — wired into bootstrap; Country + Airport + Airline + Aircraft + Flight + User)
+            ├── persistence-quill      (infrastructure — wired into bootstrap; Country + Airport + Airline + Aircraft + Flight + User + RevokedToken)
             ├── messaging-kafka        (infrastructure — not wired into bootstrap)
             ├── security               (infrastructure — JWT issuance/validation + password hashing; TokenService/PasswordHasher port impls; wired into bootstrap; see plans/security/)
             └── adapter-http
@@ -62,7 +62,7 @@ Rule: inner modules never depend on outer ones. `domain` has zero framework depe
     domain service `RouteValidator`; `flight/` holds both `Flight` and `FlightInstance`
   - `outbox/` — `OutboxEvent`, `OutboxRepository`, `EventPublisher`
   - `user/` — `User` (authentication only, not part of the aviation business domain — see
-    `plans/security/login.md`), `UserRepository`, `TokenService`, `PasswordHasher`, `LoginUseCase`,
+    `plans/security/`), `UserRepository`, `TokenService`, `PasswordHasher`, `LoginUseCase`,
     `LogoutUseCase`, `RevokedTokenRepository`
   - `error/DomainError.scala` — sealed error hierarchy
   - `validation/FieldValidation.scala` — shared `zio.prelude.Validation` building blocks used by
@@ -70,14 +70,14 @@ Rule: inner modules never depend on outer ones. `domain` has zero framework depe
 - **`application/`** — orchestrates ports, implements each entity's use-case interfaces (mirrors
   `domain/`'s per-entity package layout, e.g. `application/route/CreateRouteService.scala`). Each
   service has a companion `ZLayer`.
-- **`persistence-quill/`** — Quill implementations of `CountryRepository`/`AirportRepository`/`AirlineRepository`/`AircraftRepository`/`FlightRepository`/`UserRepository`; all six wired via `WiringModule`, sharing one `QuillDataSourceLayer.live` `DataSource`. Route/RouteAirline/FlightInstance are still an in-memory stub.
+- **`persistence-quill/`** — Quill implementations of `CountryRepository`/`AirportRepository`/`AirlineRepository`/`AircraftRepository`/`FlightRepository`/`UserRepository`/`RevokedTokenRepository`; all seven wired via `WiringModule`, sharing one `QuillDataSourceLayer.live` `DataSource`. Route/RouteAirline/FlightInstance are still an in-memory stub.
 - **Persistence policy:** all wired repositories must use the same implementation — switching is all-or-nothing across every entity, in one commit (see the header comment in `WiringModule.scala`).
 - **`messaging-kafka/`** — ZIO Kafka producer and outbox relay. Not wired into bootstrap.
 - **`security/`** — implements `TokenService` (`JwtService`, `jwt-scala`/`jwt-circe`, HS256, RFC
   7519 registered claims only) and `PasswordHasher` (`BcryptPasswordHasher`, `jbcrypt`). Depends
-  only on `domain`, mirroring `persistence-quill`/`messaging-kafka`. See `plans/security/login.md`.
+  only on `domain`, mirroring `persistence-quill`/`messaging-kafka`. See `plans/security/`.
 - **`migration/`** — Flyway SQL migrations; no domain dependency. `Main` runs `FlywayMigration.migrateFromEnv` at startup (see the `bootstrap` bullet).
-- **`adapter-http/`** — Tapir endpoint definitions + ZIO HTTP server. DTOs live here; `ErrorMapper` maps `DomainError` → HTTP status.
+- **`adapter-http/`** — Tapir endpoint definitions + ZIO HTTP server. DTOs live here; `ErrorMapper` maps `DomainError` → HTTP status. Every business resource's endpoints require a valid bearer token (see `## Key patterns`'s Tapir endpoints entry and `## REST API`).
 - **`bootstrap/`** — sole composition root. `WiringModule` wires all `ZLayer`s. `Main` runs Flyway migrations in-process (skip with `FLYWAY_MIGRATE_ON_START=false`), then starts the HTTP server (`WiringModule.appLayer`) — no outbox relay.
 - **`shared-kernel/`** — cross-cutting value types (`Pagination`, `NonEmptyString`).
 
@@ -138,7 +138,7 @@ object QuillAirportRepository:
 
 **`UIO` for infallible queries** — `findAll`/`searchByName` return `UIO[List[A]]`; no `.mapError` needed in routes.
 
-**Tapir endpoints** — each `XxxRoutes` class converts its own endpoints via `.zServerLogic`, producing a `List[ZServerEndpoint[Any, Any]]`; all resources' lists are concatenated and passed to one `ZioHttpInterpreter().toHttp(...)` call together with the Swagger endpoints. `toHttp` returns `Routes[Any, Response]`; seal with `.handleError(identity)` before `Server.serve`.
+**Tapir endpoints** — every business resource's endpoints use Tapir's two-phase security: `.zServerSecurityLogic(secured)` (phase 1, `SecuredEndpoint.securityLogic` validating the bearer token) `.serverLogic { _ => ... }` (phase 2, the business logic) — see `plans/security/protect-endpoints.md`. Each `XxxRoutes` class produces a `List[ZServerEndpoint[Any, Any]]` this way; all resources' lists are concatenated and passed to one `ZioHttpInterpreter().toHttp(...)` call together with the Swagger endpoints (`/health/*` and login stay unprotected, plain `.zServerLogic`). `toHttp` returns `Routes[Any, Response]`; seal with `.handleError(identity)` before `Server.serve`.
 
 **Outbox pattern (partial)** — `OutboxEvent`/`OutboxRepository`/`EventPublisher` ports and `OutboxRelay` (polls every 5 s, publishes to Kafka, marks events published) exist in `messaging-kafka`, but `CreateRouteService` does not yet write to `outbox_events`, and `OutboxRelay` is not wired into `Main`.
 
@@ -150,7 +150,7 @@ object QuillAirportRepository:
 |---|---|
 | `RouteEventCodec.routeCreatedSerde` | `???` — needs ZIO Kafka 3.x `Serde` with Circe JSON |
 | `RouteEventProducer.publish` | compiles, but only logs the event — doesn't call `Producer.produce` |
-| `WiringModule.appLayer` | wires Quill `CountryRepository`, Quill `AirportRepository`, Quill `AirlineRepository`, Quill `AircraftRepository`, Quill `FlightRepository`, and in-memory stubs for everything else (Route/RouteAirline/FlightInstance) |
+| `WiringModule.appLayer` | wires Quill `CountryRepository`, `AirportRepository`, `AirlineRepository`, `AircraftRepository`, `FlightRepository`, `UserRepository`, and `RevokedTokenRepository`, plus in-memory stubs for everything else (Route/RouteAirline/FlightInstance) |
 | `bootstrap/src/main/resources/application.conf`'s `kafka.group-id` | missing a `${?KAFKA_GROUP_ID}` override (every other setting in that file has one) — harmless today since Kafka isn't wired into `Main`, but a silent no-op once it is |
 
 ## Database schema
@@ -222,9 +222,12 @@ done
 ## REST API
 
 Code-first OpenAPI — Tapir endpoint definitions in Scala are the single source of truth, never a
-hand-written spec file. Swagger UI: `http://localhost:8080/docs`. Full per-endpoint implementation
-status table: [docs/api/endpoint-status.md](./docs/api/endpoint-status.md) — update it whenever an
-endpoint moves from stub to implemented, or a new one is added.
+hand-written spec file. Swagger UI: `http://localhost:8080/docs`. Every endpoint except
+`POST /api/v1/auth/login` and `/health/*` requires a valid `Authorization: Bearer <token>` header
+(see `plans/security/protect-endpoints.md`) — no role/permission distinction yet, any valid token
+grants access to everything. Full per-endpoint implementation status table:
+[docs/api/endpoint-status.md](./docs/api/endpoint-status.md) — update it whenever an endpoint moves
+from stub to implemented, or a new one is added.
 
 `/health/live` and `/health/ready` are liveness/readiness probes (`adapter-http/.../health/`) —
 the sole endpoints deliberately left unversioned (no `/api/v1` prefix), matching the
@@ -277,7 +280,7 @@ Four independent layers, each catching a different class of problem — run the 
 what changed, not always all four:
 
 1. **Local build** — `sbt clean` → `compile` → `test` (398 unit tests, in-memory stubs / Tapir
-   stub server) → `integrationTests/test` (66 tests, real Postgres via Testcontainers, needs
+   stub server) → `integrationTests/test` (64 tests, real Postgres via Testcontainers, needs
    Docker — see `## Integration tests` above) → `bootstrap/assembly` (package) →
    `coverageAggregate` (see `## Coverage` above for the `mkdir -p .coverage-data/...` step first).
 2. **OpenAPI spec** — `/validate-openapi` skill (`bash .claude/skills/validate-openapi/scripts/run.sh`).

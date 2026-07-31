@@ -67,8 +67,10 @@ Liveness/readiness probes are available at `/health/live` and `/health/ready` (u
 
 ## Development
 
-See [CLAUDE.md](./CLAUDE.md#build-commands) for build/test/coverage commands, versioning
-policy, and architectural conventions.
+See [CLAUDE.md](./CLAUDE.md#validation) for build/test/coverage commands, and the
+[Versioning policy](./CLAUDE.md#versioning-policy) and
+[Hexagonal layer conventions](./CLAUDE.md#hexagonal-layer-conventions) sections for architectural
+conventions.
 
 Unit tests (`sbt test`) run against in-memory stubs / a Tapir stub server and never touch a
 real database. A separate opt-in suite exercises the persistence layer against a real Postgres
