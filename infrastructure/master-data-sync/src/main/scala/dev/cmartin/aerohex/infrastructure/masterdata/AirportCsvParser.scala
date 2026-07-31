@@ -7,7 +7,15 @@ import dev.cmartin.aerohex.domain.error.DomainError
 import zio.*
 import zio.nio.file.Path
 
-final case class AirportRow(iataCode: String, icaoCode: String, name: String, city: String, countryCode: String)
+final case class AirportRow(
+    iataCode: String,
+    icaoCode: String,
+    name: String,
+    city: String,
+    countryCode: String,
+    latitude: Double,
+    longitude: Double
+)
 
 object AirportCsvParser:
 
@@ -36,7 +44,11 @@ object AirportCsvParser:
     else if !icaoShape.matches(icao) then
       ZIO.logWarning(s"Skipping Airport row with no valid ICAO code: $iata / ${row("name")}").as(None)
     else
-      ZIO.succeed(Some(AirportRow(iata, icao, row("name"), row("municipality"), row("iso_country"))))
+      (row("latitude_deg").trim.toDoubleOption, row("longitude_deg").trim.toDoubleOption) match
+        case (Some(lat), Some(lon)) =>
+          ZIO.succeed(Some(AirportRow(iata, icao, row("name"), row("municipality"), row("iso_country"), lat, lon)))
+        case _                      =>
+          ZIO.logWarning(s"Skipping Airport row with invalid coordinates: $iata / ${row("name")}").as(None)
 
   def toCommand(row: AirportRow): IO[DomainError, CreateAirportCommand] =
     for
@@ -54,5 +66,7 @@ object AirportCsvParser:
       icaoCode = icaoCode,
       name = row.name,
       city = row.city,
-      countryCode = CountryCode.unsafeMake(row.countryCode)
+      countryCode = CountryCode.unsafeMake(row.countryCode),
+      latitude = row.latitude,
+      longitude = row.longitude
     )

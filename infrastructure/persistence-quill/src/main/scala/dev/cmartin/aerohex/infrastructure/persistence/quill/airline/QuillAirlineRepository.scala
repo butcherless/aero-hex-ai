@@ -139,11 +139,11 @@ final class QuillAirlineRepository(dataSource: DataSource) extends AirlineReposi
     }
 
   override def delete(icao: AirlineIcaoCode): IO[DomainError, Unit] =
-    QuillSqlState.refineZeroRows(
+    QuillSqlState.refineForeignKeyViolationOrZeroRows(
       ctx.run(quote {
         querySchema[AirlineRow]("airlines").filter(_.icaoCode == lift(icao.value)).delete
       })
-    )(DomainError.AirlineNotFound(icao.value), ())
+    )(DomainError.AirlineInUse(icao.value), DomainError.AirlineNotFound(icao.value), ())
 }
 
 object QuillAirlineRepository {

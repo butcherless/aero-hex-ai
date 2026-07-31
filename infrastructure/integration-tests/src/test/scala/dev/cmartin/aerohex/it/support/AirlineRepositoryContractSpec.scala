@@ -1,5 +1,6 @@
 package dev.cmartin.aerohex.it.support
 
+import dev.cmartin.aerohex.domain.aircraft.{Aircraft, AircraftRepository, Registration}
 import dev.cmartin.aerohex.domain.airline.{Airline, AirlineIcaoCode, AirlineRepository}
 import dev.cmartin.aerohex.domain.country.{Country, CountryCode, CountryRepository}
 import dev.cmartin.aerohex.domain.error.DomainError
@@ -13,7 +14,7 @@ object AirlineRepositoryContractSpec:
   private def seedCountry(code: String, name: String): ZIO[CountryRepository, DomainError, Unit] =
     ZIO.serviceWithZIO[CountryRepository](_.save(Country(CountryCode.unsafeMake(code), name)).unit)
 
-  def tests: List[Spec[AirlineRepository & CountryRepository, Any]] = List(
+  def tests: List[Spec[AirlineRepository & CountryRepository & AircraftRepository, Any]] = List(
     test("saves and finds an airline by icao code") {
       for
         _     <- seedCountry("ES", "Spain")
@@ -118,5 +119,15 @@ object AirlineRepositoryContractSpec:
         repo  <- ZIO.service[AirlineRepository]
         error <- repo.delete(AirlineIcaoCode("ZZZ")).flip
       yield assertTrue(error == DomainError.AirlineNotFound("ZZZ"))
+    },
+    test("delete fails with AirlineInUse when an aircraft still references the airline") {
+      for
+        _            <- seedCountry("AT", "Austria")
+        airlineRepo  <- ZIO.service[AirlineRepository]
+        aircraftRepo <- ZIO.service[AircraftRepository]
+        _            <- airlineRepo.save(Airline(AirlineIcaoCode("AUA"), "Austrian", None, Some("AUSTRIAN")), CountryCode("AT"))
+        _            <- aircraftRepo.save(Aircraft(Registration("OE-LWA"), "A321", "Airbus A321", AirlineIcaoCode("AUA")))
+        error        <- airlineRepo.delete(AirlineIcaoCode("AUA")).flip
+      yield assertTrue(error == DomainError.AirlineInUse("AUA"))
     }
   )

@@ -37,6 +37,7 @@ import dev.cmartin.aerohex.infrastructure.persistence.quill.airport.QuillAirport
 import dev.cmartin.aerohex.infrastructure.persistence.quill.config.QuillDataSourceLayer
 import dev.cmartin.aerohex.infrastructure.persistence.quill.country.QuillCountryRepository
 import dev.cmartin.aerohex.infrastructure.persistence.quill.flight.QuillFlightRepository
+import dev.cmartin.aerohex.infrastructure.persistence.quill.route.QuillRouteRepository
 import dev.cmartin.aerohex.infrastructure.persistence.quill.user.{QuillRevokedTokenRepository, QuillUserRepository}
 import dev.cmartin.aerohex.infrastructure.security.{BcryptPasswordHasher, JwtConfig, JwtService}
 import dev.cmartin.aerohex.shared.Pagination
@@ -47,7 +48,7 @@ import zio.*
 // across entities. If this ever switches to a different persistence library, switch every wired
 // repository in the same change, not one at a time, to avoid the split Country=Quill/Airport=X
 // state this project went through with its former Doobie implementation.
-// Route/RouteAirline/FlightInstance repositories use in-memory stubs.
+// RouteAirline/FlightInstance repositories use in-memory stubs.
 object WiringModule {
 
   private val countryRepoLayer: TaskLayer[CountryRepository] =
@@ -73,13 +74,8 @@ object WiringModule {
 
   private val passwordHasherLayer: ULayer[PasswordHasher] = BcryptPasswordHasher.layer
 
-  private val routeRepoLayer: ULayer[RouteRepository] = ZLayer.succeed(
-    new RouteRepository:
-      def findBySegment(o: IataCode, d: IataCode): IO[DomainError, Option[Route]] = ZIO.none
-      def findAll(p: Pagination): IO[DomainError, List[Route]]                    = ZIO.succeed(Nil)
-      def save(r: Route): IO[DomainError, Route]                                  = ZIO.succeed(r)
-      def delete(o: IataCode, d: IataCode): IO[DomainError, Unit]                 = ZIO.unit
-  )
+  private val routeRepoLayer: TaskLayer[RouteRepository] =
+    QuillDataSourceLayer.live >>> QuillRouteRepository.layer
 
   private val routeAirlineRepoLayer: ULayer[RouteAirlineRepository] = ZLayer.succeed(
     new RouteAirlineRepository:

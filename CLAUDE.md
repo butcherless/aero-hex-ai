@@ -39,14 +39,14 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 shared-kernel
     └── domain
             ├── application
-            ├── persistence-quill      (infrastructure — wired into bootstrap; Country + Airport + Airline + Aircraft + Flight + User + RevokedToken)
+            ├── persistence-quill      (infrastructure — wired into bootstrap; Country + Airport + Airline + Aircraft + Flight + Route + User + RevokedToken)
             ├── messaging-kafka        (infrastructure — not wired into bootstrap)
             ├── security               (infrastructure — JWT issuance/validation + password hashing; TokenService/PasswordHasher port impls; wired into bootstrap; see plans/security/)
             └── adapter-http
                         └── bootstrap  (composition root: domain + application + adapter-http + persistence-quill + migration + security)
                 migration              (SQL + Flyway only; no domain dependency — wired into bootstrap for migrate-on-start)
                 integration-tests      (opt-in — domain + migration + persistence-quill, real-Postgres tests; NOT in root's aggregate)
-                master-data-sync       (opt-in — domain + application + persistence-quill; downloads/parses/syncs Country + Airport + Airline against real Postgres; NOT in root's aggregate; see plans/masterdata/)
+                master-data-sync       (opt-in — domain + application + persistence-quill; downloads/parses/syncs Country + Airport + Airline + Route against real Postgres; NOT in root's aggregate; see plans/masterdata/)
 ```
 
 Rule: inner modules never depend on outer ones. `domain` has zero framework dependencies.
@@ -70,7 +70,7 @@ Rule: inner modules never depend on outer ones. `domain` has zero framework depe
 - **`application/`** — orchestrates ports, implements each entity's use-case interfaces (mirrors
   `domain/`'s per-entity package layout, e.g. `application/route/CreateRouteService.scala`). Each
   service has a companion `ZLayer`.
-- **`persistence-quill/`** — Quill implementations of `CountryRepository`/`AirportRepository`/`AirlineRepository`/`AircraftRepository`/`FlightRepository`/`UserRepository`/`RevokedTokenRepository`; all seven wired via `WiringModule`, sharing one `QuillDataSourceLayer.live` `DataSource`. Route/RouteAirline/FlightInstance are still an in-memory stub.
+- **`persistence-quill/`** — Quill implementations of `CountryRepository`/`AirportRepository`/`AirlineRepository`/`AircraftRepository`/`FlightRepository`/`RouteRepository`/`UserRepository`/`RevokedTokenRepository`; all eight wired via `WiringModule`, sharing one `QuillDataSourceLayer.live` `DataSource`. RouteAirline/FlightInstance are still an in-memory stub.
 - **Persistence policy:** all wired repositories must use the same implementation — switching is all-or-nothing across every entity, in one commit (see the header comment in `WiringModule.scala`).
 - **`messaging-kafka/`** — ZIO Kafka producer and outbox relay. Not wired into bootstrap.
 - **`security/`** — implements `TokenService` (`JwtService`, `jwt-scala`/`jwt-circe`, HS256, RFC
@@ -150,7 +150,7 @@ object QuillAirportRepository:
 |---|---|
 | `RouteEventCodec.routeCreatedSerde` | `???` — needs ZIO Kafka 3.x `Serde` with Circe JSON |
 | `RouteEventProducer.publish` | compiles, but only logs the event — doesn't call `Producer.produce` |
-| `WiringModule.appLayer` | wires Quill `CountryRepository`, `AirportRepository`, `AirlineRepository`, `AircraftRepository`, `FlightRepository`, `UserRepository`, and `RevokedTokenRepository`, plus in-memory stubs for everything else (Route/RouteAirline/FlightInstance) |
+| `WiringModule.appLayer` | wires Quill `CountryRepository`, `AirportRepository`, `AirlineRepository`, `AircraftRepository`, `FlightRepository`, `RouteRepository`, `UserRepository`, and `RevokedTokenRepository`, plus in-memory stubs for everything else (RouteAirline/FlightInstance) |
 | `bootstrap/src/main/resources/application.conf`'s `kafka.group-id` | missing a `${?KAFKA_GROUP_ID}` override (every other setting in that file has one) — harmless today since Kafka isn't wired into `Main`, but a silent no-op once it is |
 
 ## Database schema
@@ -279,8 +279,8 @@ Doesn't apply to CI's fresh checkout — every module gets compiled from scratch
 Four independent layers, each catching a different class of problem — run the ones relevant to
 what changed, not always all four:
 
-1. **Local build** — `sbt clean` → `compile` → `test` (398 unit tests, in-memory stubs / Tapir
-   stub server) → `integrationTests/test` (64 tests, real Postgres via Testcontainers, needs
+1. **Local build** — `sbt clean` → `compile` → `test` (404 unit tests, in-memory stubs / Tapir
+   stub server) → `integrationTests/test` (74 tests, real Postgres via Testcontainers, needs
    Docker — see `## Integration tests` above) → `bootstrap/assembly` (package) →
    `coverageAggregate` (see `## Coverage` above for the `mkdir -p .coverage-data/...` step first).
 2. **OpenAPI spec** — `/validate-openapi` skill (`bash .claude/skills/validate-openapi/scripts/run.sh`).

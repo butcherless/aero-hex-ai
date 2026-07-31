@@ -38,7 +38,9 @@ object AirportSync:
                          ZIO.logWarning(s"Skipped invalid Airport row: $error")
                        )
       commands       = validated.collect { case Right(command) => command }
-      airports       = commands.map(c => (Airport(c.iataCode, c.icaoCode, c.name, c.city), c.countryCode))
+      airports       = commands.map(c =>
+                         (Airport(c.iataCode, c.icaoCode, c.name, c.city, c.latitude, c.longitude), c.countryCode)
+                       )
       createUseCase <- ZIO.service[CreateAirportUseCase]
       updateUseCase <- ZIO.service[UpdateAirportUseCase]
       deleteUseCase <- ZIO.service[DeleteAirportUseCase]
@@ -59,7 +61,9 @@ object AirportSync:
                                  airport.icaoCode,
                                  airport.name,
                                  airport.city,
-                                 countryCode
+                                 countryCode,
+                                 airport.latitude,
+                                 airport.longitude
                                )
                              )
                              .unit
@@ -72,7 +76,9 @@ object AirportSync:
                                  airport.icaoCode,
                                  airport.name,
                                  airport.city,
-                                 countryCode
+                                 countryCode,
+                                 airport.latitude,
+                                 airport.longitude
                                )
                              )
                              .unit

@@ -12,6 +12,7 @@ object DomainError {
   case class InvalidAirportIcaoCode(errors: List[String])                                 extends DomainError
   case class AirlineNotFound(icao: String)                                                extends DomainError
   case class AirlineAlreadyExists(icao: String)                                           extends DomainError
+  case class AirlineInUse(icao: String)                                                   extends DomainError
   case class InvalidAirlineIcaoCode(errors: List[String])                                 extends DomainError
   case class RouteNotFound(origin: String, destination: String)                           extends DomainError
   case class RouteAlreadyExists(origin: String, destination: String)                      extends DomainError

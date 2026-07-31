@@ -27,7 +27,7 @@ object FlightRepositoryContractSpec:
   ): ZIO[AirportRepository, DomainError, Unit] =
     ZIO.serviceWithZIO[AirportRepository](
       _.save(
-        Airport(IataCode.unsafeMake(iata), AirportIcaoCode.unsafeMake(icao), name, city),
+        Airport(IataCode.unsafeMake(iata), AirportIcaoCode.unsafeMake(icao), name, city, 0, 0),
         CountryCode.unsafeMake(countryCode)
       ).unit
     )

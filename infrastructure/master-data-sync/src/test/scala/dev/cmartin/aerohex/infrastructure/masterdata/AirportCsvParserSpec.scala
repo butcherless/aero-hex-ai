@@ -38,6 +38,11 @@ object AirportCsvParserSpec extends ZIOSpecDefault:
     """7,"AQ-0016","medium_airport","Grandfather Skiway",36.09,-81.75,3739,"NA","US","US-NC",""" +
       """"Boone","no",,"XYZ",,,,,"""
 
+  // Skipped with a warning: latitude_deg is blank/non-numeric.
+  private val invalidCoordinates =
+    """8,"LFPG","large_airport","Charles de Gaulle",,2.55,392,"EU","FR","FR-J",""" +
+      """"Paris","yes","LFPG","CDG","LFPG",,,,"""
+
   private def parseRows(rows: List[String]) =
     for
       dir  <- TempDirectory.create("airport-csv-parser-spec-")
@@ -52,12 +57,24 @@ object AirportCsvParserSpec extends ZIOSpecDefault:
       test("parses a well-formed large_airport row") {
         for rows <- parseRows(List(madrid))
         yield assertTrue(rows ==
-          List(AirportRow("MAD", "LEMD", "Adolfo Suárez Madrid-Barajas Airport", "Madrid", "ES")))
+          List(
+            AirportRow("MAD", "LEMD", "Adolfo Suárez Madrid-Barajas Airport", "Madrid", "ES", 40.471926, -3.56264)
+          ))
       },
       test("falls back to ident when icao_code is blank") {
         for rows <- parseRows(List(fallback))
         yield assertTrue(
-          rows == List(AirportRow("TFN", "GCXO", "Tenerife North Airport", "San Cristóbal de La Laguna", "ES"))
+          rows == List(
+            AirportRow(
+              "TFN",
+              "GCXO",
+              "Tenerife North Airport",
+              "San Cristóbal de La Laguna",
+              "ES",
+              28.482639,
+              -16.341389
+            )
+          )
         )
       },
       test("silently filters out a row whose type is not large/medium airport") {
@@ -72,15 +89,30 @@ object AirportCsvParserSpec extends ZIOSpecDefault:
         for rows <- parseRows(List(madrid, noValidIcao))
         yield assertTrue(rows.size == 1, rows.head.iataCode == "MAD")
       },
+      test("logs and skips a row with invalid coordinates") {
+        for rows <- parseRows(List(madrid, invalidCoordinates))
+        yield assertTrue(rows.size == 1, rows.head.iataCode == "MAD")
+      },
       test("toCommand builds a valid CreateAirportCommand from a well-formed row") {
-        for command <- AirportCsvParser.toCommand(AirportRow("MAD", "LEMD", "Barajas", "Madrid", "ES"))
+        for command <- AirportCsvParser.toCommand(
+                         AirportRow("MAD", "LEMD", "Barajas", "Madrid", "ES", 40.471926, -3.56264)
+                       )
         yield assertTrue(
           command ==
-            CreateAirportCommand(IataCode("MAD"), AirportIcaoCode("LEMD"), "Barajas", "Madrid", CountryCode("ES"))
+            CreateAirportCommand(
+              IataCode("MAD"),
+              AirportIcaoCode("LEMD"),
+              "Barajas",
+              "Madrid",
+              CountryCode("ES"),
+              40.471926,
+              -3.56264
+            )
         )
       },
       test("toCommand fails with InvalidAirportIcaoCode when the ICAO code is the wrong length") {
-        for error <- AirportCsvParser.toCommand(AirportRow("MAD", "LEM", "Barajas", "Madrid", "ES")).flip
+        for error <-
+            AirportCsvParser.toCommand(AirportRow("MAD", "LEM", "Barajas", "Madrid", "ES", 40.471926, -3.56264)).flip
         yield assertTrue(error match
           case DomainError.InvalidAirportIcaoCode(errors) => errors.size == 1
           case _                                          => false)
@@ -88,7 +120,8 @@ object AirportCsvParserSpec extends ZIOSpecDefault:
       // parse only rejects a blank iata_code (§8) — it never checks shape/length beyond that, so a
       // non-blank but malformed IATA code (e.g. numeric, or the wrong length) reaches toCommand.
       test("toCommand fails with InvalidIataCode when the IATA code is the wrong length") {
-        for error <- AirportCsvParser.toCommand(AirportRow("MA", "LEMD", "Barajas", "Madrid", "ES")).flip
+        for error <-
+            AirportCsvParser.toCommand(AirportRow("MA", "LEMD", "Barajas", "Madrid", "ES", 40.471926, -3.56264)).flip
         yield assertTrue(error match
           case DomainError.InvalidIataCode(errors) => errors.size == 1
           case _                                   => false)

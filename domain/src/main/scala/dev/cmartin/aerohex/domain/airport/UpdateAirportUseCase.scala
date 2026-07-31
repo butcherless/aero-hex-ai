@@ -9,7 +9,9 @@ case class UpdateAirportCommand(
     icaoCode: AirportIcaoCode,
     name: String,
     city: String,
-    countryCode: CountryCode
+    countryCode: CountryCode,
+    latitude: Double,
+    longitude: Double
 )
 
 trait UpdateAirportUseCase:

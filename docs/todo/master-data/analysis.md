@@ -1,7 +1,7 @@
-# Master Data Management — Download & Sync for Country / Airport / Airline
+# Master Data Management — Download & Sync for Country / Airport / Airline / Route
 
-> **Status:** Analysis — architecture decided; **all three in-scope entities (Country, Airport,
-> Airline) fully implemented and verified against a real Postgres.** `Main` downloads each source into
+> **Status:** Analysis — architecture decided; **all four in-scope entities (Country, Airport,
+> Airline, Route) fully implemented and verified against a real Postgres.** `Main` downloads each source into
 > a temp dir, parses it, reconciles it against the corresponding table via the entity's own `XxxSync`
 > (`EntitySync.loadExisting`/`.reconcile`/`.apply`, backed by `findAllUnbounded` and the real
 > `Create`/`Update`/`DeleteXxxService`), then cleans up. Country verified live: starting from 1 existing
@@ -16,11 +16,15 @@
 > second run reported `unchanged: 1009` (row count stable — see §9 for the 7-row duplicate-ICAO nuance,
 > a source-data quirk, not a correctness problem). Airline's redesign (dropped `foundationDate`, added
 > `alias`/`callsign` — `plans/redesign-airline-drop-foundation-date.md`) resolved its two structural
-> gaps before the sync tool was built, rather than working around them. See
+> gaps before the sync tool was built, rather than working around them. Route verified live —
+> see `plans/masterdata/route-sync.md` for the run numbers and its two structural additions
+> (`Airport.latitude`/`.longitude`, persisted so `DistanceCalculator.haversineKm` has real
+> coordinates to compute `distanceKm` from; and Route's own `Update`/`Delete`/`FindRouteUseCase`
+> quartet, which didn't exist before this sync needed it). See
 > `plans/masterdata/master-data-sync-scaffold.md`, `plans/masterdata/http-downloader-country.md`,
 > `plans/masterdata/country-csv-parser.md`, `plans/masterdata/entity-sync.md`,
-> `plans/masterdata/country-sync-wiring.md`, `plans/masterdata/airport-sync.md`, and
-> `plans/masterdata/airline-sync.md`.
+> `plans/masterdata/country-sync-wiring.md`, `plans/masterdata/airport-sync.md`,
+> `plans/masterdata/airline-sync.md`, and `plans/masterdata/route-sync.md`.
 > Covers data source selection, sync architecture, reconciliation algorithm, validation/error
 > handling, and open decisions for a low-frequency (~6-month) external master-data refresh.
 
@@ -41,11 +45,20 @@ or via each entity's own CRUD API, one row at a time. The goal is a repeatable p
 4. Deletes the temporary directory when done.
 5. Repeats on a ~6-month cadence.
 
-**In scope:** Country, Airport, Airline — matches what was asked for explicitly.
+**In scope:** Country, Airport, Airline, and (as of `plans/masterdata/route-sync.md`) Route.
 
-**Out of scope:** Aircraft (registrations) and Route. Both are operational data created by an airline through the app's
-own API (a specific tail number, a specific city pair an airline decides to fly), not externally-authoritative reference
-data with a natural "master list" to sync against.
+**Out of scope:** Aircraft (registrations) only. Aircraft is operational data created by an airline through the app's
+own API (a specific tail number an airline decides to register) — no public, authoritative "master list" of tail
+numbers exists to sync against, so it stays a manual recipe (see the root `CLAUDE.md`'s "Aircraft fleet demo data
+(OpenSky)" section) rather than a sync job.
+
+Route was originally excluded here for the same "operational, not reference" reasoning (a specific city pair an
+airline decides to fly). That reasoning held for the *airline-to-route* association (still true — `route_airlines`,
+which airline flies which route, is out of scope), but not for the route segment itself: OpenFlights' `routes.dat` is
+a genuine external "typical route exists between X and Y" reference list, structured enough to fit the same
+download/reconcile/idempotent-rerun pattern as Country/Airport/Airline — so Route moved in-scope for its own sync
+(`RouteSync`, computing `distanceKm` via `DistanceCalculator.haversineKm` from each endpoint airport's now-persisted
+`latitude`/`longitude`), while `route_airlines` stays a future, separate concern.
 
 ---
 
@@ -143,6 +156,22 @@ comma-separated columns, `\N` marks a null field:
 
 No better free, structured, machine-readable alternative surfaced during research (IATA's own Airline Coding Directory
 is a paid product; Wikipedia's airline-code lists are HTML tables, not a stable feed).
+
+### 2.4 Row data types
+
+Each entity's `XxxCsvParser.parse` (§5.1) produces one `final case class`, local to this module (not shared with
+`domain`/`adapter-http`), holding the row's raw column values exactly as read from the source — plain `String`/
+`Option[String]`, never a domain `Newtype` — before `toCommand` runs the same validation each entity's HTTP create path
+already uses (§8) and produces the existing `CreateXxxCommand`.
+
+| Entity  | Row type                                                                                                                              | Fields                                                                                                                                                                                            |
+|---------|-----------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Country | `CountryRow(name: String, code: String)`                                                                                                | 2 fields, both raw `String` — `code` not yet validated as `CountryCode`                                                                                                                          |
+| Airport | `AirportRow(iataCode: String, icaoCode: String, name: String, city: String, countryCode: String)`                                       | 5 fields, all raw `String` — `iataCode`/`icaoCode` not yet validated as `IataCode`/`AirportIcaoCode`; `countryCode` stays a bare `String` even after conversion (`CountryCode.unsafeMake` — a reference field, §2.2) |
+| Airline | `AirlineRow(icao: String, name: String, alias: Option[String], callsign: Option[String], countryName: String, iata: Option[String])`    | 6 fields — `icao`/`name`/`countryName` required `String`; `alias`/`callsign`/`iata` are `Option[String]` (blank/`\N` → `None`, §2.3)                                                              |
+
+None carries a domain Newtype directly — every field stays a primitive until `toCommand` validates it, deliberately
+keeping the row type a thin, source-shaped intermediate rather than a reuse of any HTTP DTO or domain entity.
 
 ---
 

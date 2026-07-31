@@ -19,9 +19,17 @@ import zio.{IO, Scope, Task, UIO, ZIO, ZLayer}
 
 object AirportEndpointsSpec extends ZIOSpecDefault:
 
-  private val madrid    = Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Adolfo Suárez Madrid-Barajas", "Madrid")
+  private val madrid    =
+    Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Adolfo Suárez Madrid-Barajas", "Madrid", 40.4719, -3.5626)
   private val barcelona =
-    Airport(IataCode("BCN"), AirportIcaoCode("LEBL"), "Josep Tarradellas Barcelona-El Prat", "Barcelona")
+    Airport(
+      IataCode("BCN"),
+      AirportIcaoCode("LEBL"),
+      "Josep Tarradellas Barcelona-El Prat",
+      "Barcelona",
+      41.2971,
+      2.0785
+    )
 
   // ── Stub use-case implementations ─────────────────────────────────────────
 
@@ -266,7 +274,7 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
               authedRequest
                 .put(uri"https://test.com/api/v1/airports/MAD")
                 .body(
-                  """{"icaoCode":"LEMD","name":"Madrid-Barajas Adolfo Suárez","city":"Madrid","countryCode":"ES"}"""
+                  """{"icaoCode":"LEMD","name":"Madrid-Barajas Adolfo Suárez","city":"Madrid","countryCode":"ES","latitude":40.4719,"longitude":-3.5626}"""
                 )
                 .contentType("application/json")
                 .response(asJson[AirportDto])
@@ -282,7 +290,9 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
             response <-
               authedRequest
                 .put(uri"https://test.com/api/v1/airports/XXX")
-                .body("""{"icaoCode":"LEMD","name":"Nowhere","city":"Nowhere","countryCode":"ES"}""")
+                .body(
+                  """{"icaoCode":"LEMD","name":"Nowhere","city":"Nowhere","countryCode":"ES","latitude":0,"longitude":0}"""
+                )
                 .contentType("application/json")
                 .send(makeBackend(update = notFoundUpdate))
           yield assertTrue(response.code == StatusCode.NotFound)
@@ -292,7 +302,9 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
             response <-
               authedRequest
                 .put(uri"https://test.com/api/v1/airports/MAD")
-                .body("""{"icaoCode":"LEMD","name":"Madrid","city":"Madrid","countryCode":"XX"}""")
+                .body(
+                  """{"icaoCode":"LEMD","name":"Madrid","city":"Madrid","countryCode":"XX","latitude":40.4719,"longitude":-3.5626}"""
+                )
                 .contentType("application/json")
                 .send(makeBackend(update = countryNotFoundUpdate))
           yield assertTrue(response.code == StatusCode.NotFound)
@@ -302,7 +314,9 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
             response <-
               authedRequest
                 .put(uri"https://test.com/api/v1/airports/MA")
-                .body("""{"icaoCode":"LEMD","name":"Madrid","city":"Madrid","countryCode":"ES"}""")
+                .body(
+                  """{"icaoCode":"LEMD","name":"Madrid","city":"Madrid","countryCode":"ES","latitude":40.4719,"longitude":-3.5626}"""
+                )
                 .contentType("application/json")
                 .send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
@@ -325,7 +339,7 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
               authedRequest
                 .post(uri"https://test.com/api/v1/airports")
                 .body(
-                  """{"iata":"MAD","icaoCode":"LEMD","name":"Adolfo Suárez Madrid-Barajas","city":"Madrid","countryCode":"ES"}"""
+                  """{"iata":"MAD","icaoCode":"LEMD","name":"Adolfo Suárez Madrid-Barajas","city":"Madrid","countryCode":"ES","latitude":40.4719,"longitude":-3.5626}"""
                 )
                 .contentType("application/json")
                 .response(asJson[AirportDto])
@@ -342,7 +356,9 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
             response <-
               authedRequest
                 .post(uri"https://test.com/api/v1/airports")
-                .body("""{"iata":"MAD","icaoCode":"LEMD","name":"Madrid-Barajas","city":"Madrid","countryCode":"ES"}""")
+                .body(
+                  """{"iata":"MAD","icaoCode":"LEMD","name":"Madrid-Barajas","city":"Madrid","countryCode":"ES","latitude":40.4719,"longitude":-3.5626}"""
+                )
                 .contentType("application/json")
                 .send(makeBackend(create = conflictCreate))
           yield assertTrue(response.code == StatusCode.Conflict)
@@ -352,7 +368,9 @@ object AirportEndpointsSpec extends ZIOSpecDefault:
             response <-
               authedRequest
                 .post(uri"https://test.com/api/v1/airports")
-                .body("""{"iata":"MAD","icaoCode":"LEMD","name":"Madrid-Barajas","city":"Madrid","countryCode":"XX"}""")
+                .body(
+                  """{"iata":"MAD","icaoCode":"LEMD","name":"Madrid-Barajas","city":"Madrid","countryCode":"XX","latitude":40.4719,"longitude":-3.5626}"""
+                )
                 .contentType("application/json")
                 .send(makeBackend(create = countryNotFoundCreate))
           yield assertTrue(response.code == StatusCode.NotFound)

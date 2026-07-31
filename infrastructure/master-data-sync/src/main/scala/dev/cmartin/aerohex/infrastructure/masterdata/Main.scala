@@ -18,6 +18,12 @@ import dev.cmartin.aerohex.application.country.{
   FindCountryService,
   UpdateCountryService
 }
+import dev.cmartin.aerohex.application.route.{
+  CreateRouteService,
+  DeleteRouteService,
+  FindRouteService,
+  UpdateRouteService
+}
 import dev.cmartin.aerohex.domain.airline.{
   AirlineRepository,
   CreateAirlineUseCase,
@@ -39,10 +45,18 @@ import dev.cmartin.aerohex.domain.country.{
   FindCountryUseCase,
   UpdateCountryUseCase
 }
+import dev.cmartin.aerohex.domain.route.{
+  CreateRouteUseCase,
+  DeleteRouteUseCase,
+  FindRouteUseCase,
+  RouteRepository,
+  UpdateRouteUseCase
+}
 import dev.cmartin.aerohex.infrastructure.persistence.quill.airline.QuillAirlineRepository
 import dev.cmartin.aerohex.infrastructure.persistence.quill.airport.QuillAirportRepository
 import dev.cmartin.aerohex.infrastructure.persistence.quill.config.QuillDataSourceLayer
 import dev.cmartin.aerohex.infrastructure.persistence.quill.country.QuillCountryRepository
+import dev.cmartin.aerohex.infrastructure.persistence.quill.route.QuillRouteRepository
 import javax.sql.DataSource
 import zio.*
 import zio.http.Client
@@ -58,6 +72,7 @@ object Main extends ZIOAppDefault:
   private val countryUrl    = "https://datahub.io/core/country-list/_r/-/data.csv"
   private val airportUrl    = "https://ourairports.com/data/airports.csv"
   private val airlineUrl    = "https://raw.githubusercontent.com/jpatokal/openflights/master/data/airlines.dat"
+  private val routeUrl      = "https://raw.githubusercontent.com/jpatokal/openflights/master/data/routes.dat"
 
   // Every entity wires its Quill repository the same way (QuillDataSourceLayer.live >>> the
   // repo's own .layer) and then its four use-case services the same way (repo layer >>> each
@@ -109,6 +124,20 @@ object Main extends ZIOAppDefault:
       FindAirlineService.layer
     )
 
+  private val routeRepoLayer: TaskLayer[RouteRepository] = repoLayer(QuillRouteRepository.layer)
+
+  // Route's Create/Update use cases each also need FindAirportUseCase (to resolve an IATA code
+  // to a real Airport), unlike Country/Airport/Airline's single-repo use-case quartet above — so
+  // this one is wired by hand instead of through the generic useCasesLayer helper.
+  private val routeUseCasesLayer
+      : TaskLayer[CreateRouteUseCase & UpdateRouteUseCase & DeleteRouteUseCase & FindRouteUseCase] = {
+    val findAirportLayer: TaskLayer[FindAirportUseCase] = airportRepoLayer >>> FindAirportService.layer
+    ((findAirportLayer ++ routeRepoLayer) >>> CreateRouteService.layer) ++
+      ((findAirportLayer ++ routeRepoLayer) >>> UpdateRouteService.layer) ++
+      (routeRepoLayer >>> DeleteRouteService.layer) ++
+      (routeRepoLayer >>> FindRouteService.layer)
+  }
+
   private def release(dir: Path): UIO[Unit] =
     (TempDirectory.delete(dir) *> ZIO.logInfo(s"Deleted temporary directory: $dir")).ignoreLogged
 
@@ -128,5 +157,10 @@ object Main extends ZIOAppDefault:
         _             <- HttpDownloader.download(airlineUrl, airlineDest).provide(Client.default)
         airlineReport <- AirlineSync.sync(airlineDest).provide(airlineUseCasesLayer ++ countryUseCasesLayer)
         _             <- airlineReport.log()
+        routeDest      = dir / "routes.dat"
+        _             <- HttpDownloader.download(routeUrl, routeDest).provide(Client.default)
+        routeReport   <-
+          RouteSync.sync(routeDest).provide(routeUseCasesLayer ++ (airportRepoLayer >>> FindAirportService.layer))
+        _             <- routeReport.log()
       yield ()
     }

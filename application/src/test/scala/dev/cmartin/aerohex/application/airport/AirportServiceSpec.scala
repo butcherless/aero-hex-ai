@@ -23,9 +23,17 @@ import zio.{Ref, Scope, ZIO, ZLayer}
 
 object AirportServiceSpec extends ZIOSpecDefault:
 
-  private val madrid    = Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Adolfo Suárez Madrid-Barajas", "Madrid")
+  private val madrid    =
+    Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Adolfo Suárez Madrid-Barajas", "Madrid", 40.4719, -3.5626)
   private val barcelona =
-    Airport(IataCode("BCN"), AirportIcaoCode("LEBL"), "Josep Tarradellas Barcelona-El Prat", "Barcelona")
+    Airport(
+      IataCode("BCN"),
+      AirportIcaoCode("LEBL"),
+      "Josep Tarradellas Barcelona-El Prat",
+      "Barcelona",
+      41.2971,
+      2.0785
+    )
   private val spain     = Country(CountryCode("ES"), "Spain")
 
   override def spec: Spec[TestEnvironment & Scope, Any] =
@@ -44,7 +52,9 @@ object AirportServiceSpec extends ZIOSpecDefault:
                 AirportIcaoCode("LEMD"),
                 "Adolfo Suárez Madrid-Barajas",
                 "Madrid",
-                CountryCode("ES")
+                CountryCode("ES"),
+                40.4719,
+                -3.5626
               )
             result   <- new CreateAirportService(repo).create(command)
             saved    <- savedRef.get
@@ -56,7 +66,15 @@ object AirportServiceSpec extends ZIOSpecDefault:
         test("fails with AirportAlreadyExists and never calls save when the airport already exists") {
           val repo    = stubAirportRepo(onFindByIata = _ => ZIO.some(madrid))
           val command =
-            CreateAirportCommand(IataCode("MAD"), AirportIcaoCode("LEMD"), "Other name", "Madrid", CountryCode("ES"))
+            CreateAirportCommand(
+              IataCode("MAD"),
+              AirportIcaoCode("LEMD"),
+              "Other name",
+              "Madrid",
+              CountryCode("ES"),
+              40.4719,
+              -3.5626
+            )
           for error <- new CreateAirportService(repo).create(command).flip
           yield assertTrue(error == DomainError.AirportAlreadyExists("MAD"))
         }
@@ -122,7 +140,9 @@ object AirportServiceSpec extends ZIOSpecDefault:
                 AirportIcaoCode("LEMD"),
                 "Madrid-Barajas",
                 "Madrid",
-                CountryCode("ES")
+                CountryCode("ES"),
+                40.4719,
+                -3.5626
               )
             result      <- new UpdateAirportService(repo).update(command)
             captured    <- capturedRef.get
@@ -134,7 +154,15 @@ object AirportServiceSpec extends ZIOSpecDefault:
         test("propagates AirportNotFound from the repository") {
           val repo    = stubAirportRepo(onUpdate = (_, _) => ZIO.fail(DomainError.AirportNotFound("XXX")))
           val command =
-            UpdateAirportCommand(IataCode("XXX"), AirportIcaoCode("LEMD"), "Nowhere", "Nowhere", CountryCode("ES"))
+            UpdateAirportCommand(
+              IataCode("XXX"),
+              AirportIcaoCode("LEMD"),
+              "Nowhere",
+              "Nowhere",
+              CountryCode("ES"),
+              0,
+              0
+            )
           for error <- new UpdateAirportService(repo).update(command).flip
           yield assertTrue(error == DomainError.AirportNotFound("XXX"))
         }

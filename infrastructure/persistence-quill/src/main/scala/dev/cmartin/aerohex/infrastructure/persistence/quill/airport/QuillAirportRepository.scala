@@ -20,7 +20,9 @@ final class QuillAirportRepository(dataSource: DataSource) extends AirportReposi
       icaoCode: String,
       name: String,
       city: String,
-      countryId: Long
+      countryId: Long,
+      latitude: Double,
+      longitude: Double
   )
 
   // Full country row, not QuillCountryIdResolver's CountryRef (id/code only) — findCountryByIata
@@ -32,7 +34,14 @@ final class QuillAirportRepository(dataSource: DataSource) extends AirportReposi
   import ctx.*
 
   private def toAirport(a: AirportRow): Airport =
-    Airport(IataCode.unsafeMake(a.iataCode), AirportIcaoCode.unsafeMake(a.icaoCode), a.name, a.city)
+    Airport(
+      IataCode.unsafeMake(a.iataCode),
+      AirportIcaoCode.unsafeMake(a.icaoCode),
+      a.name,
+      a.city,
+      a.latitude,
+      a.longitude
+    )
 
   override def findByIata(iata: IataCode): IO[DomainError, Option[Airport]] =
     ctx
@@ -127,7 +136,9 @@ final class QuillAirportRepository(dataSource: DataSource) extends AirportReposi
               _.icaoCode  -> lift(airport.icaoCode.value),
               _.name      -> lift(airport.name),
               _.city      -> lift(airport.city),
-              _.countryId -> lift(countryId)
+              _.countryId -> lift(countryId),
+              _.latitude  -> lift(airport.latitude),
+              _.longitude -> lift(airport.longitude)
             )
           })
           .as(airport)
@@ -144,7 +155,9 @@ final class QuillAirportRepository(dataSource: DataSource) extends AirportReposi
               _.icaoCode  -> lift(airport.icaoCode.value),
               _.name      -> lift(airport.name),
               _.city      -> lift(airport.city),
-              _.countryId -> lift(countryId)
+              _.countryId -> lift(countryId),
+              _.latitude  -> lift(airport.latitude),
+              _.longitude -> lift(airport.longitude)
             )
         })
       )(DomainError.AirportNotFound(airport.iataCode.value), airport)

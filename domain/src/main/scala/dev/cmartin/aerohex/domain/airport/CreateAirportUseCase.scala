@@ -9,7 +9,9 @@ case class CreateAirportCommand(
     icaoCode: AirportIcaoCode,
     name: String,
     city: String,
-    countryCode: CountryCode
+    countryCode: CountryCode,
+    latitude: Double,
+    longitude: Double
 )
 
 trait CreateAirportUseCase:

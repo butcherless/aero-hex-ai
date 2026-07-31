@@ -21,7 +21,18 @@ private val icaoCodeSchema: Schema[String] => Schema[String] = _.description("4-
   .validate(Validator.maxLength(4))
   .encodedExample("LEMD")
 
-case class AirportDto(iata: String, icaoCode: String, name: String, city: String)
+private val latitudeSchema: Schema[Double] => Schema[Double] = _.description("Latitude in decimal degrees (WGS84).")
+  .validate(Validator.min(-90.0))
+  .validate(Validator.max(90.0))
+  .encodedExample(40.4719)
+
+private val longitudeSchema: Schema[Double] => Schema[Double] =
+  _.description("Longitude in decimal degrees (WGS84).")
+    .validate(Validator.min(-180.0))
+    .validate(Validator.max(180.0))
+    .encodedExample(-3.5626)
+
+case class AirportDto(iata: String, icaoCode: String, name: String, city: String, latitude: Double, longitude: Double)
 
 object AirportDto {
   def fromDomain(airport: Airport): AirportDto =
@@ -29,7 +40,9 @@ object AirportDto {
       iata = airport.iataCode.value,
       icaoCode = airport.icaoCode.value,
       name = airport.name,
-      city = airport.city
+      city = airport.city,
+      latitude = airport.latitude,
+      longitude = airport.longitude
     )
 
   given Schema[AirportDto] = Schema.derived[AirportDto]
@@ -37,9 +50,19 @@ object AirportDto {
     .modify(_.icaoCode)(icaoCodeSchema)
     .modify(_.name)(_.description("Full airport name.").encodedExample("Adolfo Suárez Madrid-Barajas"))
     .modify(_.city)(_.description("City served by the airport.").encodedExample("Madrid"))
+    .modify(_.latitude)(latitudeSchema)
+    .modify(_.longitude)(longitudeSchema)
 }
 
-case class CreateAirportRequest(iata: String, icaoCode: String, name: String, city: String, countryCode: String)
+case class CreateAirportRequest(
+    iata: String,
+    icaoCode: String,
+    name: String,
+    city: String,
+    countryCode: String,
+    latitude: Double,
+    longitude: Double
+)
 
 object CreateAirportRequest {
   def toCommand(req: CreateAirportRequest): IO[DomainError, CreateAirportCommand] =
@@ -58,7 +81,9 @@ object CreateAirportRequest {
       icaoCode = icaoCode,
       name = req.name,
       city = req.city,
-      countryCode = CountryCode.unsafeMake(req.countryCode)
+      countryCode = CountryCode.unsafeMake(req.countryCode),
+      latitude = req.latitude,
+      longitude = req.longitude
     )
 
   given Schema[CreateAirportRequest] = Schema.derived[CreateAirportRequest]
@@ -73,9 +98,18 @@ object CreateAirportRequest {
       _.description("City served by the airport.").validate(Validator.minLength(1)).encodedExample("Madrid")
     )
     .modify(_.countryCode)(SchemaModifiers.countryCode)
+    .modify(_.latitude)(latitudeSchema)
+    .modify(_.longitude)(longitudeSchema)
 }
 
-case class UpdateAirportRequest(icaoCode: String, name: String, city: String, countryCode: String)
+case class UpdateAirportRequest(
+    icaoCode: String,
+    name: String,
+    city: String,
+    countryCode: String,
+    latitude: Double,
+    longitude: Double
+)
 
 object UpdateAirportRequest {
   def toCommand(iata: String, req: UpdateAirportRequest): UpdateAirportCommand =
@@ -84,7 +118,9 @@ object UpdateAirportRequest {
       icaoCode = AirportIcaoCode.unsafeMake(req.icaoCode),
       name = req.name,
       city = req.city,
-      countryCode = CountryCode.unsafeMake(req.countryCode)
+      countryCode = CountryCode.unsafeMake(req.countryCode),
+      latitude = req.latitude,
+      longitude = req.longitude
     )
 
   given Schema[UpdateAirportRequest] = Schema.derived[UpdateAirportRequest]
@@ -104,4 +140,6 @@ object UpdateAirportRequest {
       _.description("City served by the airport.").validate(Validator.minLength(1)).encodedExample("Madrid")
     )
     .modify(_.countryCode)(SchemaModifiers.countryCode)
+    .modify(_.latitude)(latitudeSchema)
+    .modify(_.longitude)(longitudeSchema)
 }

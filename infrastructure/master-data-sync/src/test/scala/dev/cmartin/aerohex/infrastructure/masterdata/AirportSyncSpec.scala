@@ -28,11 +28,13 @@ object AirportSyncSpec extends ZIOSpecDefault:
   private def stubUseCases(initial: List[(Airport, CountryCode)]): UIO[StubUseCases] =
     Ref.make(initial).map { state =>
       val create: CreateAirportUseCase = (command: CreateAirportCommand) =>
-        val airport = Airport(command.iataCode, command.icaoCode, command.name, command.city)
+        val airport =
+          Airport(command.iataCode, command.icaoCode, command.name, command.city, command.latitude, command.longitude)
         state.update((airport, command.countryCode) :: _).as(airport)
 
       val update: UpdateAirportUseCase = (command: UpdateAirportCommand) =>
-        val airport = Airport(command.iataCode, command.icaoCode, command.name, command.city)
+        val airport =
+          Airport(command.iataCode, command.icaoCode, command.name, command.city, command.latitude, command.longitude)
         state
           .update(_.map { case (a, c) =>
             if a.iataCode == command.iataCode then (airport, command.countryCode) else (a, c)
@@ -88,7 +90,14 @@ object AirportSyncSpec extends ZIOSpecDefault:
           finalState ==
             List(
               (
-                Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Adolfo Suárez Madrid-Barajas Airport", "Madrid"),
+                Airport(
+                  IataCode("MAD"),
+                  AirportIcaoCode("LEMD"),
+                  "Adolfo Suárez Madrid-Barajas Airport",
+                  "Madrid",
+                  0,
+                  0
+                ),
                 CountryCode("ES")
               )
             )
@@ -99,7 +108,7 @@ object AirportSyncSpec extends ZIOSpecDefault:
           fixture    <- writeCsv(List(row("MAD", "LEMD", "Adolfo Suárez Madrid-Barajas Airport", "Madrid", "ES")))
           useCases   <-
             stubUseCases(List((
-              Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Old Name", "Madrid"),
+              Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Old Name", "Madrid", 0, 0),
               CountryCode("ES")
             )))
           report     <- runSync(fixture, useCases)
@@ -111,7 +120,14 @@ object AirportSyncSpec extends ZIOSpecDefault:
           finalState ==
             List(
               (
-                Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Adolfo Suárez Madrid-Barajas Airport", "Madrid"),
+                Airport(
+                  IataCode("MAD"),
+                  AirportIcaoCode("LEMD"),
+                  "Adolfo Suárez Madrid-Barajas Airport",
+                  "Madrid",
+                  0,
+                  0
+                ),
                 CountryCode("ES")
               )
             )
@@ -127,7 +143,14 @@ object AirportSyncSpec extends ZIOSpecDefault:
             stubUseCases(
               List(
                 (
-                  Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Adolfo Suárez Madrid-Barajas Airport", "Madrid"),
+                  Airport(
+                    IataCode("MAD"),
+                    AirportIcaoCode("LEMD"),
+                    "Adolfo Suárez Madrid-Barajas Airport",
+                    "Madrid",
+                    0,
+                    0
+                  ),
                   CountryCode("FR")
                 )
               )
@@ -141,7 +164,14 @@ object AirportSyncSpec extends ZIOSpecDefault:
           finalState ==
             List(
               (
-                Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Adolfo Suárez Madrid-Barajas Airport", "Madrid"),
+                Airport(
+                  IataCode("MAD"),
+                  AirportIcaoCode("LEMD"),
+                  "Adolfo Suárez Madrid-Barajas Airport",
+                  "Madrid",
+                  0,
+                  0
+                ),
                 CountryCode("ES")
               )
             )
@@ -157,7 +187,9 @@ object AirportSyncSpec extends ZIOSpecDefault:
                                 IataCode("MAD"),
                                 AirportIcaoCode("LEMD"),
                                 "Adolfo Suárez Madrid-Barajas Airport",
-                                "Madrid"
+                                "Madrid",
+                                0,
+                                0
                               ),
                               CountryCode("ES")
                             ),
@@ -166,7 +198,9 @@ object AirportSyncSpec extends ZIOSpecDefault:
                                 IataCode("BCN"),
                                 AirportIcaoCode("LEBL"),
                                 "Josep Tarradellas Barcelona-El Prat",
-                                "Barcelona"
+                                "Barcelona",
+                                0,
+                                0
                               ),
                               CountryCode("ES")
                             )
@@ -181,7 +215,14 @@ object AirportSyncSpec extends ZIOSpecDefault:
           finalState ==
             List(
               (
-                Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Adolfo Suárez Madrid-Barajas Airport", "Madrid"),
+                Airport(
+                  IataCode("MAD"),
+                  AirportIcaoCode("LEMD"),
+                  "Adolfo Suárez Madrid-Barajas Airport",
+                  "Madrid",
+                  0,
+                  0
+                ),
                 CountryCode("ES")
               )
             )
@@ -203,7 +244,9 @@ object AirportSyncSpec extends ZIOSpecDefault:
                                 IataCode("MAD"),
                                 AirportIcaoCode("LEMD"),
                                 "Adolfo Suárez Madrid-Barajas Airport",
-                                "Madrid"
+                                "Madrid",
+                                0,
+                                0
                               ),
                               CountryCode("ES")
                             )
@@ -218,7 +261,14 @@ object AirportSyncSpec extends ZIOSpecDefault:
           finalState ==
             List(
               (
-                Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Adolfo Suárez Madrid-Barajas Airport", "Madrid"),
+                Airport(
+                  IataCode("MAD"),
+                  AirportIcaoCode("LEMD"),
+                  "Adolfo Suárez Madrid-Barajas Airport",
+                  "Madrid",
+                  0,
+                  0
+                ),
                 CountryCode("ES")
               )
             )
@@ -245,7 +295,14 @@ object AirportSyncSpec extends ZIOSpecDefault:
           finalState ==
             List(
               (
-                Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Adolfo Suárez Madrid-Barajas Airport", "Madrid"),
+                Airport(
+                  IataCode("MAD"),
+                  AirportIcaoCode("LEMD"),
+                  "Adolfo Suárez Madrid-Barajas Airport",
+                  "Madrid",
+                  0,
+                  0
+                ),
                 CountryCode("ES")
               )
             )

@@ -28,6 +28,8 @@ object ErrorMapper {
     case InvalidAirportIcaoCode(errors)        => invalidField("airport ICAO code", errors)
     case AirlineNotFound(icao)                 => ApiError(StatusCode.NotFound, s"Airline not found: $icao")
     case AirlineAlreadyExists(icao)            => ApiError(StatusCode.Conflict, s"Airline already exists: $icao")
+    case AirlineInUse(icao)                    =>
+      ApiError(StatusCode.Conflict, s"Airline is still referenced by other data: $icao")
     case InvalidAirlineIcaoCode(errors)        => invalidField("airline ICAO code", errors)
     case RouteNotFound(o, d)                   => ApiError(StatusCode.NotFound, s"Route not found: $o -> $d")
     case AircraftNotFound(reg)                 => ApiError(StatusCode.NotFound, s"Aircraft not found: $reg")

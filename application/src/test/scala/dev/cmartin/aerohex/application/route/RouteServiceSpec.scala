@@ -21,8 +21,8 @@ import zio.{IO, Scope, ZIO, ZLayer}
 
 object RouteServiceSpec extends ZIOSpecDefault:
 
-  private val mad    = Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Barajas", "Madrid")
-  private val tfn    = Airport(IataCode("TFN"), AirportIcaoCode("GCXO"), "Norte", "Tenerife")
+  private val mad    = Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Barajas", "Madrid", 40.4719, -3.5626)
+  private val tfn    = Airport(IataCode("TFN"), AirportIcaoCode("GCXO"), "Norte", "Tenerife", 28.4827, -16.3415)
   private val route  = Route(IataCode("MAD"), IataCode("TFN"), 1740)
   private val iberia = Airline(AirlineIcaoCode("IBE"), "Iberia", None, Some("IBERIA"))
 

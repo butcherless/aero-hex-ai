@@ -9,20 +9,27 @@ never touch it; invoke it explicitly:
 sbt integrationTests/test   # or: sbt integrationTest (alias)
 ```
 
-Coverage so far: `FlywayMigrationItSpec` (migrations reach `V19`), Country
+Coverage so far: `FlywayMigrationItSpec` (migrations reach `V20`), Country
 (`QuillCountryRepositoryItSpec`), Airport (`QuillAirportRepositoryItSpec`), Airline (`QuillAirlineRepositoryItSpec`,
-incl. an `iata` round-trip case — save with a real value, then clear it back to `None`), Aircraft
+incl. an `iata` round-trip case — save with a real value, then clear it back to `None` — and a
+`delete` case seeding an `Aircraft` first to confirm a still-referenced Airline fails with
+`AirlineInUse` rather than crashing on the underlying FK violation, `plans/masterdata/route-sync.md`),
+Aircraft
 (`QuillAircraftRepositoryItSpec`, seeding a `Country` then an `Airline` first since
 `aircraft.airline_id` FKs to `airlines.id`, plus a `findByAirline` case), Flight
 (`QuillFlightRepositoryItSpec`, seeding a `Country`, two `Airport`s (origin + destination), and an
 `Airline` first since `flights.origin_airport_id`/`destination_airport_id`/`airline_id` FK to
 `airports.id`/`airlines.id`) — each seeding its own `Country` row first since
-`airports.country_id`/`airlines.country_id` FK to `countries.id` — plus User
+`airports.country_id`/`airlines.country_id` FK to `countries.id` — Route
+(`QuillRouteRepositoryItSpec`, seeding a `Country` then two `Airport`s first since
+`routes.origin_airport_id`/`destination_airport_id` FK to `airports.id`; `RouteRepository` has no
+`countryCode`-shaped save param, unlike Airport/Airline/Aircraft/Flight, since `Route` doesn't
+reference a country directly) — plus User
 (`QuillUserRepositoryItSpec`; `UserRepository` has no `save`, so its "found" case seeds a row via a
 raw JDBC insert against the shared `DataSource` rather than through the port — see
 `plans/security/login.md` decision 5) and `RevokedTokenRepository`
-(`QuillRevokedTokenRepositoryItSpec` — see `plans/security/logout.md`) — 64 tests total, all
-green. Route is not implemented yet.
+(`QuillRevokedTokenRepositoryItSpec` — see `plans/security/logout.md`) — 74 tests total, all
+green.
 See `plans/add-persistence-integration-tests.md` for the full scope table and design rationale (why a
 plain subproject instead of sbt's deprecated `IntegrationTest` config, why one module instead of
 three, why fresh-container-per-suite).

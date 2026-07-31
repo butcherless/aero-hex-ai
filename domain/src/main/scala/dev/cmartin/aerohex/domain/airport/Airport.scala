@@ -86,10 +86,19 @@ type AirportIcaoCode = AirportIcaoCode.Type
   *   the city the airport serves (e.g. `"Madrid"`). Must not be blank in
   *   practice (BR-14), enforced only at the HTTP write boundary
   *   (`Validator.minLength(1)`), not by this type.
+  * @param latitude
+  *   the airport's reference point latitude in decimal degrees (WGS84,
+  *   `-90`..`90`), used to compute inter-airport distances (see
+  *   `RouteSync`/`DistanceCalculator`).
+  * @param longitude
+  *   the airport's reference point longitude in decimal degrees (WGS84,
+  *   `-180`..`180`).
   */
 case class Airport(
     iataCode: IataCode,
     icaoCode: AirportIcaoCode,
     name: String,
-    city: String
+    city: String,
+    latitude: Double,
+    longitude: Double
 )
