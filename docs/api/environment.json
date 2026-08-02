@@ -75,12 +75,6 @@
       "enabled": true
     },
     {
-      "key": "bearerToken",
-      "value": "",
-      "type": "default",
-      "enabled": true
-    },
-    {
       "key": "authUsername",
       "value": "admin",
       "type": "default",

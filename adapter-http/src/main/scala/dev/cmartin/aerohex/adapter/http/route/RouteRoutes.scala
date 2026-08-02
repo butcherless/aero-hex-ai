@@ -4,7 +4,7 @@ import dev.cmartin.aerohex.adapter.http.common.SecuredEndpoint
 import dev.cmartin.aerohex.adapter.http.error.ErrorMapper
 import dev.cmartin.aerohex.domain.airport.IataCode
 import dev.cmartin.aerohex.domain.error.DomainError
-import dev.cmartin.aerohex.domain.route.Route
+import dev.cmartin.aerohex.domain.route.RouteWithAirportNames
 import dev.cmartin.aerohex.domain.route.{AssociateAirlineUseCase, CreateRouteCommand, CreateRouteUseCase}
 import dev.cmartin.aerohex.domain.route.{DisassociateAirlineUseCase, FindRouteUseCase, FindRoutesByAirlineUseCase}
 import dev.cmartin.aerohex.domain.user.TokenService
@@ -30,8 +30,8 @@ class RouteRoutes(
         .mapError(ErrorMapper.toHttpError)
     },
     RouteEndpoints.findAll.zServerSecurityLogic(secured).serverLogic { _ => (origin, destination, page, pageSize) =>
-      val pagination                           = Pagination(page, pageSize)
-      val routes: IO[DomainError, List[Route]] = (origin, destination) match
+      val pagination                                           = Pagination(page, pageSize)
+      val routes: IO[DomainError, List[RouteWithAirportNames]] = (origin, destination) match
         case (Some(o), Some(d)) =>
           findRouteSvc
             .findBySegment(IataCode.unsafeMake(o), IataCode.unsafeMake(d))
@@ -43,7 +43,7 @@ class RouteRoutes(
           findRouteSvc.findByDestination(IataCode.unsafeMake(d), pagination)
         case (None, None)       =>
           findRouteSvc.findAll(pagination)
-      routes.map(_.map(RouteDto.fromDomain)).mapError(ErrorMapper.toHttpError)
+      routes.map(_.map(RouteDto.fromDomainWithNames)).mapError(ErrorMapper.toHttpError)
     },
     RouteEndpoints.associate.zServerSecurityLogic(secured).serverLogic { _ => (origin, destination, icao) =>
       associateSvc

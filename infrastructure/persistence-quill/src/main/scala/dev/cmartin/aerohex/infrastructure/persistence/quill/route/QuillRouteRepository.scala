@@ -2,7 +2,7 @@ package dev.cmartin.aerohex.infrastructure.persistence.quill.route
 
 import dev.cmartin.aerohex.domain.airport.IataCode
 import dev.cmartin.aerohex.domain.error.DomainError
-import dev.cmartin.aerohex.domain.route.{Route, RouteRepository}
+import dev.cmartin.aerohex.domain.route.{Route, RouteRepository, RouteWithAirportNames}
 import dev.cmartin.aerohex.infrastructure.persistence.quill.airport.QuillAirportIdResolver
 import dev.cmartin.aerohex.infrastructure.persistence.quill.common.QuillSqlState
 import dev.cmartin.aerohex.shared.Pagination
@@ -19,6 +19,11 @@ final class QuillRouteRepository(dataSource: DataSource) extends RouteRepository
       distanceKm: Int
   )
 
+  // Local to this repository (unlike the shared AirportRef in QuillAirportIdResolver, also used by
+  // QuillFlightRepository/resolveAirportId) so widening the join with `name` doesn't pull an unused
+  // column into those other queries.
+  private case class AirportNameRef(id: Long, iataCode: String, name: String)
+
   protected val ctx = new Quill.Postgres(SnakeCase, dataSource)
 
   import ctx.*
@@ -26,34 +31,48 @@ final class QuillRouteRepository(dataSource: DataSource) extends RouteRepository
   private def toRoute(row: RouteRow, originIata: String, destinationIata: String): Route =
     Route(IataCode.unsafeMake(originIata), IataCode.unsafeMake(destinationIata), row.distanceKm)
 
-  override def findBySegment(origin: IataCode, destination: IataCode): IO[DomainError, Option[Route]] =
+  private def toRouteWithNames(
+      row: RouteRow,
+      originIata: String,
+      originName: String,
+      destinationIata: String,
+      destinationName: String
+  ): RouteWithAirportNames =
+    RouteWithAirportNames(toRoute(row, originIata, destinationIata), originName, destinationName)
+
+  override def findBySegment(
+      origin: IataCode,
+      destination: IataCode
+  ): IO[DomainError, Option[RouteWithAirportNames]] =
     ctx
       .run(quote {
         for {
           r  <- querySchema[RouteRow]("routes")
-          ao <- querySchema[AirportRef]("airports").join(a => a.id == r.originAirportId)
-          ad <- querySchema[AirportRef]("airports").join(a => a.id == r.destinationAirportId)
+          ao <- querySchema[AirportNameRef]("airports").join(a => a.id == r.originAirportId)
+          ad <- querySchema[AirportNameRef]("airports").join(a => a.id == r.destinationAirportId)
           if ao.iataCode == lift(origin.value) && ad.iataCode == lift(destination.value)
-        } yield (r, ao.iataCode, ad.iataCode)
+        } yield (r, ao.iataCode, ao.name, ad.iataCode, ad.name)
       })
-      .map(_.headOption.map { case (r, oIata, dIata) => toRoute(r, oIata, dIata) })
+      .map(_.headOption.map { case (r, oIata, oName, dIata, dName) =>
+        toRouteWithNames(r, oIata, oName, dIata, dName)
+      })
       .orDie
 
-  override def findAll(pagination: Pagination): IO[DomainError, List[Route]] = {
+  override def findAll(pagination: Pagination): IO[DomainError, List[RouteWithAirportNames]] = {
     val offset = pagination.offset
     val limit  = pagination.pageSize
     ctx
       .run(quote {
         (for {
           r  <- querySchema[RouteRow]("routes")
-          ao <- querySchema[AirportRef]("airports").join(a => a.id == r.originAirportId)
-          ad <- querySchema[AirportRef]("airports").join(a => a.id == r.destinationAirportId)
-        } yield (r, ao.iataCode, ad.iataCode))
+          ao <- querySchema[AirportNameRef]("airports").join(a => a.id == r.originAirportId)
+          ad <- querySchema[AirportNameRef]("airports").join(a => a.id == r.destinationAirportId)
+        } yield (r, ao.iataCode, ao.name, ad.iataCode, ad.name))
           .sortBy(_._2)
           .drop(lift(offset))
           .take(lift(limit))
       })
-      .map(_.map { case (r, oIata, dIata) => toRoute(r, oIata, dIata) })
+      .map(_.map { case (r, oIata, oName, dIata, dName) => toRouteWithNames(r, oIata, oName, dIata, dName) })
       .orDie
   }
 
@@ -70,41 +89,47 @@ final class QuillRouteRepository(dataSource: DataSource) extends RouteRepository
       .map(_.map { case (r, oIata, dIata) => toRoute(r, oIata, dIata) })
       .orDie
 
-  override def findByOrigin(origin: IataCode, pagination: Pagination): IO[DomainError, List[Route]] = {
+  override def findByOrigin(
+      origin: IataCode,
+      pagination: Pagination
+  ): IO[DomainError, List[RouteWithAirportNames]] = {
     val offset = pagination.offset
     val limit  = pagination.pageSize
     ctx
       .run(quote {
         (for {
           r  <- querySchema[RouteRow]("routes")
-          ao <- querySchema[AirportRef]("airports").join(a => a.id == r.originAirportId)
-          ad <- querySchema[AirportRef]("airports").join(a => a.id == r.destinationAirportId)
+          ao <- querySchema[AirportNameRef]("airports").join(a => a.id == r.originAirportId)
+          ad <- querySchema[AirportNameRef]("airports").join(a => a.id == r.destinationAirportId)
           if ao.iataCode == lift(origin.value)
-        } yield (r, ao.iataCode, ad.iataCode))
-          .sortBy(_._3)
+        } yield (r, ao.iataCode, ao.name, ad.iataCode, ad.name))
+          .sortBy(_._4)
           .drop(lift(offset))
           .take(lift(limit))
       })
-      .map(_.map { case (r, oIata, dIata) => toRoute(r, oIata, dIata) })
+      .map(_.map { case (r, oIata, oName, dIata, dName) => toRouteWithNames(r, oIata, oName, dIata, dName) })
       .orDie
   }
 
-  override def findByDestination(destination: IataCode, pagination: Pagination): IO[DomainError, List[Route]] = {
+  override def findByDestination(
+      destination: IataCode,
+      pagination: Pagination
+  ): IO[DomainError, List[RouteWithAirportNames]] = {
     val offset = pagination.offset
     val limit  = pagination.pageSize
     ctx
       .run(quote {
         (for {
           r  <- querySchema[RouteRow]("routes")
-          ao <- querySchema[AirportRef]("airports").join(a => a.id == r.originAirportId)
-          ad <- querySchema[AirportRef]("airports").join(a => a.id == r.destinationAirportId)
+          ao <- querySchema[AirportNameRef]("airports").join(a => a.id == r.originAirportId)
+          ad <- querySchema[AirportNameRef]("airports").join(a => a.id == r.destinationAirportId)
           if ad.iataCode == lift(destination.value)
-        } yield (r, ao.iataCode, ad.iataCode))
+        } yield (r, ao.iataCode, ao.name, ad.iataCode, ad.name))
           .sortBy(_._2)
           .drop(lift(offset))
           .take(lift(limit))
       })
-      .map(_.map { case (r, oIata, dIata) => toRoute(r, oIata, dIata) })
+      .map(_.map { case (r, oIata, oName, dIata, dName) => toRouteWithNames(r, oIata, oName, dIata, dName) })
       .orDie
   }
 

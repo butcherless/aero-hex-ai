@@ -6,9 +6,12 @@ import dev.cmartin.aerohex.shared.Pagination
 import zio.IO
 
 trait FindRouteUseCase {
-  def findBySegment(origin: IataCode, destination: IataCode): IO[DomainError, Route]
-  def findAll(pagination: Pagination): IO[DomainError, List[Route]]
+  def findBySegment(origin: IataCode, destination: IataCode): IO[DomainError, RouteWithAirportNames]
+  def findAll(pagination: Pagination): IO[DomainError, List[RouteWithAirportNames]]
   def findAllUnbounded: IO[DomainError, List[Route]]
-  def findByOrigin(origin: IataCode, pagination: Pagination): IO[DomainError, List[Route]]
-  def findByDestination(destination: IataCode, pagination: Pagination): IO[DomainError, List[Route]]
+  def findByOrigin(origin: IataCode, pagination: Pagination): IO[DomainError, List[RouteWithAirportNames]]
+  def findByDestination(
+      destination: IataCode,
+      pagination: Pagination
+  ): IO[DomainError, List[RouteWithAirportNames]]
 }

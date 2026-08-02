@@ -4,26 +4,35 @@ import dev.cmartin.aerohex.application.aspect.ServiceAspect
 import dev.cmartin.aerohex.domain.airport.IataCode
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.error.DomainError.RouteNotFound
-import dev.cmartin.aerohex.domain.route.{FindRouteUseCase, Route, RouteRepository}
+import dev.cmartin.aerohex.domain.route.{FindRouteUseCase, Route, RouteRepository, RouteWithAirportNames}
 import dev.cmartin.aerohex.shared.Pagination
 import zio.{IO, URLayer, ZLayer}
 
 final class FindRouteService(repo: RouteRepository) extends FindRouteUseCase {
 
-  override def findBySegment(origin: IataCode, destination: IataCode): IO[DomainError, Route] =
+  override def findBySegment(
+      origin: IataCode,
+      destination: IataCode
+  ): IO[DomainError, RouteWithAirportNames] =
     repo.findBySegment(origin, destination).someOrFail(RouteNotFound(origin.value, destination.value)) @@
       ServiceAspect.logged(s"FindRouteService.findBySegment(${origin.value}, ${destination.value})")
 
-  override def findAll(pagination: Pagination): IO[DomainError, List[Route]] =
+  override def findAll(pagination: Pagination): IO[DomainError, List[RouteWithAirportNames]] =
     repo.findAll(pagination) @@ ServiceAspect.logged("FindRouteService.findAll")
 
   override def findAllUnbounded: IO[DomainError, List[Route]] =
     repo.findAllUnbounded @@ ServiceAspect.logged("FindRouteService.findAllUnbounded")
 
-  override def findByOrigin(origin: IataCode, pagination: Pagination): IO[DomainError, List[Route]] =
+  override def findByOrigin(
+      origin: IataCode,
+      pagination: Pagination
+  ): IO[DomainError, List[RouteWithAirportNames]] =
     repo.findByOrigin(origin, pagination) @@ ServiceAspect.logged(s"FindRouteService.findByOrigin(${origin.value})")
 
-  override def findByDestination(destination: IataCode, pagination: Pagination): IO[DomainError, List[Route]] =
+  override def findByDestination(
+      destination: IataCode,
+      pagination: Pagination
+  ): IO[DomainError, List[RouteWithAirportNames]] =
     repo.findByDestination(destination, pagination) @@
       ServiceAspect.logged(s"FindRouteService.findByDestination(${destination.value})")
 }

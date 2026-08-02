@@ -31,7 +31,7 @@ object RouteRepositoryContractSpec:
     )
 
   def tests: List[Spec[RouteRepository & AirportRepository & CountryRepository, Any]] = List(
-    test("saves and finds a route by segment") {
+    test("saves and finds a route by segment, including origin/destination airport names") {
       for
         _     <- seedCountry("ES", "Spain")
         _     <- seedAirport("MAD", "LEMD", "Barajas", "Madrid", "ES")
@@ -40,7 +40,12 @@ object RouteRepositoryContractSpec:
         route  = Route(IataCode("MAD"), IataCode("TFN"), 1740)
         saved <- repo.save(route)
         found <- repo.findBySegment(IataCode("MAD"), IataCode("TFN"))
-      yield assertTrue(saved == route, found.contains(route))
+      yield assertTrue(
+        saved == route,
+        found.map(_.route).contains(route),
+        found.map(_.originAirportName).contains("Barajas"),
+        found.map(_.destinationAirportName).contains("Norte")
+      )
     },
     test("findBySegment returns None for an unknown segment") {
       for
@@ -59,7 +64,10 @@ object RouteRepositoryContractSpec:
         repo <- ZIO.service[RouteRepository]
         _    <- repo.save(Route(IataCode("CDG"), IataCode("ORY"), 15))
         all  <- repo.findAll(Pagination(page = 1, pageSize = 100))
-      yield assertTrue(all.exists(r => r.origin.value == "CDG" && r.destination.value == "ORY"))
+      yield assertTrue(
+        all.exists(r => r.route.origin.value == "CDG" && r.route.destination.value == "ORY"),
+        all.exists(r => r.originAirportName == "Charles de Gaulle" && r.destinationAirportName == "Orly")
+      )
     },
     test("findAllUnbounded includes saved routes without pagination") {
       for
@@ -81,7 +89,7 @@ object RouteRepositoryContractSpec:
         updated = Route(IataCode("FCO"), IataCode("MXP"), 477)
         saved  <- repo.update(updated)
         found  <- repo.findBySegment(IataCode("FCO"), IataCode("MXP"))
-      yield assertTrue(saved == updated, found.contains(updated))
+      yield assertTrue(saved == updated, found.map(_.route).contains(updated))
     },
     test("update fails with RouteNotFound for an unknown segment") {
       for
@@ -133,8 +141,9 @@ object RouteRepositoryContractSpec:
         _     <- repo.save(Route(IataCode("MMX"), IataCode("ARN"), 500))
         found <- repo.findByOrigin(IataCode("ARN"), Pagination(page = 1, pageSize = 100))
       yield assertTrue(
-        found.exists(r => r.origin.value == "ARN" && r.destination.value == "GOT"),
-        !found.exists(_.origin.value == "MMX")
+        found.exists(r => r.route.origin.value == "ARN" && r.route.destination.value == "GOT"),
+        found.exists(r => r.originAirportName == "Arlanda" && r.destinationAirportName == "Landvetter"),
+        !found.exists(_.route.origin.value == "MMX")
       )
     },
     test("findByDestination returns only routes arriving at the given airport") {
@@ -148,8 +157,9 @@ object RouteRepositoryContractSpec:
         _     <- repo.save(Route(IataCode("TRD"), IataCode("OSL"), 350))
         found <- repo.findByDestination(IataCode("BGO"), Pagination(page = 1, pageSize = 100))
       yield assertTrue(
-        found.exists(r => r.origin.value == "OSL" && r.destination.value == "BGO"),
-        !found.exists(_.destination.value == "OSL")
+        found.exists(r => r.route.origin.value == "OSL" && r.route.destination.value == "BGO"),
+        found.exists(r => r.originAirportName == "Gardermoen" && r.destinationAirportName == "Flesland"),
+        !found.exists(_.route.destination.value == "OSL")
       )
     }
   )

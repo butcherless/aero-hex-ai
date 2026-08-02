@@ -14,7 +14,8 @@ import dev.cmartin.aerohex.domain.route.{
   FindAirlinesByRouteUseCase,
   FindRouteUseCase,
   FindRoutesByAirlineUseCase,
-  Route
+  Route,
+  RouteWithAirportNames
 }
 import dev.cmartin.aerohex.shared.Pagination
 import zio.test.*
@@ -22,10 +23,11 @@ import zio.{IO, Scope, ZIO, ZLayer}
 
 object RouteServiceSpec extends ZIOSpecDefault:
 
-  private val mad    = Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Barajas", "Madrid", 40.4719, -3.5626)
-  private val tfn    = Airport(IataCode("TFN"), AirportIcaoCode("GCXO"), "Norte", "Tenerife", 28.4827, -16.3415)
-  private val route  = Route(IataCode("MAD"), IataCode("TFN"), 1740)
-  private val iberia = Airline(AirlineIcaoCode("IBE"), "Iberia", None, Some("IBERIA"))
+  private val mad            = Airport(IataCode("MAD"), AirportIcaoCode("LEMD"), "Barajas", "Madrid", 40.4719, -3.5626)
+  private val tfn            = Airport(IataCode("TFN"), AirportIcaoCode("GCXO"), "Norte", "Tenerife", 28.4827, -16.3415)
+  private val route          = Route(IataCode("MAD"), IataCode("TFN"), 1740)
+  private val routeWithNames = RouteWithAirportNames(route, mad.name, tfn.name)
+  private val iberia         = Airline(AirlineIcaoCode("IBE"), "Iberia", None, Some("IBERIA"))
 
   private def findAirportStub(byIata: String => IO[DomainError, Airport]): FindAirportUseCase =
     new FindAirportUseCase:
@@ -56,7 +58,7 @@ object RouteServiceSpec extends ZIOSpecDefault:
             case "MAD" => ZIO.succeed(mad)
             case "TFN" => ZIO.succeed(tfn)
           }
-          val repo        = stubRouteRepo(onFindBySegment = (_, _) => ZIO.some(route))
+          val repo        = stubRouteRepo(onFindBySegment = (_, _) => ZIO.some(routeWithNames))
           for error <-
               new CreateRouteService(findAirport, repo).create(CreateRouteCommand("MAD", "TFN", 1740)).flip
           yield assertTrue(error == DomainError.RouteAlreadyExists("MAD", "TFN"))
@@ -122,9 +124,9 @@ object RouteServiceSpec extends ZIOSpecDefault:
       ),
       suite("FindRouteService")(
         test("findBySegment returns the route when found") {
-          val repo = stubRouteRepo(onFindBySegment = (_, _) => ZIO.some(route))
+          val repo = stubRouteRepo(onFindBySegment = (_, _) => ZIO.some(routeWithNames))
           for result <- new FindRouteService(repo).findBySegment(IataCode("MAD"), IataCode("TFN"))
-          yield assertTrue(result == route)
+          yield assertTrue(result == routeWithNames)
         },
         test("findBySegment fails with RouteNotFound when absent") {
           val repo = stubRouteRepo(onFindBySegment = (_, _) => ZIO.none)
@@ -132,9 +134,9 @@ object RouteServiceSpec extends ZIOSpecDefault:
           yield assertTrue(error == DomainError.RouteNotFound("MAD", "TFN"))
         },
         test("findAll delegates to the repository") {
-          val repo = stubRouteRepo(onFindAll = _ => ZIO.succeed(List(route)))
+          val repo = stubRouteRepo(onFindAll = _ => ZIO.succeed(List(routeWithNames)))
           for result <- new FindRouteService(repo).findAll(Pagination(1, 20))
-          yield assertTrue(result == List(route))
+          yield assertTrue(result == List(routeWithNames))
         },
         test("findAllUnbounded delegates to the repository") {
           val repo = stubRouteRepo(onFindAllUnbounded = ZIO.succeed(List(route)))
@@ -142,14 +144,14 @@ object RouteServiceSpec extends ZIOSpecDefault:
           yield assertTrue(result == List(route))
         },
         test("findByOrigin delegates to the repository") {
-          val repo = stubRouteRepo(onFindByOrigin = (_, _) => ZIO.succeed(List(route)))
+          val repo = stubRouteRepo(onFindByOrigin = (_, _) => ZIO.succeed(List(routeWithNames)))
           for result <- new FindRouteService(repo).findByOrigin(IataCode("MAD"), Pagination(1, 20))
-          yield assertTrue(result == List(route))
+          yield assertTrue(result == List(routeWithNames))
         },
         test("findByDestination delegates to the repository") {
-          val repo = stubRouteRepo(onFindByDestination = (_, _) => ZIO.succeed(List(route)))
+          val repo = stubRouteRepo(onFindByDestination = (_, _) => ZIO.succeed(List(routeWithNames)))
           for result <- new FindRouteService(repo).findByDestination(IataCode("TFN"), Pagination(1, 20))
-          yield assertTrue(result == List(route))
+          yield assertTrue(result == List(routeWithNames))
         }
       ),
       suite("Route service layers")(
