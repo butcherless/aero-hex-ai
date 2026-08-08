@@ -27,6 +27,9 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 - **JDK** — Java 21 LTS required, locally and in CI (`java-version: '21'` in `.github/workflows/*.yml`). Never Java 25 or other
   non-LTS versions — Java 25 silently breaks ZIO 2.1.26's test framework (tests report "Failed" with zero SBT test events,
   no pass/fail per test). ZIO is only certified for Java 17/21.
+- **SBT** — stay on the 1.x series (`project/build.properties`). Never upgrade to SBT 2.x without a
+  deliberate migration review — treat it the same as a major direct-dependency bump, not a routine
+  patch/minor update.
 - **Direct deps** — stable GA by default. Named exception: ZIO Prelude 1.x (no GA release yet) —
   don't chase a newer RC/M/SNAPSHOT without a deliberate reason (a GA release or a needed
   capability).
