@@ -2,7 +2,7 @@ object Versions {
   val scala3         = "3.3.8"
   val zio            = "2.1.26"
   val zioPrelude     = "1.0.0-RC48" // no GA release yet
-  val zioHttp        = "3.11.3"
+  val zioHttp        = "3.11.4"
   val tapir          = "1.13.31"
   val zioKafka       = "3.7.1"
   val zioNio         = "2.0.2"
