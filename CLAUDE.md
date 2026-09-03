@@ -23,7 +23,7 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 
 ## Versioning policy
 
-- **Scala** — LTS only (3.3.x). Never upgrade to a non-LTS minor. The `scala3-library` 3.8.x entry in `dependencyUpdates` is the SBT meta-build; ignore it.
+- **Scala** — LTS only (currently 3.9.x — the LTS line moved from 3.3.x to 3.9.0 when 3.9.0 LTS shipped on 2026-09-03). Never upgrade to a non-LTS minor (e.g. 3.10.x "Next"). The `scala3-library` entry in `dependencyUpdates` that tracks a newer non-LTS minor is the SBT meta-build; ignore it.
 - **JDK** — Java 21 LTS required, locally and in CI (`java-version: '21'` in `.github/workflows/*.yml`). Never Java 25 or other
   non-LTS versions — Java 25 silently breaks ZIO 2.1.26's test framework (tests report "Failed" with zero SBT test events,
   no pass/fail per test). ZIO is only certified for Java 17/21.
@@ -268,7 +268,7 @@ sbt adapterHttp/coverageReport
 sbt compile
 sbt adapterHttp/test   # repeat per module with tests
 sbt coverageAggregate
-# → target/scala-3.3.8/scoverage-report/index.html
+# → target/scala-3.9.0/scoverage-report/index.html
 ```
 
 **Missing-dir gotcha:** if a module's tests run without ever recompiling that module (nothing changed since the last compile), scoverage never writes its local `.coverage-data/` dir, and the instrumented run then fails with `ExceptionInInitializerError` at test runtime. Fix: `mkdir -p <module>/.coverage-data/scoverage-data` per module before running tests — derive the module list from `build.sbt`'s `coverageProjects` via the `printCoverageProjects` task instead of typing it by hand:

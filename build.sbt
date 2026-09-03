@@ -14,7 +14,7 @@ Global / onChangedBuildSource := ReloadOnSourceChanges
 ThisBuild / libraryDependencySchemes += "dev.zio" %% "zio-json" % "always"
 
 ThisBuild / organization  := "dev.cmartin.aerohex"
-ThisBuild / scalaVersion  := Versions.scala3  // 3.3.8 LTS
+ThisBuild / scalaVersion  := Versions.scala3  // 3.9.0 LTS
 ThisBuild / version       := "0.1.0-SNAPSHOT"
 
 ThisBuild / scalacOptions := Seq(
@@ -24,7 +24,13 @@ ThisBuild / scalacOptions := Seq(
   "-unchecked",
   "-Wunused:all",
   "-Wvalue-discard",
-  "-Wnonunit-statement"
+  "-Wnonunit-statement",
+  // Scala 3.9.0's bundled scoverage stopped instrumenting value initializers above a 3000-tree-node
+  // threshold (scala/scala3#25629) and warns once per skipped one. The only things over the limit
+  // here are the auto-derived Tapir `Schema.derived[...]` givens in adapter-http's *Dto files —
+  // generated builders where line coverage carries no signal. Silence the noise; instrumentation
+  // of real logic is unaffected.
+  "-Wconf:msg=Skipping coverage instrumentation for large value initializer:s"
 )
 
 ThisBuild / testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
@@ -64,9 +70,18 @@ val assemblySettings: Seq[Setting[?]] = Seq(
   // scala3-compiler artifact (~34 MB) onto the runtime classpath — needed only to compile
   // zio-http itself, already done when it was published; never needed to run this app. Drop it
   // from the assembled jar specifically; it stays on the compile classpath.
+  //
+  // The same unroll-plugin dependency also drags in com.lihaoyi:unroll-annotation, which carries
+  // `scala.annotation.unroll`. As of Scala 3.9.0 the standard library bundles that same class
+  // (scala-library-3.9.0.jar → scala/annotation/unroll.{class,tasty}), so the two collide with
+  // different bytes and break the assembly dedupe. The stdlib copy is authoritative at runtime;
+  // drop the standalone jar from the fat jar only — it stays on the compile classpath.
   assembly / assemblyExcludedJars := {
     val cp = (assembly / fullClasspath).value
-    cp.filter(_.data.getName.startsWith("scala3-compiler"))
+    cp.filter { entry =>
+      val n = entry.data.getName
+      n.startsWith("scala3-compiler") || n.startsWith("unroll-annotation")
+    }
   },
   assembly / assemblyMergeStrategy := {
     case PathList("module-info.class")                             => MergeStrategy.discard
