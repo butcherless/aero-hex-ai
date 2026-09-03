@@ -8,8 +8,10 @@ has, and reconciled with the versioning policy already documented in CLAUDE.md (
 stable-GA-only deps except Doobie's RC exception, free patch/minor vs. reviewed major bumps).
 
 Trigger: the workflow-hardening plan ([[refactor-github-actions-workflows]],
-`plans/refactor-github-actions-workflows.md`, G1) pins GitHub Actions to commit SHAs — those need
-something to bump them, or they silently go stale.
+`plans/refactor-github-actions-workflows.md`, G1) originally pinned GitHub Actions to commit SHAs —
+those needed something to bump them, or they'd silently go stale. G1's SHA pinning was later
+reversed (floating `@vN` tags instead — see its Reversal note), but the `github-actions` ecosystem
+entry below is still wanted: it's now what opens a PR when a new *major* ships.
 
 ## Analysis — what ecosystems apply here
 

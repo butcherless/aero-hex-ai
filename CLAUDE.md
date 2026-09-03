@@ -305,8 +305,9 @@ what changed, not always all four:
    no `services:` container needed — ubuntu-24.04 runners already have Docker), but only when the
    workflow is manually dispatched with the `run_integration_tests` input checked — it never runs
    on a plain push/PR, matching `integrationTests`' own opt-in convention. The workflow files' own
-   design decisions (SHA-pinning every action, the shared composite `setup-build-env` action, why
-   `Checkout` can't live inside it) are recorded in `plans/refactor-github-actions-workflows.md`.
+   design decisions (actions pinned to a floating major tag with Dependabot tracking the rest —
+   the earlier SHA-pinning convention was dropped; the shared composite `setup-build-env` action;
+   why `Checkout` can't live inside it) are recorded in `plans/refactor-github-actions-workflows.md`.
 
 Layering, cheapest/narrowest first: unit tests (stubs) → integration tests (real Postgres,
 opt-in module) → E2E (real server + real dev Postgres, closest to production) → OpenAPI

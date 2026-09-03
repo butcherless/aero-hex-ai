@@ -40,6 +40,17 @@ uses: sbt/setup-sbt@12b8b25f7dab04860144e2dd48dc141b485192f7 # v1.5.0
 
 6 call sites total (3 actions × 2 files).
 
+**Reversal (landed 2026-08-28, commit `f72f321`):** the SHA pins were dropped in favour of a
+floating major tag (`actions/checkout@v7`, `actions/cache@v6`, `actions/setup-java@v6`,
+`sbt/setup-sbt@v1`). Rationale: a floating `@vN` is re-pointed to each `vN.x` by the action owner,
+so minor/patch moves land with no repo change, and `.github/dependabot.yml`'s weekly
+`github-actions` update opens a PR only on a new major. A SHA pin instead turns every `vN.x` into a
+manual two-part edit (SHA + trailing comment) for a supply-chain risk that is low here — three of
+the four actions are GitHub-owned, and `sbt/setup-sbt` is a thin wrapper. Keeping a floating `@vN`
+and letting the owner + Dependabot own the churn was judged the better trade for this repo. G2
+(`persist-credentials: false`) is unaffected and stays. Any future re-pin is a fresh decision, not
+a revert to this section.
+
 ### G2 — Harden checkout: don't persist git credentials
 
 `actions/checkout` defaults to `persist-credentials: true`, leaving the job's `GITHUB_TOKEN` in
@@ -89,8 +100,9 @@ against the already-checked-out workspace, so by the time the runner can even re
 `action.yml`, checkout must already have happened — putting `actions/checkout` inside the action
 is circular. Failed with `Can't find 'action.yml' ... Did you forget to run actions/checkout before
 running your local action?`, 4 seconds into the very first push after landing G1–G5. Fix: `Checkout`
-stays an explicit first step in each workflow (still SHA-pinned per G1, still
-`persist-credentials: false` per G2); the composite action only bundles Setup JDK + Setup SBT.
+stays an explicit first step in each workflow (still ref-pinned per G1 — a SHA then, a floating
+`@vN` after G1's Reversal; still `persist-credentials: false` per G2); the composite action only
+bundles Setup JDK + Setup SBT.
 De-duplication scope for G4 is smaller than originally planned (2 of 3 steps, not 3 of 3), but
 still real.
 
