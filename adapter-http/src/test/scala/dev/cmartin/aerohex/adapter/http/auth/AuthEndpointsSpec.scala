@@ -1,7 +1,8 @@
 package dev.cmartin.aerohex.adapter.http.auth
 
+import dev.cmartin.aerohex.adapter.http.support.AuthTestFixtures
 import dev.cmartin.aerohex.domain.error.DomainError
-import dev.cmartin.aerohex.domain.user.{AccessToken, LoginUseCase, LogoutUseCase, TokenService, ValidatedToken}
+import dev.cmartin.aerohex.domain.user.{AccessToken, LoginUseCase, LogoutUseCase, TokenService}
 import io.circe.generic.auto.*
 import java.time.Instant
 import sttp.client4.*
@@ -11,9 +12,9 @@ import sttp.client4.testing.BackendStub
 import sttp.model.StatusCode
 import sttp.tapir.server.stub4.TapirStubInterpreter
 import zio.test.*
-import zio.{IO, Scope, Task, UIO, ZIO, ZLayer}
+import zio.{Scope, Task, ZIO, ZLayer}
 
-object AuthEndpointsSpec extends ZIOSpecDefault:
+object AuthEndpointsSpec extends ZIOSpecDefault with AuthTestFixtures:
 
   private val defaultLogin: LoginUseCase =
     (_: String, _: String) => ZIO.succeed(AccessToken("signed-jwt", 3600))
@@ -23,22 +24,6 @@ object AuthEndpointsSpec extends ZIOSpecDefault:
 
   private val defaultLogout: LogoutUseCase =
     (_: String, _: Instant) => ZIO.unit
-
-  // Every endpoint now requires a bearer token except login itself (plans/security/
-  // protect-endpoints.md, plans/security/logout.md) — these two stubs stand in for the real
-  // JwtService.
-  private val validToken: TokenService = new TokenService:
-    def generate(username: String): UIO[AccessToken]             = ZIO.die(new NotImplementedError("generate"))
-    def validate(token: String): IO[DomainError, ValidatedToken] =
-      ZIO.succeed(ValidatedToken("test-user", "test-jti", Instant.parse("2026-01-01T01:00:00Z")))
-    def revoke(jti: String, expiresAt: Instant): UIO[Unit]       = ZIO.die(new NotImplementedError("revoke"))
-
-  private val rejectingToken: TokenService = new TokenService:
-    def generate(username: String): UIO[AccessToken]             = ZIO.die(new NotImplementedError("generate"))
-    def validate(token: String): IO[DomainError, ValidatedToken] = ZIO.fail(DomainError.InvalidToken("rejected"))
-    def revoke(jti: String, expiresAt: Instant): UIO[Unit]       = ZIO.die(new NotImplementedError("revoke"))
-
-  private val authedRequest = basicRequest.header("Authorization", "Bearer test-token")
 
   private def makeBackend(
       login: LoginUseCase = defaultLogin,
