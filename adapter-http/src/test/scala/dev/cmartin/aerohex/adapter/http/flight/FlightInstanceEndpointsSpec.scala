@@ -56,20 +56,7 @@ object FlightInstanceEndpointsSpec extends ZIOSpecDefault with AuthTestFixtures:
 
   override def spec: Spec[TestEnvironment & Scope, Any] =
     suite("FlightInstanceEndpoints")(
-      suite("Authentication")(
-        test("returns 401 when the Authorization header is missing") {
-          for
-            response <- basicRequest.get(uri"https://test.com/api/v1/flight-instances").send(makeBackend())
-          yield assertTrue(response.code == StatusCode.Unauthorized)
-        },
-        test("returns 401 when the token is rejected") {
-          for
-            response <- authedRequest
-                          .get(uri"https://test.com/api/v1/flight-instances")
-                          .send(makeBackend(tokenService = rejectingToken))
-          yield assertTrue(response.code == StatusCode.Unauthorized)
-        }
-      ),
+      authenticationSuite(uri"https://test.com/api/v1/flight-instances")(t => makeBackend(tokenService = t)),
       suite("GET /api/v1/flight-instances")(
         test("returns 200 with the full flight instance list") {
           for

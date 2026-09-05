@@ -102,22 +102,7 @@ object RouteEndpointsSpec extends ZIOSpecDefault with AuthTestFixtures:
 
   override def spec: Spec[TestEnvironment & Scope, Any] =
     suite("RouteEndpoints")(
-      suite("Authentication")(
-        test("returns 401 when the Authorization header is missing") {
-          for
-            response <- basicRequest
-                          .get(uri"https://test.com/api/v1/airlines/AEA/routes")
-                          .send(makeBackend())
-          yield assertTrue(response.code == StatusCode.Unauthorized)
-        },
-        test("returns 401 when the token is rejected") {
-          for
-            response <- authedRequest
-                          .get(uri"https://test.com/api/v1/airlines/AEA/routes")
-                          .send(makeBackend(tokenService = rejectingToken))
-          yield assertTrue(response.code == StatusCode.Unauthorized)
-        }
-      ),
+      authenticationSuite(uri"https://test.com/api/v1/airlines/AEA/routes")(t => makeBackend(tokenService = t)),
       suite("POST /api/v1/routes")(
         test("returns 201 with the created route") {
           for
