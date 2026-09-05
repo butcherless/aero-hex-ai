@@ -4,9 +4,9 @@ import dev.cmartin.aerohex.domain.airport.*
 import dev.cmartin.aerohex.domain.country.CountryCode
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.route.*
+import dev.cmartin.aerohex.infrastructure.masterdata.support.{CsvFixture, CsvFixtureSupport}
 import dev.cmartin.aerohex.shared.Pagination
 import zio.*
-import zio.nio.file.{Files, Path}
 import zio.test.*
 
 object RouteSyncSpec extends ZIOSpecDefault:
@@ -67,12 +67,12 @@ object RouteSyncSpec extends ZIOSpecDefault:
         state.update(_.filterNot(r => r.origin == origin && r.destination == destination)).unit
 
       val find: FindRouteUseCase = new FindRouteUseCase:
-        def findBySegment(origin: IataCode, destination: IataCode): IO[DomainError, Route] =
+        def findBySegment(origin: IataCode, destination: IataCode): IO[DomainError, Route]        =
           ZIO.die(new NotImplementedError("findBySegment"))
-        def findAll(p: Pagination): IO[DomainError, List[Route]]                           =
+        def findAll(p: Pagination): IO[DomainError, List[Route]]                                  =
           ZIO.die(new NotImplementedError("findAll"))
-        def findAllUnbounded: IO[DomainError, List[Route]]                                 = state.get
-        def findByOrigin(origin: IataCode, p: Pagination): IO[DomainError, List[Route]]    =
+        def findAllUnbounded: IO[DomainError, List[Route]]                                        = state.get
+        def findByOrigin(origin: IataCode, p: Pagination): IO[DomainError, List[Route]]           =
           ZIO.die(new NotImplementedError("findByOrigin"))
         def findByDestination(destination: IataCode, p: Pagination): IO[DomainError, List[Route]] =
           ZIO.die(new NotImplementedError("findByDestination"))
@@ -80,16 +80,10 @@ object RouteSyncSpec extends ZIOSpecDefault:
       StubUseCases(create, update, delete, find, state.get)
     }
 
-  private final case class DatFixture(dir: Path, file: Path)
+  private def writeDat(rows: List[String]): IO[java.io.IOException, CsvFixture] =
+    CsvFixtureSupport.writeCsv("route-sync-spec-", "routes.dat", rows)
 
-  private def writeDat(rows: List[String]): IO[java.io.IOException, DatFixture] =
-    for
-      dir <- TempDirectory.create("route-sync-spec-")
-      file = dir / "routes.dat"
-      _   <- Files.writeLines(file, rows)
-    yield DatFixture(dir, file)
-
-  private def runSync(fixture: DatFixture, useCases: StubUseCases, airports: List[Airport]): IO[Throwable, SyncReport] =
+  private def runSync(fixture: CsvFixture, useCases: StubUseCases, airports: List[Airport]): IO[Throwable, SyncReport] =
     RouteSync
       .sync(fixture.file)
       .provide(

@@ -3,9 +3,9 @@ package dev.cmartin.aerohex.infrastructure.masterdata
 import dev.cmartin.aerohex.domain.airport.*
 import dev.cmartin.aerohex.domain.country.CountryCode
 import dev.cmartin.aerohex.domain.error.DomainError
+import dev.cmartin.aerohex.infrastructure.masterdata.support.{CsvFixture, CsvFixtureSupport}
 import dev.cmartin.aerohex.shared.Pagination
 import zio.*
-import zio.nio.file.{Files, Path}
 import zio.test.*
 
 object AirportSyncSpec extends ZIOSpecDefault:
@@ -56,14 +56,8 @@ object AirportSyncSpec extends ZIOSpecDefault:
       StubUseCases(create, update, delete, find, state.get)
     }
 
-  private final case class CsvFixture(dir: Path, file: Path)
-
   private def writeCsv(rows: List[String]): IO[java.io.IOException, CsvFixture] =
-    for
-      dir <- TempDirectory.create("airport-sync-spec-")
-      file = dir / "airports.csv"
-      _   <- Files.writeLines(file, header :: rows)
-    yield CsvFixture(dir, file)
+    CsvFixtureSupport.writeCsv("airport-sync-spec-", "airports.csv", header :: rows)
 
   private def runSync(fixture: CsvFixture, useCases: StubUseCases): IO[Throwable, SyncReport] =
     AirportSync

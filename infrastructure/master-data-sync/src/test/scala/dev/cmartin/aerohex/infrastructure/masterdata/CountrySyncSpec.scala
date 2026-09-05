@@ -2,9 +2,9 @@ package dev.cmartin.aerohex.infrastructure.masterdata
 
 import dev.cmartin.aerohex.domain.country.*
 import dev.cmartin.aerohex.domain.error.DomainError
+import dev.cmartin.aerohex.infrastructure.masterdata.support.{CsvFixture, CsvFixtureSupport}
 import dev.cmartin.aerohex.shared.Pagination
 import zio.*
-import zio.nio.file.{Files, Path}
 import zio.test.*
 
 object CountrySyncSpec extends ZIOSpecDefault:
@@ -41,14 +41,8 @@ object CountrySyncSpec extends ZIOSpecDefault:
       StubUseCases(create, update, delete, find, state.get)
     }
 
-  private final case class CsvFixture(dir: Path, file: Path)
-
   private def writeCsv(lines: List[String]): IO[java.io.IOException, CsvFixture] =
-    for
-      dir <- TempDirectory.create("country-sync-spec-")
-      file = dir / "countries.csv"
-      _   <- Files.writeLines(file, lines)
-    yield CsvFixture(dir, file)
+    CsvFixtureSupport.writeCsv("country-sync-spec-", "countries.csv", lines)
 
   private def runSync(fixture: CsvFixture, useCases: StubUseCases): IO[java.io.IOException, SyncReport] =
     CountrySync
