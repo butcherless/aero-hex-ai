@@ -1,6 +1,7 @@
 package dev.cmartin.aerohex.application.aircraft
 
 import AircraftRepositoryStub.{stubAircraftRepo, unimplementedAircraftRepo}
+import dev.cmartin.aerohex.application.support.ServiceLayerSpecSupport.constructsUsableInstance
 import dev.cmartin.aerohex.domain.aircraft.{
   Aircraft,
   CreateAircraftCommand,
@@ -111,35 +112,31 @@ object AircraftServiceSpec extends ZIOSpecDefault:
         }
       ),
       suite("Aircraft service layers")(
-        test("CreateAircraftService.layer constructs a usable instance") {
-          for _ <- ZIO
-                     .service[CreateAircraftUseCase]
-                     .provide(ZLayer.succeed(unimplementedAircraftRepo), CreateAircraftService.layer)
-          yield assertCompletes
-        },
-        test("FindAircraftService.layer constructs a usable instance") {
-          for _ <- ZIO
-                     .service[FindAircraftUseCase]
-                     .provide(ZLayer.succeed(unimplementedAircraftRepo), FindAircraftService.layer)
-          yield assertCompletes
-        },
-        test("UpdateAircraftService.layer constructs a usable instance") {
-          for _ <- ZIO
-                     .service[UpdateAircraftUseCase]
-                     .provide(ZLayer.succeed(unimplementedAircraftRepo), UpdateAircraftService.layer)
-          yield assertCompletes
-        },
-        test("DeleteAircraftService.layer constructs a usable instance") {
-          for _ <- ZIO
-                     .service[DeleteAircraftUseCase]
-                     .provide(ZLayer.succeed(unimplementedAircraftRepo), DeleteAircraftService.layer)
-          yield assertCompletes
-        },
-        test("FindAircraftByAirlineService.layer constructs a usable instance") {
-          for _ <- ZIO
-                     .service[FindAircraftByAirlineUseCase]
-                     .provide(ZLayer.succeed(unimplementedAircraftRepo), FindAircraftByAirlineService.layer)
-          yield assertCompletes
-        }
+        constructsUsableInstance("CreateAircraftService")(
+          ZIO.service[CreateAircraftUseCase].provide(
+            ZLayer.succeed(unimplementedAircraftRepo),
+            CreateAircraftService.layer
+          )
+        ),
+        constructsUsableInstance("FindAircraftService")(
+          ZIO.service[FindAircraftUseCase].provide(ZLayer.succeed(unimplementedAircraftRepo), FindAircraftService.layer)
+        ),
+        constructsUsableInstance("UpdateAircraftService")(
+          ZIO.service[UpdateAircraftUseCase].provide(
+            ZLayer.succeed(unimplementedAircraftRepo),
+            UpdateAircraftService.layer
+          )
+        ),
+        constructsUsableInstance("DeleteAircraftService")(
+          ZIO.service[DeleteAircraftUseCase].provide(
+            ZLayer.succeed(unimplementedAircraftRepo),
+            DeleteAircraftService.layer
+          )
+        ),
+        constructsUsableInstance("FindAircraftByAirlineService")(
+          ZIO
+            .service[FindAircraftByAirlineUseCase]
+            .provide(ZLayer.succeed(unimplementedAircraftRepo), FindAircraftByAirlineService.layer)
+        )
       )
     )

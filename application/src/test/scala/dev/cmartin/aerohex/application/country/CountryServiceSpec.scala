@@ -1,6 +1,7 @@
 package dev.cmartin.aerohex.application.country
 
 import CountryRepositoryStub.{stubCountryRepo, unimplementedCountryRepo}
+import dev.cmartin.aerohex.application.support.ServiceLayerSpecSupport.constructsUsableInstance
 import dev.cmartin.aerohex.domain.country.{
   Country,
   CountryCode,
@@ -107,37 +108,26 @@ object CountryServiceSpec extends ZIOSpecDefault:
         }
       ),
       suite("Country service layers")(
-        test("CreateCountryService.layer constructs a usable instance") {
-          for _ <-
-              ZIO.service[CreateCountryUseCase].provide(
-                ZLayer.succeed(unimplementedCountryRepo),
-                CreateCountryService.layer
-              )
-          yield assertCompletes
-        },
-        test("FindCountryService.layer constructs a usable instance") {
-          for _ <-
-              ZIO.service[FindCountryUseCase].provide(
-                ZLayer.succeed(unimplementedCountryRepo),
-                FindCountryService.layer
-              )
-          yield assertCompletes
-        },
-        test("UpdateCountryService.layer constructs a usable instance") {
-          for _ <-
-              ZIO.service[UpdateCountryUseCase].provide(
-                ZLayer.succeed(unimplementedCountryRepo),
-                UpdateCountryService.layer
-              )
-          yield assertCompletes
-        },
-        test("DeleteCountryService.layer constructs a usable instance") {
-          for _ <-
-              ZIO.service[DeleteCountryUseCase].provide(
-                ZLayer.succeed(unimplementedCountryRepo),
-                DeleteCountryService.layer
-              )
-          yield assertCompletes
-        }
+        constructsUsableInstance("CreateCountryService")(
+          ZIO.service[CreateCountryUseCase].provide(
+            ZLayer.succeed(unimplementedCountryRepo),
+            CreateCountryService.layer
+          )
+        ),
+        constructsUsableInstance("FindCountryService")(
+          ZIO.service[FindCountryUseCase].provide(ZLayer.succeed(unimplementedCountryRepo), FindCountryService.layer)
+        ),
+        constructsUsableInstance("UpdateCountryService")(
+          ZIO.service[UpdateCountryUseCase].provide(
+            ZLayer.succeed(unimplementedCountryRepo),
+            UpdateCountryService.layer
+          )
+        ),
+        constructsUsableInstance("DeleteCountryService")(
+          ZIO.service[DeleteCountryUseCase].provide(
+            ZLayer.succeed(unimplementedCountryRepo),
+            DeleteCountryService.layer
+          )
+        )
       )
     )

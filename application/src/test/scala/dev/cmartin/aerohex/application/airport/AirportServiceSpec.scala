@@ -2,6 +2,7 @@ package dev.cmartin.aerohex.application.airport
 
 import AirportRepositoryStub.{stubAirportRepo, unimplementedAirportRepo}
 import dev.cmartin.aerohex.application.country.CountryRepositoryStub.{stubCountryRepo, unimplementedCountryRepo}
+import dev.cmartin.aerohex.application.support.ServiceLayerSpecSupport.constructsUsableInstance
 import dev.cmartin.aerohex.domain.airport.{
   Airport,
   AirportIcaoCode,
@@ -180,45 +181,40 @@ object AirportServiceSpec extends ZIOSpecDefault:
         }
       ),
       suite("Airport service layers")(
-        test("CreateAirportService.layer constructs a usable instance") {
-          for _ <- ZIO
-                     .service[CreateAirportUseCase]
-                     .provide(ZLayer.succeed(unimplementedAirportRepo), CreateAirportService.layer)
-          yield assertCompletes
-        },
-        test("FindAirportService.layer constructs a usable instance") {
-          for _ <- ZIO
-                     .service[FindAirportUseCase]
-                     .provide(ZLayer.succeed(unimplementedAirportRepo), FindAirportService.layer)
-          yield assertCompletes
-        },
-        test("UpdateAirportService.layer constructs a usable instance") {
-          for _ <- ZIO
-                     .service[UpdateAirportUseCase]
-                     .provide(ZLayer.succeed(unimplementedAirportRepo), UpdateAirportService.layer)
-          yield assertCompletes
-        },
-        test("FindAirportsByCountryService.layer constructs a usable instance") {
-          for _ <- ZIO
-                     .service[FindAirportsByCountryUseCase]
-                     .provide(
-                       ZLayer.succeed(unimplementedCountryRepo),
-                       ZLayer.succeed(unimplementedAirportRepo),
-                       FindAirportsByCountryService.layer
-                     )
-          yield assertCompletes
-        },
-        test("DeleteAirportService.layer constructs a usable instance") {
-          for _ <- ZIO
-                     .service[DeleteAirportUseCase]
-                     .provide(ZLayer.succeed(unimplementedAirportRepo), DeleteAirportService.layer)
-          yield assertCompletes
-        },
-        test("FindCountryForAirportService.layer constructs a usable instance") {
-          for _ <- ZIO
-                     .service[FindCountryForAirportUseCase]
-                     .provide(ZLayer.succeed(unimplementedAirportRepo), FindCountryForAirportService.layer)
-          yield assertCompletes
-        }
+        constructsUsableInstance("CreateAirportService")(
+          ZIO.service[CreateAirportUseCase].provide(
+            ZLayer.succeed(unimplementedAirportRepo),
+            CreateAirportService.layer
+          )
+        ),
+        constructsUsableInstance("FindAirportService")(
+          ZIO.service[FindAirportUseCase].provide(ZLayer.succeed(unimplementedAirportRepo), FindAirportService.layer)
+        ),
+        constructsUsableInstance("UpdateAirportService")(
+          ZIO.service[UpdateAirportUseCase].provide(
+            ZLayer.succeed(unimplementedAirportRepo),
+            UpdateAirportService.layer
+          )
+        ),
+        constructsUsableInstance("FindAirportsByCountryService")(
+          ZIO
+            .service[FindAirportsByCountryUseCase]
+            .provide(
+              ZLayer.succeed(unimplementedCountryRepo),
+              ZLayer.succeed(unimplementedAirportRepo),
+              FindAirportsByCountryService.layer
+            )
+        ),
+        constructsUsableInstance("DeleteAirportService")(
+          ZIO.service[DeleteAirportUseCase].provide(
+            ZLayer.succeed(unimplementedAirportRepo),
+            DeleteAirportService.layer
+          )
+        ),
+        constructsUsableInstance("FindCountryForAirportService")(
+          ZIO
+            .service[FindCountryForAirportUseCase]
+            .provide(ZLayer.succeed(unimplementedAirportRepo), FindCountryForAirportService.layer)
+        )
       )
     )

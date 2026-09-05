@@ -2,6 +2,7 @@ package dev.cmartin.aerohex.application.route
 
 import RouteAirlineRepositoryStub.{stubRouteAirlineRepo, unimplementedRouteAirlineRepo}
 import RouteRepositoryStub.{stubRouteRepo, unimplementedRouteRepo}
+import dev.cmartin.aerohex.application.support.ServiceLayerSpecSupport.constructsUsableInstance
 import dev.cmartin.aerohex.domain.airline.{Airline, AirlineIcaoCode}
 import dev.cmartin.aerohex.domain.airport.{Airport, AirportIcaoCode, FindAirportUseCase, IataCode}
 import dev.cmartin.aerohex.domain.country.CountryCode
@@ -155,45 +156,38 @@ object RouteServiceSpec extends ZIOSpecDefault:
         }
       ),
       suite("Route service layers")(
-        test("CreateRouteService.layer constructs a usable instance") {
-          for _ <- ZIO
-                     .service[CreateRouteUseCase]
-                     .provide(
-                       ZLayer.succeed(findAirportStub(_ => ZIO.die(new NotImplementedError))),
-                       ZLayer.succeed(unimplementedRouteRepo),
-                       CreateRouteService.layer
-                     )
-          yield assertCompletes
-        },
-        test("AssociateAirlineService.layer constructs a usable instance") {
-          for _ <- ZIO
-                     .service[AssociateAirlineUseCase]
-                     .provide(ZLayer.succeed(unimplementedRouteAirlineRepo), AssociateAirlineService.layer)
-          yield assertCompletes
-        },
-        test("DisassociateAirlineService.layer constructs a usable instance") {
-          for _ <- ZIO
-                     .service[DisassociateAirlineUseCase]
-                     .provide(ZLayer.succeed(unimplementedRouteAirlineRepo), DisassociateAirlineService.layer)
-          yield assertCompletes
-        },
-        test("FindAirlinesByRouteService.layer constructs a usable instance") {
-          for _ <- ZIO
-                     .service[FindAirlinesByRouteUseCase]
-                     .provide(ZLayer.succeed(unimplementedRouteAirlineRepo), FindAirlinesByRouteService.layer)
-          yield assertCompletes
-        },
-        test("FindRoutesByAirlineService.layer constructs a usable instance") {
-          for _ <- ZIO
-                     .service[FindRoutesByAirlineUseCase]
-                     .provide(ZLayer.succeed(unimplementedRouteAirlineRepo), FindRoutesByAirlineService.layer)
-          yield assertCompletes
-        },
-        test("FindRouteService.layer constructs a usable instance") {
-          for _ <- ZIO
-                     .service[FindRouteUseCase]
-                     .provide(ZLayer.succeed(unimplementedRouteRepo), FindRouteService.layer)
-          yield assertCompletes
-        }
+        constructsUsableInstance("CreateRouteService")(
+          ZIO
+            .service[CreateRouteUseCase]
+            .provide(
+              ZLayer.succeed(findAirportStub(_ => ZIO.die(new NotImplementedError))),
+              ZLayer.succeed(unimplementedRouteRepo),
+              CreateRouteService.layer
+            )
+        ),
+        constructsUsableInstance("AssociateAirlineService")(
+          ZIO.service[AssociateAirlineUseCase].provide(
+            ZLayer.succeed(unimplementedRouteAirlineRepo),
+            AssociateAirlineService.layer
+          )
+        ),
+        constructsUsableInstance("DisassociateAirlineService")(
+          ZIO
+            .service[DisassociateAirlineUseCase]
+            .provide(ZLayer.succeed(unimplementedRouteAirlineRepo), DisassociateAirlineService.layer)
+        ),
+        constructsUsableInstance("FindAirlinesByRouteService")(
+          ZIO
+            .service[FindAirlinesByRouteUseCase]
+            .provide(ZLayer.succeed(unimplementedRouteAirlineRepo), FindAirlinesByRouteService.layer)
+        ),
+        constructsUsableInstance("FindRoutesByAirlineService")(
+          ZIO
+            .service[FindRoutesByAirlineUseCase]
+            .provide(ZLayer.succeed(unimplementedRouteAirlineRepo), FindRoutesByAirlineService.layer)
+        ),
+        constructsUsableInstance("FindRouteService")(
+          ZIO.service[FindRouteUseCase].provide(ZLayer.succeed(unimplementedRouteRepo), FindRouteService.layer)
+        )
       )
     )

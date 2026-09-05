@@ -1,5 +1,6 @@
 package dev.cmartin.aerohex.application.auth
 
+import dev.cmartin.aerohex.application.support.ServiceLayerSpecSupport.constructsUsableInstance
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.user.{AccessToken, LogoutUseCase, TokenService, ValidatedToken}
 import java.time.Instant
@@ -24,12 +25,10 @@ object LogoutServiceSpec extends ZIOSpecDefault:
           recorded <- calls.get
         yield assertTrue(recorded == List("some-jti" -> expiresAt))
       },
-      test("LogoutService.layer constructs a usable instance") {
+      constructsUsableInstance("LogoutService")(
         for
           calls <- Ref.make(List.empty[(String, Instant)])
-          _     <- ZIO
-                     .service[LogoutUseCase]
-                     .provide(ZLayer.succeed(recordingTokenService(calls)), LogoutService.layer)
-        yield assertCompletes
-      }
+          _     <- ZIO.service[LogoutUseCase].provide(ZLayer.succeed(recordingTokenService(calls)), LogoutService.layer)
+        yield ()
+      )
     )

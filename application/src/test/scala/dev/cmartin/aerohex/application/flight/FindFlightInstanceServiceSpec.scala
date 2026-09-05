@@ -1,6 +1,7 @@
 package dev.cmartin.aerohex.application.flight
 
 import FlightInstanceRepositoryStub.{stubFlightInstanceRepo, unimplementedFlightInstanceRepo}
+import dev.cmartin.aerohex.application.support.ServiceLayerSpecSupport.constructsUsableInstance
 import dev.cmartin.aerohex.domain.aircraft.Registration
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.flight.{FindFlightInstanceUseCase, FlightCode, FlightInstance, FlightInstanceId}
@@ -44,10 +45,9 @@ object FindFlightInstanceServiceSpec extends ZIOSpecDefault:
         for result <- new FindFlightInstanceService(repo).findAll(Pagination(1, 20))
         yield assertTrue(result == List(instance))
       },
-      test("FindFlightInstanceService.layer constructs a usable instance") {
-        for _ <- ZIO
-                   .service[FindFlightInstanceUseCase]
-                   .provide(ZLayer.succeed(unimplementedFlightInstanceRepo), FindFlightInstanceService.layer)
-        yield assertCompletes
-      }
+      constructsUsableInstance("FindFlightInstanceService")(
+        ZIO
+          .service[FindFlightInstanceUseCase]
+          .provide(ZLayer.succeed(unimplementedFlightInstanceRepo), FindFlightInstanceService.layer)
+      )
     )

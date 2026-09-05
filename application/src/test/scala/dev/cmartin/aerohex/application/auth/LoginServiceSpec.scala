@@ -1,5 +1,6 @@
 package dev.cmartin.aerohex.application.auth
 
+import dev.cmartin.aerohex.application.support.ServiceLayerSpecSupport.constructsUsableInstance
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.user.{
   AccessToken,
@@ -52,15 +53,14 @@ object LoginServiceSpec extends ZIOSpecDefault:
         for error <- service.login("alice", "wrong-password").flip
         yield assertTrue(error == DomainError.InvalidCredentials)
       },
-      test("LoginService.layer constructs a usable instance") {
-        for _ <- ZIO
-                   .service[LoginUseCase]
-                   .provide(
-                     ZLayer.succeed(repoReturning(None)),
-                     ZLayer.succeed(hasherReturning(false)),
-                     ZLayer.succeed(issuingTokenService),
-                     LoginService.layer
-                   )
-        yield assertCompletes
-      }
+      constructsUsableInstance("LoginService")(
+        ZIO
+          .service[LoginUseCase]
+          .provide(
+            ZLayer.succeed(repoReturning(None)),
+            ZLayer.succeed(hasherReturning(false)),
+            ZLayer.succeed(issuingTokenService),
+            LoginService.layer
+          )
+      )
     )
