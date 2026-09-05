@@ -1,14 +1,13 @@
 package dev.cmartin.aerohex.domain.airport
 
+import dev.cmartin.aerohex.domain.support.ValidationTestSupport.accumulatedErrors
 import zio.test.*
 
 object AirportCodesSpec extends ZIOSpecDefault:
 
-  private def iataErrorsOf(raw: String): List[String] =
-    IataCode.validateAll(raw).toEither.fold(_.toChunk.toList, _ => Nil)
+  private val iataErrorsOf = accumulatedErrors(IataCode.validateAll)
 
-  private def icaoErrorsOf(raw: String): List[String] =
-    AirportIcaoCode.validateAll(raw).toEither.fold(_.toChunk.toList, _ => Nil)
+  private val icaoErrorsOf = accumulatedErrors(AirportIcaoCode.validateAll)
 
   override def spec: Spec[TestEnvironment, Any] =
     suite("Airport codes")(

@@ -1,12 +1,12 @@
 package dev.cmartin.aerohex.domain.country
 
 import dev.cmartin.aerohex.domain.error.DomainError
+import dev.cmartin.aerohex.domain.support.ValidationTestSupport.accumulatedErrors
 import zio.test.*
 
 object CountryCodeSpec extends ZIOSpecDefault:
 
-  private def errorsOf(raw: String): List[String] =
-    CountryCode.validateAll(raw).toEither.fold(_.toChunk.toList, _ => Nil)
+  private val errorsOf = accumulatedErrors(CountryCode.validateAll)
 
   override def spec: Spec[TestEnvironment, Any] =
     suite("CountryCode.validateAll")(
