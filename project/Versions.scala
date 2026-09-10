@@ -7,7 +7,7 @@ object Versions {
   val zioKafka       = "3.7.1"
   val zioNio         = "2.0.2"
   val scalaCsv       = "2.0.0"
-  val flyway         = "13.5.0"
+  val flyway         = "13.6.0"
   val postgresql     = "42.7.13"
   val hikaricp       = "7.1.0"
   val circe          = "0.14.16"
