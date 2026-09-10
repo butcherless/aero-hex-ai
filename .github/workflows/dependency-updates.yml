@@ -20,6 +20,7 @@ jobs:
 
     env:
       SBT_OPTS: "-Xmx2g"
+      GH_TOKEN: ${{ github.token }}   # for the `gh api` calls in the SBT/scalafmt and Actions steps
 
     steps:
       - name: Checkout
@@ -47,18 +48,20 @@ jobs:
       - name: Report SBT / scalafmt formatter versions
         # Not covered by `sbt xdup` (that's the main build's dependencies only) or by Dependabot's
         # "sbt" ecosystem entry, as far as could be confirmed — these two need a direct GitHub
-        # releases check, same as the bump-versions skill's Step 2.
+        # releases check, mirroring the bump-versions skill's Step 2 (same `gh api` queries). The
+        # SBT one filters to the v1.x line on purpose: sbt/sbt's own /releases/latest now points
+        # at 2.x, and CLAUDE.md's versioning policy rules out an SBT 2.x jump without a review.
         run: |
           {
             echo '## SBT itself'
             echo '```'
             echo "current: $(grep sbt.version project/build.properties)"
-            echo "latest:  $(curl -s https://api.github.com/repos/sbt/sbt/releases/latest | python3 -c 'import sys,json; print(json.load(sys.stdin)["tag_name"])')"
+            echo "latest:  $(gh api 'repos/sbt/sbt/releases?per_page=30' --jq '[.[] | select(.prerelease | not) | .tag_name | select(startswith("v1."))] | first')"
             echo '```'
             echo '## scalafmt formatter'
             echo '```'
             echo "current: $(grep '^version' .scalafmt.conf)"
-            echo "latest:  $(curl -s https://api.github.com/repos/scalameta/scalafmt/releases/latest | python3 -c 'import sys,json; print(json.load(sys.stdin)["tag_name"])')"
+            echo "latest:  $(gh api repos/scalameta/scalafmt/releases/latest --jq .tag_name)"
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Report GitHub Actions updates
