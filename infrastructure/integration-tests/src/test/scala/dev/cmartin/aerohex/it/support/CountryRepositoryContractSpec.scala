@@ -1,5 +1,6 @@
 package dev.cmartin.aerohex.it.support
 
+import dev.cmartin.aerohex.domain.airport.{Airport, AirportIcaoCode, AirportRepository, IataCode}
 import dev.cmartin.aerohex.domain.country.{Country, CountryCode, CountryRepository}
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.shared.Pagination
@@ -10,7 +11,7 @@ import zio.test.*
 // (Quill's save fails on a duplicate code) stays adapter-specific rather than living here.
 object CountryRepositoryContractSpec:
 
-  def tests: List[Spec[CountryRepository, Any]] = List(
+  def tests: List[Spec[CountryRepository & AirportRepository, Any]] = List(
     test("saves and finds a country by code") {
       for
         repo  <- ZIO.service[CountryRepository]
@@ -60,5 +61,17 @@ object CountryRepositoryContractSpec:
         repo  <- ZIO.service[CountryRepository]
         error <- repo.delete(CountryCode("YY")).flip
       yield assertTrue(error == DomainError.CountryNotFound("YY"))
+    },
+    test("delete fails with CountryInUse when an airport still references the country") {
+      for
+        countryRepo <- ZIO.service[CountryRepository]
+        airportRepo <- ZIO.service[AirportRepository]
+        _           <- countryRepo.save(Country(CountryCode("KI"), "Kiribati"))
+        _           <- airportRepo.save(
+                         Airport(IataCode("TRW"), AirportIcaoCode("NGTA"), "Bonriki International", "Tarawa", 1.3816, 173.1470),
+                         CountryCode("KI")
+                       )
+        error       <- countryRepo.delete(CountryCode("KI")).flip
+      yield assertTrue(error == DomainError.CountryInUse("KI"))
     }
   )

@@ -164,11 +164,11 @@ final class QuillAirportRepository(dataSource: DataSource) extends AirportReposi
     }
 
   override def delete(iata: IataCode): IO[DomainError, Unit] =
-    QuillSqlState.refineZeroRows(
+    QuillSqlState.refineForeignKeyViolationOrZeroRows(
       ctx.run(quote {
         querySchema[AirportRow]("airports").filter(_.iataCode == lift(iata.value)).delete
       })
-    )(DomainError.AirportNotFound(iata.value), ())
+    )(DomainError.AirportInUse(iata.value), DomainError.AirportNotFound(iata.value), ())
 }
 
 object QuillAirportRepository {

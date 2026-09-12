@@ -3,6 +3,7 @@ package dev.cmartin.aerohex.it.support
 import dev.cmartin.aerohex.domain.airport.{Airport, AirportIcaoCode, AirportRepository, IataCode}
 import dev.cmartin.aerohex.domain.country.{Country, CountryCode, CountryRepository}
 import dev.cmartin.aerohex.domain.error.DomainError
+import dev.cmartin.aerohex.domain.route.{Route, RouteRepository}
 import dev.cmartin.aerohex.shared.Pagination
 import zio.ZIO
 import zio.test.*
@@ -13,7 +14,7 @@ object AirportRepositoryContractSpec:
   private def seedCountry(code: String, name: String): ZIO[CountryRepository, DomainError, Unit] =
     ZIO.serviceWithZIO[CountryRepository](_.save(Country(CountryCode.unsafeMake(code), name)).unit)
 
-  def tests: List[Spec[AirportRepository & CountryRepository, Any]] = List(
+  def tests: List[Spec[AirportRepository & CountryRepository & RouteRepository, Any]] = List(
     test("saves and finds an airport by iata code") {
       for
         _     <- seedCountry("ES", "Spain")
@@ -161,5 +162,23 @@ object AirportRepositoryContractSpec:
         repo  <- ZIO.service[AirportRepository]
         error <- repo.delete(IataCode("ZZZ")).flip
       yield assertTrue(error == DomainError.AirportNotFound("ZZZ"))
+    },
+    test("delete fails with AirportInUse when a route still references the airport") {
+      for
+        _           <- seedCountry("KI", "Kiribati")
+        airportRepo <- ZIO.service[AirportRepository]
+        routeRepo   <- ZIO.service[RouteRepository]
+        _           <- airportRepo.save(
+                         Airport(IataCode("TRW"), AirportIcaoCode("NGTA"), "Bonriki International", "Tarawa", 1.3816, 173.1470),
+                         CountryCode("KI")
+                       )
+        _           <-
+          airportRepo.save(
+            Airport(IataCode("TBF"), AirportIcaoCode("NGTE"), "Tabiteuea North", "Tabiteuea North", -1.2167, 174.7667),
+            CountryCode("KI")
+          )
+        _           <- routeRepo.save(Route(IataCode("TRW"), IataCode("TBF"), 200))
+        error       <- airportRepo.delete(IataCode("TRW")).flip
+      yield assertTrue(error == DomainError.AirportInUse("TRW"))
     }
   )

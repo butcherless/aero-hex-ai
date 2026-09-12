@@ -18,12 +18,20 @@ object ErrorMapperSpec extends ZIOSpecDefault:
           val (status, body) = ErrorMapper.toHttpError(DomainError.CountryAlreadyExists("ES"))
           assertTrue(status == StatusCode.Conflict, body.message.contains("ES"))
         },
+        test("maps CountryInUse to 409") {
+          val (status, body) = ErrorMapper.toHttpError(DomainError.CountryInUse("ES"))
+          assertTrue(status == StatusCode.Conflict, body.message.contains("ES"))
+        },
         test("maps AirportNotFound to 404") {
           val (status, body) = ErrorMapper.toHttpError(DomainError.AirportNotFound("MAD"))
           assertTrue(status == StatusCode.NotFound, body.message.contains("MAD"))
         },
         test("maps AirportAlreadyExists to 409") {
           val (status, body) = ErrorMapper.toHttpError(DomainError.AirportAlreadyExists("MAD"))
+          assertTrue(status == StatusCode.Conflict, body.message.contains("MAD"))
+        },
+        test("maps AirportInUse to 409") {
+          val (status, body) = ErrorMapper.toHttpError(DomainError.AirportInUse("MAD"))
           assertTrue(status == StatusCode.Conflict, body.message.contains("MAD"))
         },
         test("maps AirlineNotFound to 404") {

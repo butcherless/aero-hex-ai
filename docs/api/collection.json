@@ -15057,7 +15057,7 @@
             "description": "Creates ZZT — Kiribati Test Airport, belonging to KI. Extracts iata and Location header for subsequent steps.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"iata\": \"ZZT\",\n  \"icaoCode\": \"ZZZT\",\n  \"name\": \"Kiribati Test Airport\",\n  \"city\": \"Kiribati City\",\n  \"countryCode\": \"KI\"\n}",
+              "raw": "{\n  \"iata\": \"ZZT\",\n  \"icaoCode\": \"ZZZT\",\n  \"name\": \"Kiribati Test Airport\",\n  \"city\": \"Kiribati City\",\n  \"countryCode\": \"KI\",\n  \"latitude\": 1.3382,\n  \"longitude\": 173.1361\n}",
               "options": {
                 "raw": {
                   "headerFamily": "json",
@@ -15181,7 +15181,7 @@
             "description": "Updates the airport's name. Captures the new name for the next assertion step.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"icaoCode\": \"ZZZT\",\n  \"name\": \"Kiribati Test Airport Updated\",\n  \"city\": \"Kiribati City\",\n  \"countryCode\": \"KI\"\n}",
+              "raw": "{\n  \"icaoCode\": \"ZZZT\",\n  \"name\": \"Kiribati Test Airport Updated\",\n  \"city\": \"Kiribati City\",\n  \"countryCode\": \"KI\",\n  \"latitude\": 1.3382,\n  \"longitude\": 173.1361\n}",
               "options": {
                 "raw": {
                   "headerFamily": "json",

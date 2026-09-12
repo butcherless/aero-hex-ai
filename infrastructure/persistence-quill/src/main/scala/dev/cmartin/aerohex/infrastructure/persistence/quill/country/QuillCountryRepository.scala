@@ -85,11 +85,11 @@ final class QuillCountryRepository(dataSource: DataSource) extends CountryReposi
     )(DomainError.CountryNotFound(country.code.value), country)
 
   override def delete(code: CountryCode): IO[DomainError, Unit] =
-    QuillSqlState.refineZeroRows(
+    QuillSqlState.refineForeignKeyViolationOrZeroRows(
       ctx.run(quote {
         querySchema[CountryRow]("countries").filter(_.code == lift(code.value)).delete
       })
-    )(DomainError.CountryNotFound(code.value), ())
+    )(DomainError.CountryInUse(code.value), DomainError.CountryNotFound(code.value), ())
 }
 
 object QuillCountryRepository {
