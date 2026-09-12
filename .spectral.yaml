@@ -1,2 +1,6 @@
 extends:
   - spectral:oas
+
+rules:
+  tag-description: true
+  oas3-parameter-description: true
