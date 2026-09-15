@@ -14352,10 +14352,10 @@
               "query": [],
               "variable": []
             },
-            "description": "Creates PT — Portugal. Extracts code and Location header for subsequent steps.",
+            "description": "Creates PN — Pitcairn. Extracts code and Location header for subsequent steps.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"code\": \"PT\",\n  \"name\": \"Portugal\"\n}",
+              "raw": "{\n  \"code\": \"PN\",\n  \"name\": \"Pitcairn\"\n}",
               "options": {
                 "raw": {
                   "headerFamily": "json",
@@ -14380,9 +14380,9 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "// Idempotent setup: remove PT if left over from a previous run",
+                  "// Idempotent setup: remove PN if left over from a previous run",
                   "pm.sendRequest({",
-                  "    url: pm.environment.get('baseUrl') + '/api/v1/countries/PT',",
+                  "    url: pm.environment.get('baseUrl') + '/api/v1/countries/PN',",
                   "    method: 'DELETE'",
                   "}, (err, res) => { /* 204 or 404 — both are fine */ });"
                 ]
@@ -14395,8 +14395,8 @@
                 "exec": [
                   "pm.test('201 Created', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
-                  "pm.test('code is PT', () => pm.expect(body.code).to.eql('PT'));",
-                  "pm.test('name is Portugal', () => pm.expect(body.name).to.eql('Portugal'));",
+                  "pm.test('code is PN', () => pm.expect(body.code).to.eql('PN'));",
+                  "pm.test('name is Pitcairn', () => pm.expect(body.name).to.eql('Pitcairn'));",
                   "pm.environment.set('countryCode', body.code);",
                   "pm.environment.set('locationHeader', pm.response.headers.get('Location'));"
                 ]
@@ -14454,7 +14454,7 @@
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "const body = pm.response.json();",
                   "pm.test('code matches', () => pm.expect(body.code).to.eql(pm.environment.get('countryCode')));",
-                  "pm.test('name is Portugal', () => pm.expect(body.name).to.eql('Portugal'));"
+                  "pm.test('name is Pitcairn', () => pm.expect(body.name).to.eql('Pitcairn'));"
                 ]
               }
             }
@@ -14492,7 +14492,7 @@
             "description": "Updates the country name. Captures the new name for the next assertion step.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Portuguese Republic\"\n}",
+              "raw": "{\n  \"name\": \"Pitcairn, Henderson, Ducie and Oeno Islands\"\n}",
               "options": {
                 "raw": {
                   "headerFamily": "json",
@@ -14519,7 +14519,7 @@
                 "exec": [
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "const body = pm.response.json();",
-                  "pm.test('name updated', () => pm.expect(body.name).to.eql('Portuguese Republic'));",
+                  "pm.test('name updated', () => pm.expect(body.name).to.eql('Pitcairn, Henderson, Ducie and Oeno Islands'));",
                   "pm.environment.set('updatedName', body.name);"
                 ]
               }
@@ -14724,7 +14724,7 @@
             "description": "Inserts a unique country so search results are deterministic.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"code\": \"TV\",\n  \"name\": \"Zephyrland\"\n}",
+              "raw": "{\n  \"code\": \"BV\",\n  \"name\": \"Zephyrland\"\n}",
               "options": {
                 "raw": {
                   "headerFamily": "json",
@@ -14744,6 +14744,19 @@
             }
           },
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Idempotent setup: remove BV if left over from a previous run",
+                  "pm.sendRequest({",
+                  "    url: pm.environment.get('baseUrl') + '/api/v1/countries/BV',",
+                  "    method: 'DELETE'",
+                  "}, (err, res) => { /* 204 or 404 — both are fine */ });"
+                ]
+              }
+            },
             {
               "listen": "test",
               "script": {
@@ -14789,13 +14802,13 @@
                 },
                 {
                   "key": "pageSize",
-                  "value": "20",
+                  "value": "100",
                   "disabled": false
                 }
               ],
               "variable": []
             },
-            "description": "Paginated list; verifies the response is an array with at least one entry.",
+            "description": "Paginated list (pageSize at the endpoint's max of 100 — this dev DB seeds all 249 ISO countries, so a small page could miss the one just created); verifies the response is an array with at least one entry.",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -14972,10 +14985,10 @@
               "query": [],
               "variable": []
             },
-            "description": "Creates the KI — Kiribati country that the airport in this flow belongs to.",
+            "description": "Creates the HM — Heard Island and McDonald Islands country that the airport in this flow belongs to.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"code\": \"KI\",\n  \"name\": \"Kiribati\"\n}",
+              "raw": "{\n  \"code\": \"HM\",\n  \"name\": \"Heard Island and McDonald Islands\"\n}",
               "options": {
                 "raw": {
                   "headerFamily": "json",
@@ -15006,7 +15019,7 @@
                   "    method: 'DELETE'",
                   "}, (err, res) => {",
                   "    pm.sendRequest({",
-                  "        url: pm.environment.get('baseUrl') + '/api/v1/countries/KI',",
+                  "        url: pm.environment.get('baseUrl') + '/api/v1/countries/HM',",
                   "        method: 'DELETE'",
                   "    }, (err2, res2) => { /* 204 or 404 — both are fine */ });",
                   "});"
@@ -15020,7 +15033,7 @@
                 "exec": [
                   "pm.test('201 Created', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
-                  "pm.test('code is KI', () => pm.expect(body.code).to.eql('KI'));"
+                  "pm.test('code is HM', () => pm.expect(body.code).to.eql('HM'));"
                 ]
               }
             }
@@ -15054,10 +15067,10 @@
               "query": [],
               "variable": []
             },
-            "description": "Creates ZZT — Kiribati Test Airport, belonging to KI. Extracts iata and Location header for subsequent steps.",
+            "description": "Creates ZZT — Heard Island Test Airport, belonging to HM. Extracts iata and Location header for subsequent steps.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"iata\": \"ZZT\",\n  \"icaoCode\": \"ZZZT\",\n  \"name\": \"Kiribati Test Airport\",\n  \"city\": \"Kiribati City\",\n  \"countryCode\": \"KI\",\n  \"latitude\": 1.3382,\n  \"longitude\": 173.1361\n}",
+              "raw": "{\n  \"iata\": \"ZZT\",\n  \"icaoCode\": \"ZZZT\",\n  \"name\": \"Heard Island Test Airport\",\n  \"city\": \"Heard Island Station\",\n  \"countryCode\": \"HM\",\n  \"latitude\": 1.3382,\n  \"longitude\": 173.1361\n}",
               "options": {
                 "raw": {
                   "headerFamily": "json",
@@ -15085,7 +15098,7 @@
                   "pm.test('201 Created', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
                   "pm.test('iata is ZZT', () => pm.expect(body.iata).to.eql('ZZT'));",
-                  "pm.test('name matches', () => pm.expect(body.name).to.eql('Kiribati Test Airport'));",
+                  "pm.test('name matches', () => pm.expect(body.name).to.eql('Heard Island Test Airport'));",
                   "pm.environment.set('airportIata', body.iata);",
                   "pm.environment.set('locationHeader', pm.response.headers.get('Location'));"
                 ]
@@ -15143,7 +15156,7 @@
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "const body = pm.response.json();",
                   "pm.test('iata matches', () => pm.expect(body.iata).to.eql(pm.environment.get('airportIata')));",
-                  "pm.test('city is Kiribati City', () => pm.expect(body.city).to.eql('Kiribati City'));"
+                  "pm.test('city is Heard Island Station', () => pm.expect(body.city).to.eql('Heard Island Station'));"
                 ]
               }
             }
@@ -15181,7 +15194,7 @@
             "description": "Updates the airport's name. Captures the new name for the next assertion step.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"icaoCode\": \"ZZZT\",\n  \"name\": \"Kiribati Test Airport Updated\",\n  \"city\": \"Kiribati City\",\n  \"countryCode\": \"KI\",\n  \"latitude\": 1.3382,\n  \"longitude\": 173.1361\n}",
+              "raw": "{\n  \"icaoCode\": \"ZZZT\",\n  \"name\": \"Heard Island Test Airport Updated\",\n  \"city\": \"Heard Island Station\",\n  \"countryCode\": \"HM\",\n  \"latitude\": 1.3382,\n  \"longitude\": 173.1361\n}",
               "options": {
                 "raw": {
                   "headerFamily": "json",
@@ -15208,7 +15221,7 @@
                 "exec": [
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "const body = pm.response.json();",
-                  "pm.test('name updated', () => pm.expect(body.name).to.eql('Kiribati Test Airport Updated'));",
+                  "pm.test('name updated', () => pm.expect(body.name).to.eql('Heard Island Test Airport Updated'));",
                   "pm.environment.set('updatedAirportName', body.name);"
                 ]
               }
@@ -15399,12 +15412,12 @@
                 "api",
                 "v1",
                 "countries",
-                "KI"
+                "HM"
               ],
               "query": [],
               "variable": []
             },
-            "description": "Deletes the KI country now that the airport referencing it is gone.",
+            "description": "Deletes the HM country now that the airport referencing it is gone.",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -15463,10 +15476,10 @@
               "query": [],
               "variable": []
             },
-            "description": "Creates the KI — Kiribati country that the airline in this flow belongs to.",
+            "description": "Creates the GS — South Georgia and the South Sandwich Islands country that the airline in this flow belongs to.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"code\": \"KI\",\n  \"name\": \"Kiribati\"\n}",
+              "raw": "{\n  \"code\": \"GS\",\n  \"name\": \"South Georgia and the South Sandwich Islands\"\n}",
               "options": {
                 "raw": {
                   "headerFamily": "json",
@@ -15497,7 +15510,7 @@
                   "    method: 'DELETE'",
                   "}, (err, res) => {",
                   "    pm.sendRequest({",
-                  "        url: pm.environment.get('baseUrl') + '/api/v1/countries/KI',",
+                  "        url: pm.environment.get('baseUrl') + '/api/v1/countries/GS',",
                   "        method: 'DELETE'",
                   "    }, (err2, res2) => { /* 204 or 404 — both are fine */ });",
                   "});"
@@ -15511,7 +15524,7 @@
                 "exec": [
                   "pm.test('201 Created', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
-                  "pm.test('code is KI', () => pm.expect(body.code).to.eql('KI'));"
+                  "pm.test('code is GS', () => pm.expect(body.code).to.eql('GS'));"
                 ]
               }
             }
@@ -15545,10 +15558,10 @@
               "query": [],
               "variable": []
             },
-            "description": "Creates ZTA — Kiribati Airways, belonging to KI. Extracts icao and Location header for subsequent steps.",
+            "description": "Creates ZTA — South Georgia Airways, belonging to GS. Extracts icao and Location header for subsequent steps.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"icao\": \"ZTA\",\n  \"name\": \"Kiribati Airways\",\n  \"alias\": null,\n  \"callsign\": \"KIRIBATI\",\n  \"countryCode\": \"KI\"\n}",
+              "raw": "{\n  \"icao\": \"ZTA\",\n  \"name\": \"South Georgia Airways\",\n  \"alias\": null,\n  \"callsign\": \"SOUTHGEORGIA\",\n  \"countryCode\": \"GS\"\n}",
               "options": {
                 "raw": {
                   "headerFamily": "json",
@@ -15576,7 +15589,7 @@
                   "pm.test('201 Created', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
                   "pm.test('icao is ZTA', () => pm.expect(body.icao).to.eql('ZTA'));",
-                  "pm.test('name matches', () => pm.expect(body.name).to.eql('Kiribati Airways'));",
+                  "pm.test('name matches', () => pm.expect(body.name).to.eql('South Georgia Airways'));",
                   "pm.environment.set('airlineIcao', body.icao);",
                   "pm.environment.set('locationHeader', pm.response.headers.get('Location'));"
                 ]
@@ -15634,7 +15647,7 @@
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "const body = pm.response.json();",
                   "pm.test('icao matches', () => pm.expect(body.icao).to.eql(pm.environment.get('airlineIcao')));",
-                  "pm.test('callsign is KIRIBATI', () => pm.expect(body.callsign).to.eql('KIRIBATI'));"
+                  "pm.test('callsign is SOUTHGEORGIA', () => pm.expect(body.callsign).to.eql('SOUTHGEORGIA'));"
                 ]
               }
             }
@@ -15672,7 +15685,7 @@
             "description": "Updates the airline's name. Captures the new name for the next assertion step.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Kiribati Airways Ltd\",\n  \"alias\": null,\n  \"callsign\": \"KIRIBATI\",\n  \"countryCode\": \"KI\"\n}",
+              "raw": "{\n  \"name\": \"South Georgia Airways Ltd\",\n  \"alias\": null,\n  \"callsign\": \"SOUTHGEORGIA\",\n  \"countryCode\": \"GS\"\n}",
               "options": {
                 "raw": {
                   "headerFamily": "json",
@@ -15699,7 +15712,7 @@
                 "exec": [
                   "pm.test('200 OK', () => pm.response.to.have.status(200));",
                   "const body = pm.response.json();",
-                  "pm.test('name updated', () => pm.expect(body.name).to.eql('Kiribati Airways Ltd'));",
+                  "pm.test('name updated', () => pm.expect(body.name).to.eql('South Georgia Airways Ltd'));",
                   "pm.environment.set('updatedAirlineName', body.name);"
                 ]
               }
@@ -15890,12 +15903,12 @@
                 "api",
                 "v1",
                 "countries",
-                "KI"
+                "GS"
               ],
               "query": [],
               "variable": []
             },
-            "description": "Deletes the KI country now that the airline referencing it is gone.",
+            "description": "Deletes the GS country now that the airline referencing it is gone.",
             "auth": {
               "type": "bearer",
               "bearer": [
@@ -15954,10 +15967,10 @@
               "query": [],
               "variable": []
             },
-            "description": "Creates the KI — Kiribati country that the airline in this flow belongs to.",
+            "description": "Creates the TF — French Southern Territories country that the airline in this flow belongs to.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"code\": \"KI\",\n  \"name\": \"Kiribati\"\n}",
+              "raw": "{\n  \"code\": \"TF\",\n  \"name\": \"French Southern Territories\"\n}",
               "options": {
                 "raw": {
                   "headerFamily": "json",
@@ -15992,7 +16005,7 @@
                   "        method: 'DELETE'",
                   "    }, (err2, res2) => {",
                   "        pm.sendRequest({",
-                  "            url: pm.environment.get('baseUrl') + '/api/v1/countries/KI',",
+                  "            url: pm.environment.get('baseUrl') + '/api/v1/countries/TF',",
                   "            method: 'DELETE'",
                   "        }, (err3, res3) => { /* 204 or 404 — both are fine */ });",
                   "    });",
@@ -16007,7 +16020,7 @@
                 "exec": [
                   "pm.test('201 Created', () => pm.response.to.have.status(201));",
                   "const body = pm.response.json();",
-                  "pm.test('code is KI', () => pm.expect(body.code).to.eql('KI'));"
+                  "pm.test('code is TF', () => pm.expect(body.code).to.eql('TF'));"
                 ]
               }
             }
@@ -16041,10 +16054,10 @@
               "query": [],
               "variable": []
             },
-            "description": "Creates ZTA — Kiribati Airways, belonging to KI, that the aircraft in this flow belongs to.",
+            "description": "Creates ZTA — French Southern Airways, belonging to TF, that the aircraft in this flow belongs to.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"icao\": \"ZTA\",\n  \"name\": \"Kiribati Airways\",\n  \"alias\": null,\n  \"callsign\": \"KIRIBATI\",\n  \"countryCode\": \"KI\"\n}",
+              "raw": "{\n  \"icao\": \"ZTA\",\n  \"name\": \"French Southern Airways\",\n  \"alias\": null,\n  \"callsign\": \"FRSOUTHERN\",\n  \"countryCode\": \"TF\"\n}",
               "options": {
                 "raw": {
                   "headerFamily": "json",
@@ -16503,12 +16516,12 @@
                 "api",
                 "v1",
                 "countries",
-                "KI"
+                "TF"
               ],
               "query": [],
               "variable": []
             },
-            "description": "Deletes the KI country now that the airline referencing it is gone.",
+            "description": "Deletes the TF country now that the airline referencing it is gone.",
             "auth": {
               "type": "bearer",
               "bearer": [
