@@ -1,5 +1,22 @@
-# Redocly config: strict OAS 3.1 schema conformance only.
-# Best-practice rules are handled by Spectral (.spectral.yaml).
-extends: []
+# Redocly config: the built-in `recommended` ruleset, with `struct` kept at error.
+# Extra best-practice rules are handled by Spectral (.spectral.yaml).
+extends:
+  - recommended
+
 rules:
   struct: error
+
+  # Every operation must declare security, except the deliberately public ones:
+  # login (issues the token) and the /health/* probes.
+  security-defined:
+    severity: error
+    exceptions:
+      - path: "/api/v1/auth/login"
+      - path: "/health/live"
+      - path: "/health/ready"
+
+  # Liveness/readiness probes only ever answer 2xx/5xx — no client-error case exists.
+  operation-4xx-response: off
+
+  # The generator advertises the local dev server (http://localhost:8080) on purpose.
+  no-server-example.com: off
