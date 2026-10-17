@@ -1,13 +1,13 @@
 object Versions {
   val scala3         = "3.9.0"
-  val zio            = "2.1.26"
+  val zio            = "2.1.27"
   val zioPrelude     = "1.0.0-RC48" // no GA release yet
   val zioHttp        = "3.11.6"
   val tapir          = "1.13.33"
   val zioKafka       = "3.8.0"
   val zioNio         = "2.0.2"
   val scalaCsv       = "2.0.0"
-  val flyway         = "13.10.0"
+  val flyway         = "13.10.3"
   val postgresql     = "42.7.14"
   val hikaricp       = "7.1.0"
   val circe          = "0.14.17"
