@@ -23,16 +23,10 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 
 ## Versioning policy
 
-- **Scala** — LTS only (currently 3.9.x — the LTS line moved from 3.3.x to 3.9.0 when 3.9.0 LTS shipped on 2026-09-03). Never upgrade to a non-LTS minor (e.g. 3.10.x "Next"). The `scala3-library` entry in `dependencyUpdates` that tracks a newer non-LTS minor is the SBT meta-build; ignore it.
-- **JDK** — Java 21 LTS required, locally and in CI (`java-version: '21'` in `.github/workflows/*.yml`). Never Java 25 or other
-  non-LTS versions — Java 25 silently breaks ZIO 2.1.26's test framework (tests report "Failed" with zero SBT test events,
-  no pass/fail per test). ZIO is only certified for Java 17/21.
-- **SBT** — stay on the 1.x series (`project/build.properties`). Never upgrade to SBT 2.x without a
-  deliberate migration review — treat it the same as a major direct-dependency bump, not a routine
-  patch/minor update.
-- **Direct deps** — stable GA by default. Named exception: ZIO Prelude 1.x (no GA release yet) —
-  don't chase a newer RC/M/SNAPSHOT without a deliberate reason (a GA release or a needed
-  capability).
+- **Scala** — always the latest LTS or newer, never a mainline "Next" release. Ignore the `scala3-library` line in `dependencyUpdates`; it's the SBT meta-build.
+- **JDK** — Java 21 LTS, locally and in CI. Never Java 25 or other non-LTS versions: Java 25 has silently broken ZIO's test framework here (tests report "Failed" with zero SBT test events).
+- **SBT** — stay on 1.x. A move to 2.x is a deliberate migration, reviewed like a major dependency bump.
+- **Direct deps** — stable GA. Named exception: ZIO Prelude 1.x (no GA release yet); don't chase a newer RC/M/SNAPSHOT without a GA release or a needed capability.
 - **Transitive deps** — let SBT resolve via eviction; only force an override for a known vulnerability or binary-incompatibility.
 - **Updates** — run `sbt xdup` before each feature cycle. Patch/minor updates are free; major bumps need migration-guide review and passing compile + tests.
 
@@ -115,22 +109,11 @@ either way. Four ways to construct, by use case:
 - `.unsafeMake(raw)` — already-trusted data (DB reads, Tapir-already-validated path params,
   cross-entity reference fields).
 
-Real validation (`.validateAll`) is wired into each type's *owning* entity's create path only
-(`CreateCountryRequest`/`CreateAirportRequest`/`CreateAirlineRequest`/`CreateAircraftRequest`/
-`CreateFlightRequest`.toCommand) — a reference field on another entity (e.g. `Aircraft.airlineIcao`,
-`Route.origin`, `Flight.origin`/`destination`/`airlineIcao`) always uses `unsafeMake`, never
-`.make`/`.validateAll`. The HTTP error response (`HttpErrorResponse`) carries both a short `message`
-and the full `errors: List[String]` so a client sees every violated rule in one round trip — though
-Tapir's own schema-level length `Validator`s (kept for OpenAPI-visible bounds) already reject a
-wrong-length body before `toCommand` runs, so in practice only the "letters only" rule is ever
-reachable through the live HTTP endpoint for the four exact-length types; full multi-rule
-accumulation is exercised directly against `.validateAll` in `domain`'s test suite (e.g.
-`CountryCodeSpec`).
+`.validateAll` is wired only into each type's *owning* entity's create path (`Create<Entity>Request.toCommand`). A reference field on another entity (e.g. `Aircraft.airlineIcao`, `Route.origin`) always uses `unsafeMake`.
 
-Per-type shape: `IataCode` (3 letters), `AirportIcaoCode` (4 letters), `AirlineIcaoCode` (3
-letters) — each enforces its own exact length, matching its column's `VARCHAR` bound.
-`Registration` (non-blank, ≤10 chars) and `FlightCode` (non-blank, ≤8 chars) have no fixed shape,
-only a length cap, bound-identical to their HTTP `Validator`s.
+`HttpErrorResponse` carries a short `message` and the full `errors: List[String]`. Tapir's length `Validator`s (kept for OpenAPI bounds) reject wrong-length bodies before `toCommand` runs, so full multi-rule accumulation is only exercised against `.validateAll` in `domain`'s tests (e.g. `CountryCodeSpec`).
+
+Shapes, matching the `VARCHAR` bounds and HTTP `Validator`s: `IataCode` 3 letters, `AirportIcaoCode` 4 letters, `AirlineIcaoCode` 3 letters, `Registration` non-blank ≤10 chars, `FlightCode` non-blank ≤8 chars.
 
 **ZLayer wiring** — every infrastructure class exposes a companion `val layer`:
 ```scala
@@ -158,187 +141,78 @@ object QuillAirportRepository:
 
 ## Database schema
 
-Flyway migrations in `infrastructure/migration/src/main/resources/db/migration/` (currently
-V1–V19) are the source of truth for the schema — read them directly rather than looking for
-columns/constraints duplicated here. Two behavioral gotchas worth knowing without reading every
-migration:
-- Every FK targets the parent's surrogate `id BIGINT`, not its natural key (`code`/`iata_code`/
-  `icao_code`/etc.) — the surrogate id is persistence-only, domain/ports never see it. See
-  `plans/surrogate-long-keys-country-airport.md`.
-- V12 added a standalone `country_codes` reference table (all 249 ISO 3166-1 alpha-2 codes, no FK
-  to `countries`) so `CreateCountryService` could check "is this a real ISO code" via a DB lookup.
-  V19 drops it — that check is now `CountryCode.isRecognized`/`validateIso`, a pure in-memory `Set`
-  in `domain/country/IsoCountryCodes.scala`, since the ISO list changes on the order of years, not
-  at runtime.
+Flyway migrations in `infrastructure/migration/src/main/resources/db/migration/` are the source of truth; read them rather than expecting columns here. Worth knowing:
 
-V16/V17 (`users`, `revoked_tokens`) back JWT authentication (`domain/user/`) — a separate bounded
-context from the aviation entities the rest of this schema models; see `docs/todo/auth-jwt.md`.
+- Every FK targets the parent's surrogate `id BIGINT`, not its natural key. The surrogate id is persistence-only, so domain and ports never see it (`plans/surrogate-long-keys-country-airport.md`).
+- The ISO country check is `CountryCode.isRecognized`/`validateIso`, a pure in-memory `Set` in `domain/country/IsoCountryCodes.scala`. V19 dropped the old `country_codes` table.
+- `users` and `revoked_tokens` back JWT authentication, a separate bounded context (`docs/todo/auth-jwt.md`).
 
-**Flyway runs at application startup**: `Main` executes `FlywayMigration.migrateFromEnv` before
-the HTTP server binds (disable with `FLYWAY_MIGRATE_ON_START=false`; a failure aborts startup).
-New migration files apply automatically on the next app start — no manual psql step. The dev
-database is migration-produced (one-time reset performed 2026-07-09; see
-`plans/run-flyway-on-startup.md` for the design and the adoption procedure for machines whose
-database predates this).
+**Flyway runs at startup:** `Main` runs `FlywayMigration.migrateFromEnv` before the server binds (disable with `FLYWAY_MIGRATE_ON_START=false`; a failure aborts startup). New migrations apply on the next start with no manual step. For a machine whose database predates this, see `plans/run-flyway-on-startup.md`.
 
-## Aircraft fleet demo data (OpenSky)
+## Aircraft demo data
 
-There's no dedicated sync module for `Aircraft` yet (unlike Country/Airport/Airline — see
-`master-data-sync` in the module graph above); real-looking fleet data can be pulled manually from
-the OpenSky Network's open aircraft database and inserted via the live API. This is a manual
-recipe, not an automated job — re-run it by hand whenever more/fresher demo aircraft are needed.
-
-**Source:** `https://s3.opensky-network.org/data-samples/metadata/aircraftDatabase.csv` — a free,
-bulk-downloadable CSV (~413k rows as of 2026-07-28) of crowdsourced aircraft-registry data. OpenSky
-states it explicitly as unlicensed/"as-is", with no freshness or completeness guarantee — treat
-counts as a lower bound on a real airline's fleet, not authoritative.
-
-**Algorithm:**
-1. Download the CSV (`curl -o aircraftDatabase.csv <url>`).
-2. Filter rows where `operatoricao` equals the target airline's `AirlineIcaoCode` (e.g. `AEA` for
-   Air Europa) — the Airline must already exist in this project's `airlines` table (create it
-   first via `POST /api/v1/airlines` if it's newer than OpenFlights' static dataset, e.g. ITA
-   Airways/`ITY`, which replaced Alitalia in 2021 and isn't in the older seed data).
-3. Skip rows with a blank `registration`/`typecode`/`model`, or a `registration` longer than 10
-   characters (`Registration`'s own shape limit — BR-15 in `docs/analysis/01-domain-model.md`).
-4. Map columns straight onto `CreateAircraftRequest`: `registration`→`registration`,
-   `typecode`→`typeCode`, `model`→`description`, plus the target `airlineIcao`.
-5. `POST /api/v1/aircraft` (bearer-protected, like every other write) for each row.
-
-A minimal end-to-end version (adjust `ICAO`/`TOKEN`):
-```bash
-python3 -c "
-import csv, json
-with open('aircraftDatabase.csv', newline='', encoding='utf-8', errors='replace') as f:
-    for row in csv.DictReader(f):
-        if row['operatoricao'].strip() != '$ICAO':
-            continue
-        reg, tc, model = row['registration'].strip(), row['typecode'].strip(), row['model'].strip()
-        if reg and tc and model and len(reg) <= 10:
-            print(json.dumps({'registration': reg, 'typeCode': tc, 'description': model, 'airlineIcao': '$ICAO'}))
-" | while IFS= read -r payload; do
-  curl -s -X POST http://localhost:8080/api/v1/aircraft \
-    -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" -d "$payload"
-done
-```
+`Aircraft` has no sync module. [docs/aircraft-fleet-demo-data.md](./docs/aircraft-fleet-demo-data.md) has the manual OpenSky recipe.
 
 ## REST API
 
-Code-first OpenAPI — Tapir endpoint definitions in Scala are the single source of truth, never a
-hand-written spec file. Swagger UI: `http://localhost:8080/docs`. Every endpoint except
-`POST /api/v1/auth/login` and `/health/*` requires a valid `Authorization: Bearer <token>` header
-(see `plans/security/protect-endpoints.md`) — no role/permission distinction yet, any valid token
-grants access to everything. Full per-endpoint implementation status table:
-[docs/api/endpoint-status.md](./docs/api/endpoint-status.md) — update it whenever an endpoint moves
-from stub to implemented, or a new one is added.
+Code-first OpenAPI: Tapir definitions are the single source of truth, never a hand-written spec. Swagger UI: `http://localhost:8080/docs`. Every endpoint except `POST /api/v1/auth/login` and `/health/*` requires `Authorization: Bearer <token>`, and any valid token grants full access (no roles yet). **Update [docs/api/endpoint-status.md](./docs/api/endpoint-status.md) whenever an endpoint moves from stub to implemented or a new one is added.**
 
-`/health/live` and `/health/ready` are liveness/readiness probes (`adapter-http/.../health/`) —
-the sole endpoints deliberately left unversioned (no `/api/v1` prefix), matching the
-Kubernetes/load-balancer probe convention. Readiness pings Postgres via the shared HikariCP
-`DataSource`, bounded by a 3s timeout so an unreachable DB fails fast (HikariCP's own
-`connectionTimeout` default is 30s).
+`/health/live` and `/health/ready` are deliberately unversioned, per the Kubernetes probe convention. Readiness pings Postgres with a 3s timeout, because HikariCP's own default is 30s.
 
 ## Plans directory
 
-Non-trivial changes (new endpoints, schema/persistence migrations, test refactors) get a design doc
-in `plans/` before implementation: goal, decisions with a recommendation + rejected alternatives,
-steps, files touched. Keep docs after their work lands — they're the record of *why* — and update
-one instead of duplicating it if a later change revises the same decision. Most plans are flat
-`plans/*.md` files; a multi-increment effort gets its own subdirectory instead — one doc per
-increment (e.g. `plans/masterdata/`, built up over the master-data-sync module's rollout;
-`plans/security/`, tracked by `docs/todo/auth-jwt.md`'s `## Roadmap`, one step at a time).
+Non-trivial changes (new endpoints, schema/persistence migrations, test refactors) get a design doc in `plans/` before implementation: goal, decisions with a recommendation and rejected alternatives, steps, files touched. Keep docs after the work lands, and update one rather than duplicating it if a later change revises its decision. A multi-increment effort gets its own subdirectory with one doc per increment (e.g. `plans/masterdata/`, `plans/security/`).
 
 ## Docs directory
 
-`docs/` holds analysis and API artifacts (distinct from `plans/`, which holds implementation
-designs) — see [docs/CLAUDE.md](./docs/CLAUDE.md) for what's in each file.
+See [docs/CLAUDE.md](./docs/CLAUDE.md) for what's in each file.
 
 ## Coverage
 
-`coverageEnabled := true` and `coverageDataDir := baseDirectory.value / ".coverage-data"` apply to every module. `coverageDataDir` is outside `target/` so `sbt clean` never deletes the statement catalog.
+`coverageEnabled` and `coverageDataDir` (`.coverage-data`) apply to every module. The data dir is outside `target/` so `sbt clean` never deletes the statement catalog. **Never `rm -rf` an existing `.coverage-data/`.**
 
-**Per-module report:**
 ```bash
-sbt adapterHttp/test
-sbt adapterHttp/coverageReport
-```
-
-**Aggregate report:**
-```bash
+sbt adapterHttp/test && sbt adapterHttp/coverageReport   # per module
 sbt compile
-sbt adapterHttp/test   # repeat per module with tests
-sbt coverageAggregate
-# → target/scala-3.9.0/scoverage-report/index.html
+sbt adapterHttp/test                                     # repeat per module with tests
+sbt coverageAggregate                                    # → target/scala-<version>/scoverage-report/index.html
 ```
 
-**Missing-dir gotcha:** if a module's tests run without ever recompiling that module (nothing changed since the last compile), scoverage never writes its local `.coverage-data/` dir, and the instrumented run then fails with `ExceptionInInitializerError` at test runtime. Fix: `mkdir -p <module>/.coverage-data/scoverage-data` per module before running tests — derive the module list from `build.sbt`'s `coverageProjects` via the `printCoverageProjects` task instead of typing it by hand:
+**Missing-dir gotcha (local only):** if a module's tests run without it recompiling, scoverage never writes its `.coverage-data/` dir, and the run fails with `ExceptionInInitializerError`. Create the dirs first:
+
 ```bash
 for m in $(sbt -batch -no-colors printCoverageProjects | grep -v '^\['); do mkdir -p "$m/.coverage-data/scoverage-data"; done
 ```
-Doesn't apply to CI's fresh checkout — every module gets compiled from scratch there (a dependency of `sbt test` itself), so the dir is always created; the workaround only matters locally, when reusing a warm build. Never `rm -rf` an existing `.coverage-data/` dir to "reset" it — `coverageDataDir` lives outside `target/` specifically so `sbt clean` never touches the statement catalog; deleting it yourself just recreates the same gap.
 
 ## Validation
 
-Four independent layers, each catching a different class of problem — run the ones relevant to
-what changed, not always all four:
+Independent layers, cheapest first. Run the ones relevant to what changed:
 
-1. **Local build** — `sbt clean` → `compile` → `test` (418 unit tests, in-memory stubs / Tapir
-   stub server) → `integrationTests/test` (76 tests, real Postgres via Testcontainers, needs
-   Docker — see `## Integration tests` above) → `bootstrap/assembly` (package) →
-   `coverageAggregate` (see `## Coverage` above for the `mkdir -p .coverage-data/...` step first).
-2. **OpenAPI spec** — `/validate-openapi` skill (`bash .claude/skills/validate-openapi/scripts/run.sh`).
-   Rebuilds the jar from clean, generates the spec via `OpenApiGenerator`, then checks it with
-   Redocly (OAS 3.1 schema conformance), an inline-schema-completeness check, and Spectral
-   (best-practice lint). Reports an endpoint inventory table alongside pass/fail.
-3. **End-to-end** — `/run-e2e-tests` skill
-   (`bash .claude/skills/run-e2e-tests/scripts/run.sh`). Starts real Postgres and the real app,
-   then runs the Postman collection's 5 dedicated `E2E — ...` folders (`docs/api/collection.json`)
-   against it via Newman — the only workflow that drives the actual running server rather than
-   stubs or a throwaway Testcontainers database. The skill doc has a load-bearing gotcha about
-   which main class to launch; read it there rather than assuming `java -jar` works.
-4. **CI** — no dedicated skill; check with `gh run list --workflow=scala.yml --limit 5` and
-   `gh run view --log --job=<job-id>` after a push. The `build` job runs step 1's `compile`/`test`/
-   `coverageAggregate`/`assembly` on every push/PR (never `integrationTests` here, deliberately
-   excluded — see `## Integration tests`), so its coverage number is lower than a local run that
-   includes the integration suite; that gap is expected, not a regression. A separate
-   `integration-tests` job runs `sbt integrationTests/test` (real Postgres via Testcontainers,
-   no `services:` container needed — ubuntu-26.04 runners already have Docker), but only when the
-   workflow is manually dispatched with the `run_integration_tests` input checked — it never runs
-   on a plain push/PR, matching `integrationTests`' own opt-in convention. The workflow files' own
-   design decisions (actions pinned to a floating major tag with Dependabot tracking the rest —
-   the earlier SHA-pinning convention was dropped; the shared composite `setup-build-env` action;
-   why `Checkout` can't live inside it) are recorded in `plans/refactor-github-actions-workflows.md`.
-
-Layering, cheapest/narrowest first: unit tests (stubs) → integration tests (real Postgres,
-opt-in module) → E2E (real server + real dev Postgres, closest to production) → OpenAPI
-validation (contract correctness, an independent axis from runtime behavior) → CI (confirms
-1–3 reproduce in GitHub's environment).
+1. **Local build**: `sbt clean` → `compile` → `test` (stubs) → `integrationTests/test` (real Postgres, needs Docker) → `bootstrap/assembly` → `coverageAggregate` (see `## Coverage` for the `mkdir` step).
+2. **End-to-end**: `/run-e2e-tests` starts real Postgres and the real app, then runs the Postman `E2E — ...` folders through Newman. It's the only layer driving the actual server. The skill doc explains which main class to launch; don't assume `java -jar` works.
+3. **OpenAPI spec**: `/validate-openapi` rebuilds the jar, generates the spec, and checks it with Redocly, an inline-schema check and Spectral.
+4. **CI**: check with `gh run list --workflow=scala.yml --limit 5`.
+   - The `build` job runs compile, test, `coverageAggregate` and assembly on every push/PR, never `integrationTests`, so its coverage is lower than a local run that includes them. That's expected.
+   - The `integration-tests` job only runs when manually dispatched with `run_integration_tests` checked.
+   - Workflow design decisions are in `plans/refactor-github-actions-workflows.md`.
 
 ## Formatter
 
-`.scalafmt.conf` sets `project.git = true` — only git-tracked files get formatted; `git add` a new file before running `sbt scalafmtAll` or it's silently skipped.
+`.scalafmt.conf` sets `project.git = true`, so `git add` a new file before `sbt scalafmtAll` or it's silently skipped.
 
 ## Documentation sources
 
-Always fetch current docs before writing or modifying library API calls — training data may be stale, especially for ZIO Kafka 3.x (breaking changes from prior versions).
+Always fetch current docs before writing or modifying library API calls, especially for ZIO Kafka 3.x (breaking changes).
 
-**Choosing a library for a new capability** (not just calling an API on one already in use): check
-options in this order, verifying each against current docs/source rather than memory, and record the
-comparison the way `docs/todo/master-data/analysis.md`'s §4.2–§4.5 did while each was still an open
-decision (goal, an options table, a verdict): (1) ZIO core or an official ZIO-ecosystem library
-first — best effect-system fit and this project's own established preference (`zio-nio` over `better-files`/`os-lib`, `zio-http` over
-`sttp-client4`/Apache HttpClient, both picked over more "mature" non-ZIO options on ecosystem fit
-alone); (2) the Scala/JDK standard-library baseline second — no new dependency, but check `scala.*`
-too, not just `java.*` (`scala.io.Source` exists for some things `scala-library` covers that
-`scala-reflect`/JDK don't); (3) other third-party alternatives last, and only when neither of the
-first two clears this project's stability bar (`## Versioning policy`) or the actual required
-capability.
+**Choosing a library for a new capability:** check options in this order, against current docs rather than memory, and record the comparison (goal, options table, verdict):
 
-**Once a decision is actually implemented**, collapse that comparison down to a one-line decision
-plus a bare list of the rejected alternatives (a reference, not the reasoning) — don't keep
-maintaining a full options table for something already settled and shipped. See
-`docs/todo/master-data/analysis.md`'s §4.2–§4.5: each was a full table while open, collapsed to a
-one-line decision once it shipped.
+1. ZIO core or an official ZIO-ecosystem library. This project prefers ecosystem fit over maturity (`zio-nio` over `better-files`/`os-lib`, `zio-http` over `sttp-client4`).
+2. The Scala/JDK standard library, checking `scala.*` as well as `java.*`.
+3. Other third-party libraries, only if neither of the above meets `## Versioning policy` or the required capability.
+
+Once implemented, collapse the comparison to a one-line decision plus a bare list of rejected alternatives (see `docs/todo/master-data/analysis.md` §4.2–§4.5).
+
+Where to look:
 
 1. **Context7 MCP** (`mcp__context7` tools) — preferred for quick lookups
 2. **Official sites** (WebFetch fallback):

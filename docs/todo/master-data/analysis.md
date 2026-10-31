@@ -49,8 +49,8 @@ or via each entity's own CRUD API, one row at a time. The goal is a repeatable p
 
 **Out of scope:** Aircraft (registrations) only. Aircraft is operational data created by an airline through the app's
 own API (a specific tail number an airline decides to register) — no public, authoritative "master list" of tail
-numbers exists to sync against, so it stays a manual recipe (see the root `CLAUDE.md`'s "Aircraft fleet demo data
-(OpenSky)" section) rather than a sync job.
+numbers exists to sync against, so it stays a manual recipe (see `docs/aircraft-fleet-demo-data.md`) rather than a sync
+job.
 
 Route was originally excluded here for the same "operational, not reference" reasoning (a specific city pair an
 airline decides to fly). That reasoning held for the *airline-to-route* association (still true — `route_airlines`,

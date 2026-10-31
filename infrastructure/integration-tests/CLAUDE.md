@@ -1,53 +1,20 @@
 # Integration tests (opt-in, real Postgres)
 
-`infrastructure/integration-tests/` runs `FlywayMigration` and `QuillXxxRepository` against a real
-Postgres started via Testcontainers — no in-memory stubs, no Tapir stub server. It is deliberately
-**not** in `root`'s `.aggregate(...)`, so `sbt compile`, `sbt test`, and `sbt coverageAggregate`
-never touch it; invoke it explicitly:
+Runs `FlywayMigration` and `QuillXxxRepository` against real Postgres through Testcontainers, with no stubs. It's deliberately **not** in `root`'s `.aggregate(...)`, so `sbt compile`, `sbt test` and `sbt coverageAggregate` never touch it.
 
 ```bash
 sbt integrationTests/test   # or: sbt integrationTest (alias)
 ```
 
-Coverage so far: `FlywayMigrationItSpec` (migrations reach `V20`), Country
-(`QuillCountryRepositoryItSpec`, incl. a `delete` case seeding an `Airport` first to confirm a
-still-referenced Country fails with `CountryInUse` rather than crashing on the underlying FK
-violation), Airport (`QuillAirportRepositoryItSpec`, incl. a `delete` case seeding a `Route` first
-to confirm a still-referenced Airport fails with `AirportInUse` the same way — both mirror the
-Airline case below and required widening `CountryRepositoryContractSpec`/
-`AirportRepositoryContractSpec`'s env type to add `AirportRepository`/`RouteRepository`
-respectively), Airline (`QuillAirlineRepositoryItSpec`,
-incl. an `iata` round-trip case — save with a real value, then clear it back to `None` — and a
-`delete` case seeding an `Aircraft` first to confirm a still-referenced Airline fails with
-`AirlineInUse` rather than crashing on the underlying FK violation, `plans/masterdata/route-sync.md`),
-Aircraft
-(`QuillAircraftRepositoryItSpec`, seeding a `Country` then an `Airline` first since
-`aircraft.airline_id` FKs to `airlines.id`, plus a `findByAirline` case), Flight
-(`QuillFlightRepositoryItSpec`, seeding a `Country`, two `Airport`s (origin + destination), and an
-`Airline` first since `flights.origin_airport_id`/`destination_airport_id`/`airline_id` FK to
-`airports.id`/`airlines.id`) — each seeding its own `Country` row first since
-`airports.country_id`/`airlines.country_id` FK to `countries.id` — Route
-(`QuillRouteRepositoryItSpec`, seeding a `Country` then two `Airport`s first since
-`routes.origin_airport_id`/`destination_airport_id` FK to `airports.id`; `RouteRepository` has no
-`countryCode`-shaped save param, unlike Airport/Airline/Aircraft/Flight, since `Route` doesn't
-reference a country directly — plus `findByOrigin`/`findByDestination`, backing the
-`GET /api/v1/routes` origin/destination filters) — plus User
-(`QuillUserRepositoryItSpec`; `UserRepository` has no `save`, so its "found" case seeds a row via a
-raw JDBC insert against the shared `DataSource` rather than through the port — see
-`plans/security/login.md` decision 5) and `RevokedTokenRepository`
-(`QuillRevokedTokenRepositoryItSpec` — see `plans/security/logout.md`) — 78 tests total, all
-green.
-See `plans/add-persistence-integration-tests.md` for the full scope table and design rationale (why a
-plain subproject instead of sbt's deprecated `IntegrationTest` config, why one module instead of
-three, why fresh-container-per-suite).
+Specs: `FlywayMigrationItSpec` plus `Quill<Entity>RepositoryItSpec` for Country, Airport, Airline, Aircraft, Flight, Route, User and RevokedToken. `plans/add-persistence-integration-tests.md` has the scope and design rationale.
 
-Two gotchas baked into the setup, both documented with why in the plan doc:
-- `build.sbt` sets `Test / javaOptions += "-Dapi.version=1.41"` because Testcontainers 1.21.x's
-  Docker-environment probe falls back to a hardcoded, very old API version when none is negotiated,
-  and recent Docker Desktop releases reject that below their `MinAPIVersion` — surfacing as a
-  misleading "Could not find a valid Docker environment" with no obvious cause unless you add a
-  temporary SLF4J binding to see the underlying 400 from the daemon.
-- **Every spec must call `.provideLayerShared(...)`, never `.provideLayer(...)`,** on its
-  `suite(...)`. `provideLayer` silently rebuilds the layer per `test` block instead of once per
-  suite — caught during validation when 15 Country tests started 16 separate Postgres containers
-  instead of 3.
+When writing a spec:
+
+- **Seed parent rows first.** FKs target surrogate ids, so Airport and Airline need a Country, Aircraft needs an Airline, and Flight and Route need Airports (Flight also an Airline).
+- **Test deleting a referenced row** where one exists: it must fail with the domain error (`CountryInUse`, `AirportInUse`, `AirlineInUse`), not crash on the FK violation. This requires widening the contract spec's env type with the child repository.
+- **`UserRepository` has no `save`**, so its "found" case seeds through raw JDBC on the shared `DataSource` (`plans/security/login.md`, decision 5).
+
+Two gotchas, explained in the plan doc:
+
+- **`build.sbt` sets `Test / javaOptions += "-Dapi.version=1.41"`.** Testcontainers' Docker probe otherwise falls back to an old API version that recent Docker Desktop rejects, which surfaces as a misleading "Could not find a valid Docker environment".
+- **Every spec must call `.provideLayerShared(...)`, never `.provideLayer(...)`, on its `suite(...)`.** `provideLayer` silently rebuilds the layer per `test`, starting a new Postgres container each time.
