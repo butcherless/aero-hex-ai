@@ -302,7 +302,7 @@ what changed, not always all four:
    excluded — see `## Integration tests`), so its coverage number is lower than a local run that
    includes the integration suite; that gap is expected, not a regression. A separate
    `integration-tests` job runs `sbt integrationTests/test` (real Postgres via Testcontainers,
-   no `services:` container needed — ubuntu-24.04 runners already have Docker), but only when the
+   no `services:` container needed — ubuntu-26.04 runners already have Docker), but only when the
    workflow is manually dispatched with the `run_integration_tests` input checked — it never runs
    on a plain push/PR, matching `integrationTests`' own opt-in convention. The workflow files' own
    design decisions (actions pinned to a floating major tag with Dependabot tracking the rest —

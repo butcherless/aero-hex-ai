@@ -26,7 +26,7 @@ env:
 jobs:
   build:
 
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
 
     steps:
@@ -74,11 +74,11 @@ jobs:
     # just extends that same "explicit invocation only" policy into CI.
     #
     # No postgres `services:` container needed: the integration-tests module spins up its own
-    # throwaway Postgres via Testcontainers (see PostgresContainerSupport.scala), and ubuntu-24.04
+    # throwaway Postgres via Testcontainers (see PostgresContainerSupport.scala), and ubuntu-26.04
     # runners already have Docker available for that.
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_integration_tests }}
     needs: build
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
 
     steps:
