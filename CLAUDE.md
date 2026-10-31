@@ -192,7 +192,7 @@ Independent layers, cheapest first. Run the ones relevant to what changed:
 2. **End-to-end**: `/run-e2e-tests` starts real Postgres and the real app, then runs the Postman `E2E — ...` folders through Newman. It's the only layer driving the actual server. The skill doc explains which main class to launch; don't assume `java -jar` works.
 3. **OpenAPI spec**: `/validate-openapi` rebuilds the jar, generates the spec, and checks it with Redocly, an inline-schema check and Spectral.
 4. **CI**: check with `gh run list --workflow=scala.yml --limit 5`.
-   - The `build` job runs compile, test, `coverageAggregate` and assembly on every push/PR, never `integrationTests`, so its coverage is lower than a local run that includes them. That's expected.
+   - The `build` job runs compile, test, `coverageAggregate` and assembly on every push/PR except docs-only pushes, never `integrationTests`, so its coverage is lower than a local run that includes them. That's expected.
    - The `integration-tests` job only runs when manually dispatched with `run_integration_tests` checked.
    - Workflow design decisions are in `plans/refactor-github-actions-workflows.md`.
 
