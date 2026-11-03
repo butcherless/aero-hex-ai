@@ -13,7 +13,7 @@ object Versions {
   val circe          = "0.14.17"
   val zioLogging     = "2.5.3"
   val logback        = "1.6.6"
-  val sttpClient4    = "4.1.0"
+  val sttpClient4    = "4.1.1"
   val protoQuill     = "4.8.6"
   val testcontainers = "2.0.5"
   val jwtScala       = "12.0.0"
