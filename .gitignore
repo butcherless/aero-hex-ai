@@ -27,8 +27,11 @@ target/
 # scripts/start.sh runtime artifacts (PID file, app log)
 scripts/run/
 
-# Claude Code, except the bump-versions skill: dependency-updates.yml runs its scripts in CI
+# Claude Code, except the bump-versions skill (dependency-updates.yml runs its scripts in CI) and
+# the skills CLAUDE.md points to (coverage-report, choose-library)
 .claude/*
 !.claude/skills/
 .claude/skills/*
 !.claude/skills/bump-versions/
+!.claude/skills/coverage-report/
+!.claude/skills/choose-library/
