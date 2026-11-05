@@ -105,10 +105,9 @@ val assemblySettings: Seq[Setting[?]] = Seq(
 // ─── Modules ────────────────────────────────────────────────────────────────
 
 // Single source of truth for "modules aggregated at root". Also drives the local
-// `mkdir -p .coverage-data/scoverage-data` recipe in CLAUDE.md's Coverage section via
-// printCoverageProjects below — sbt 2's action cache can skip a cacheable task's side
-// effects on a repeat invocation, so that task only prints the id list; it doesn't
-// create the directories itself (see CLAUDE.md's Coverage section for why).
+// `mkdir -p .coverage-data/scoverage-data` recipe in the `coverage-report` skill via
+// printCoverageProjects below — that task only prints the id list; the skill's shell loop
+// creates the directories.
 lazy val coverageProjects: Seq[Project] = Seq(
   sharedKernel,
   domain,

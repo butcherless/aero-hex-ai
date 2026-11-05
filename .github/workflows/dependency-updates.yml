@@ -57,17 +57,21 @@ jobs:
         # releases check, mirroring the bump-versions skill's Step 2 (same `gh api` queries). The
         # SBT one filters to the v1.x line on purpose: sbt/sbt's own /releases/latest now points
         # at 2.x, and CLAUDE.md's versioning policy rules out an SBT 2.x jump without a review.
+        # The versions are fetched first because a failure inside `echo "$(...)"` wouldn't fail
+        # the step.
         run: |
+          sbt_latest="$(gh api 'repos/sbt/sbt/releases?per_page=30' --jq '[.[] | select(.prerelease | not) | .tag_name | select(startswith("v1."))] | first')"
+          scalafmt_latest="$(gh api repos/scalameta/scalafmt/releases/latest --jq .tag_name)"
           {
             echo '## SBT itself'
             echo '```'
             echo "current: $(grep sbt.version project/build.properties)"
-            echo "latest:  $(gh api 'repos/sbt/sbt/releases?per_page=30' --jq '[.[] | select(.prerelease | not) | .tag_name | select(startswith("v1."))] | first')"
+            echo "latest:  $sbt_latest"
             echo '```'
             echo '## scalafmt formatter'
             echo '```'
             echo "current: $(grep '^version' .scalafmt.conf)"
-            echo "latest:  $(gh api repos/scalameta/scalafmt/releases/latest --jq .tag_name)"
+            echo "latest:  $scalafmt_latest"
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Report GitHub Actions updates

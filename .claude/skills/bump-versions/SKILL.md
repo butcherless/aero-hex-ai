@@ -244,6 +244,10 @@ For each approved **Scala/library/plugin/SBT/scalafmt** bump, in turn:
    sbt compile          # zero errors, zero warnings
    sbt test             # full suite green — CLAUDE.md's canonical command
    ```
+   To chain commands in one invocation (e.g. with the `clean` prefix), pass them as one quoted,
+   `;`-separated argument: `sbt "clean; scalafmtAll; compile; test"`. That form works on sbt 1
+   and 2 alike; the space-separated `sbt clean compile test` fails to parse under sbt 2's thin
+   client, which matters in a multi-project run (tapir-learn, incubator and scala are on sbt 2).
 3. If it passes, move on to the next approved bump. If it fails, stop — don't layer further bumps
    on top of a broken one. Investigate before deciding whether to revert this one, fix the fallout,
    or tell the user it needs more review than expected.

@@ -10,7 +10,6 @@ on:
       - '**.puml'
       - '**.graphml'
   pull_request:
-    types: [ opened, synchronize, reopened ]
   workflow_dispatch:
     inputs:
       run_integration_tests:
