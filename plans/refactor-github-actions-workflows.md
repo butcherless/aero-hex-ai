@@ -118,6 +118,22 @@ still real.
 - `sbt dependencyUpdates` output only goes to the raw step log. Pipe it to `$GITHUB_STEP_SUMMARY`
   so outdated-dependency results show up on the run's summary page without opening logs.
 
+### G6 — Run time (added 2026-11-05)
+
+Measured before: `Scala CI` median 209s, of which "Check formatting" took 29s (mostly a fresh
+JVM plus build reload) and "Assembly" 71s (a `clean` plus a full coverage-free recompile, run
+only after the tests finished).
+
+Decision: one `sbt scalafmtCheckAll test coverageAggregate` call in `build`, and assembly moved to
+a parallel `assembly` job with its own `target/` cache. The two caches use `cov`/`nocov` key
+segments so neither job's `restore-keys` prefix can match the other's entries; that separation
+is what lets `assembly` drop the `clean`. Expected: about 120s wall time, at the cost of a second
+runner (free for this public repo).
+
+Rejected: `sbt --client` across separate steps (keeps per-step timing in the UI, but the single
+invocation is simpler and saves the same reload); keeping assembly sequential but uncleaned (the
+shared cache would then hold instrumented classes).
+
 ## Explicitly out of scope / rejected
 
 - **Re-enabling the commented-out Postgres/Kafka `services:` block** — belongs to a future "wire
