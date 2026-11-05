@@ -160,7 +160,7 @@ too.
 
 **Unversioned container images** — report only, and pass every project in a multi-project run:
 ```bash
-python3 .claude/skills/bump-versions/scripts/check_unversioned_images.py . ../aero-ui-ai ../dependency-analyzer ../tapir-learn ../scala-3 ../incubator ../scala
+python3 .claude/skills/bump-versions/scripts/check_unversioned_images.py . ../aero-ui-ai ../dependency-analyzer ../tapir-learn ../scala-3 ../incubator ../scala ../rust-learn
 ```
 Flags any `image:` on `:latest` or with no tag. Renovate and Dependabot never bump those, and Docker
 reuses a cached `:latest`, so such a file can work locally and fail on a fresh machine. Pin the
