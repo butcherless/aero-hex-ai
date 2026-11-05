@@ -32,19 +32,8 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 
 ## Module dependency graph
 
-```
-shared-kernel
-    └── domain
-            ├── application
-            ├── persistence-quill      (infrastructure — wired into bootstrap; Country + Airport + Airline + Aircraft + Flight + Route + User + RevokedToken)
-            ├── messaging-kafka        (infrastructure — not wired into bootstrap)
-            ├── security               (infrastructure — JWT issuance/validation + password hashing; TokenService/PasswordHasher port impls; wired into bootstrap; see plans/security/)
-            └── adapter-http
-                        └── bootstrap  (composition root: domain + application + adapter-http + persistence-quill + migration + security)
-                migration              (SQL + Flyway only; no domain dependency — wired into bootstrap for migrate-on-start)
-                integration-tests      (opt-in — domain + migration + persistence-quill, real-Postgres tests; NOT in root's aggregate)
-                master-data-sync       (opt-in — domain + application + persistence-quill; downloads/parses/syncs Country + Airport + Airline + Route against real Postgres; NOT in root's aggregate; see plans/masterdata/)
-```
+`build.sbt`'s `dependsOn`/`aggregate` is the source of truth. `integration-tests` and
+`master-data-sync` (see `plans/masterdata/`) are opt-in and NOT in root's aggregate.
 
 Rule: inner modules never depend on outer ones. `domain` has zero framework dependencies.
 
@@ -67,7 +56,7 @@ Rule: inner modules never depend on outer ones. `domain` has zero framework depe
 - **`application/`** — orchestrates ports, implements each entity's use-case interfaces (mirrors
   `domain/`'s per-entity package layout, e.g. `application/route/CreateRouteService.scala`). Each
   service has a companion `ZLayer`.
-- **`persistence-quill/`** — Quill implementations of `CountryRepository`/`AirportRepository`/`AirlineRepository`/`AircraftRepository`/`FlightRepository`/`RouteRepository`/`UserRepository`/`RevokedTokenRepository`; all eight wired via `WiringModule`, sharing one `QuillDataSourceLayer.live` `DataSource`. RouteAirline/FlightInstance are still an in-memory stub.
+- **`persistence-quill/`** — Quill repository implementations, all wired via `WiringModule`, sharing one `QuillDataSourceLayer.live` `DataSource`. RouteAirline/FlightInstance are still an in-memory stub.
 - **Persistence policy:** all wired repositories must use the same implementation — switching is all-or-nothing across every entity, in one commit (see the header comment in `WiringModule.scala`).
 - **`messaging-kafka/`** — ZIO Kafka producer and outbox relay. Not wired into bootstrap.
 - **`security/`** — implements `TokenService` (`JwtService`, `jwt-scala`/`jwt-circe`, HS256, RFC
@@ -115,13 +104,6 @@ either way. Four ways to construct, by use case:
 
 Shapes, matching the `VARCHAR` bounds and HTTP `Validator`s: `IataCode` 3 letters, `AirportIcaoCode` 4 letters, `AirlineIcaoCode` 3 letters, `Registration` non-blank ≤10 chars, `FlightCode` non-blank ≤8 chars.
 
-**ZLayer wiring** — every infrastructure class exposes a companion `val layer`:
-```scala
-object QuillAirportRepository:
-  val layer: URLayer[DataSource, AirportRepository] =
-    ZLayer.fromFunction(new QuillAirportRepository(_))
-```
-
 **`UIO` for infallible queries** — `findAll`/`searchByName` return `UIO[List[A]]`; no `.mapError` needed in routes.
 
 **Tapir endpoints** — every business resource's endpoints use Tapir's two-phase security: `.zServerSecurityLogic(secured)` (phase 1, `SecuredEndpoint.securityLogic` validating the bearer token) `.serverLogic { _ => ... }` (phase 2, the business logic) — see `plans/security/protect-endpoints.md`. Each `XxxRoutes` class produces a `List[ZServerEndpoint[Any, Any]]` this way; all resources' lists are concatenated and passed to one `ZioHttpInterpreter().toHttp(...)` call together with the Swagger endpoints (`/health/*` and login stay unprotected, plain `.zServerLogic`). `toHttp` returns `Routes[Any, Response]`; seal with `.handleError(identity)` before `Server.serve`.
@@ -136,7 +118,6 @@ object QuillAirportRepository:
 |---|---|
 | `RouteEventCodec.routeCreatedSerde` | `???` — needs ZIO Kafka 3.x `Serde` with Circe JSON |
 | `RouteEventProducer.publish` | compiles, but only logs the event — doesn't call `Producer.produce` |
-| `WiringModule.appLayer` | wires Quill `CountryRepository`, `AirportRepository`, `AirlineRepository`, `AircraftRepository`, `FlightRepository`, `RouteRepository`, `UserRepository`, and `RevokedTokenRepository`, plus in-memory stubs for everything else (RouteAirline/FlightInstance) |
 | `bootstrap/src/main/resources/application.conf`'s `kafka.group-id` | missing a `${?KAFKA_GROUP_ID}` override (every other setting in that file has one) — harmless today since Kafka isn't wired into `Main`, but a silent no-op once it is |
 
 ## Database schema
@@ -171,24 +152,13 @@ See [docs/CLAUDE.md](./docs/CLAUDE.md) for what's in each file.
 
 `coverageEnabled` and `coverageDataDir` (`.coverage-data`) apply to every module. The data dir is outside `target/` so `sbt clean` never deletes the statement catalog. **Never `rm -rf` an existing `.coverage-data/`.**
 
-```bash
-sbt adapterHttp/test && sbt adapterHttp/coverageReport   # per module
-sbt compile
-sbt adapterHttp/test                                     # repeat per module with tests
-sbt coverageAggregate                                    # → target/scala-<version>/scoverage-report/index.html
-```
-
-**Missing-dir gotcha (local only):** if a module's tests run without it recompiling, scoverage never writes its `.coverage-data/` dir, and the run fails with `ExceptionInInitializerError`. Create the dirs first:
-
-```bash
-for m in $(sbt -batch -no-colors printCoverageProjects | grep -v '^\['); do mkdir -p "$m/.coverage-data/scoverage-data"; done
-```
+To produce a report, use the `coverage-report` skill (commands plus the local missing-dir gotcha).
 
 ## Validation
 
 Independent layers, cheapest first. Run the ones relevant to what changed:
 
-1. **Local build**: `sbt clean` → `compile` → `test` (stubs) → `integrationTests/test` (real Postgres, needs Docker) → `bootstrap/assembly` → `coverageAggregate` (see `## Coverage` for the `mkdir` step).
+1. **Local build**: `sbt clean` → `compile` → `test` (stubs) → `integrationTests/test` (real Postgres, needs Docker) → `bootstrap/assembly` → `coverageAggregate` (see the `coverage-report` skill for the `mkdir` step).
 2. **End-to-end**: `/run-e2e-tests` starts real Postgres and the real app, then runs the Postman `E2E — ...` folders through Newman. It's the only layer driving the actual server. The skill doc explains which main class to launch; don't assume `java -jar` works.
 3. **OpenAPI spec**: `/validate-openapi` rebuilds the jar, generates the spec, and checks it with Redocly, an inline-schema check and Spectral.
 4. **CI**: check with `gh run list --workflow=scala.yml --limit 5`.
@@ -204,13 +174,7 @@ Independent layers, cheapest first. Run the ones relevant to what changed:
 
 Always fetch current docs before writing or modifying library API calls, especially for ZIO Kafka 3.x (breaking changes).
 
-**Choosing a library for a new capability:** check options in this order, against current docs rather than memory, and record the comparison (goal, options table, verdict):
-
-1. ZIO core or an official ZIO-ecosystem library. This project prefers ecosystem fit over maturity (`zio-nio` over `better-files`/`os-lib`, `zio-http` over `sttp-client4`).
-2. The Scala/JDK standard library, checking `scala.*` as well as `java.*`.
-3. Other third-party libraries, only if neither of the above meets `## Versioning policy` or the required capability.
-
-Once implemented, collapse the comparison to a one-line decision plus a bare list of rejected alternatives (see `docs/todo/master-data/analysis.md` §4.2–§4.5).
+**Choosing a library for a new capability:** use the `choose-library` skill (ZIO ecosystem first; record the comparison).
 
 Where to look:
 
