@@ -50,13 +50,28 @@ jobs:
         # recompile what actually changed. A stale/bad cache can't silently ship a wrong result:
         # the `assembly` job builds the shipped jar from its own coverage-free cache, never this one.
         # The `cov` segment keeps this key's restore prefix from matching that job's `nocov` keys.
+        #
+        # .coverage-data/ is cached in the same entry as target/: the cached classes are
+        # scoverage-instrumented, and zinc won't recompile an unchanged module, so scoverage never
+        # recreates its data dir. Restoring target/ alone left instrumented classes writing to a
+        # missing .coverage-data/scoverage-data/ (FileNotFoundException in every test). Keeping
+        # both in one entry also keeps each module's statement catalog (scoverage.coverage) in step
+        # with the classes it describes.
         uses: actions/cache@v6
         with:
           path: |
             **/target
-          key: ${{ runner.os }}-sbt-target-cov-${{ github.sha }}
+            **/.coverage-data
+          # `cov-v2`: entries saved before .coverage-data was cached (plain `cov-`) lack it, and the
+          # restore prefix must not match them.
+          key: ${{ runner.os }}-sbt-target-cov-v2-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-sbt-target-cov-
+            ${{ runner.os }}-sbt-target-cov-v2-
+      - name: Drop the previous run's coverage measurements
+        # The cache restores the last run's scoverage.measurements.* files too; without this,
+        # coverageAggregate would count statements hit by that run's tests, not this one's. Only
+        # the measurements go — the scoverage.coverage statement catalogs must stay.
+        run: find . -path '*/.coverage-data/scoverage-data/scoverage.measurements.*' -type f -delete
       - name: Check formatting, compile, test, and aggregate coverage
         # One sbt invocation: each separate `sbt` call starts a new JVM and reloads the ~11k-setting
         # build (that alone was most of the old 29s "Check formatting" step). coverageAggregate only
@@ -115,13 +130,17 @@ jobs:
         # Same key as the build job's cache above (this job only runs after it, via `needs: build`)
         # — reuses the exact target/ state build already compiled this commit for the shared modules
         # (domain, migration, persistenceQuill), so this job only compiles
-        # integrationTests itself instead of the whole dependency chain again.
+        # integrationTests itself instead of the whole dependency chain again. `path` must stay
+        # identical to the build job's: actions/cache folds the path list into the cache version, so
+        # any difference means no match. It includes .coverage-data for the same reason as there —
+        # the restored classes are instrumented and need their scoverage data dir.
         uses: actions/cache@v6
         with:
           path: |
             **/target
-          key: ${{ runner.os }}-sbt-target-cov-${{ github.sha }}
+            **/.coverage-data
+          key: ${{ runner.os }}-sbt-target-cov-v2-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-sbt-target-cov-
+            ${{ runner.os }}-sbt-target-cov-v2-
       - name: Integration tests (real Postgres via Testcontainers)
         run: sbt integrationTests/test
