@@ -28,7 +28,7 @@ previous instance first: `pkill -f "dev.cmartin.aerohex.bootstrap.Main" 2>/dev/n
 - **SBT** — stay on 1.x. A move to 2.x is a deliberate migration, reviewed like a major dependency bump.
 - **Direct deps** — stable GA. Named exception: ZIO Prelude 1.x (no GA release yet); don't chase a newer RC/M/SNAPSHOT without a GA release or a needed capability.
 - **Transitive deps** — let SBT resolve via eviction; only force an override for a known vulnerability or binary-incompatibility.
-- **Updates** — run `sbt xdup` before each feature cycle. Patch/minor updates are free; major bumps need migration-guide review and passing compile + tests.
+- **Updates** — run the `bump-versions` skill (or at least `sbt xdup`) before each feature cycle. Patch/minor updates are free; major bumps need migration-guide review and passing compile + tests.
 
 ## Module dependency graph
 
@@ -158,11 +158,13 @@ To produce a report, use the `coverage-report` skill (commands plus the local mi
 
 Independent layers, cheapest first. Run the ones relevant to what changed:
 
-1. **Local build**: `sbt clean` → `compile` → `test` (stubs) → `integrationTests/test` (real Postgres, needs Docker) → `bootstrap/assembly` → `coverageAggregate` (see the `coverage-report` skill for the `mkdir` step).
+1. **Local build**: `sbt clean` → `compile` → `test` (stubs) → `integrationTests/test` (real Postgres, needs Docker) → `masterDataSync/test` → `bootstrap/assembly` → `coverageAggregate` (see the `coverage-report` skill for the `mkdir` step). `compile`/`test` never touch the two opt-in modules, so after changing a domain port or use-case signature run both of their test tasks too — a stale test stub there otherwise goes unnoticed.
 2. **End-to-end**: `/run-e2e-tests` starts real Postgres and the real app, then runs the Postman `E2E — ...` folders through Newman. It's the only layer driving the actual server. The skill doc explains which main class to launch; don't assume `java -jar` works.
 3. **OpenAPI spec**: `/validate-openapi` rebuilds the jar, generates the spec, and checks it with Redocly, an inline-schema check and Spectral.
 4. **CI**: check with `gh run list --workflow=scala.yml --limit 5`.
    - The `build` job runs format check, compile, test and `coverageAggregate`, and a parallel `assembly` job builds the coverage-free jar, on every push/PR except docs-only pushes. Neither runs `integrationTests`, so CI coverage is lower than a local run that includes them. That's expected.
+   - The `build` job caches `**/target` **and** `**/.coverage-data` in one entry: the cached classes are scoverage-instrumented, and restoring them without their data dir fails every test with `FileNotFoundException`. Keep the two paths together (and identical in the `integration-tests` job, or its cache never matches).
+   - `dependency-updates.yml` (weekly, Fridays) reports available updates in the job summary; it never edits files.
    - The `integration-tests` job only runs when manually dispatched with `run_integration_tests` checked.
    - Workflow design decisions are in `plans/refactor-github-actions-workflows.md`.
 

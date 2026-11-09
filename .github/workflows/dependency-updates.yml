@@ -53,10 +53,30 @@ jobs:
             python3 .claude/skills/bump-versions/scripts/check_plugin_updates.py
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Report Scala LTS version
+        # sbt-updates lists scala3-library updates without telling an LTS from a mainline "Next"
+        # release, and Dependabot has no notion of CLAUDE.md's LTS-only policy — so take the highest
+        # LTS-named GitHub release (highest, not first: an older LTS line's patch can be listed
+        # first by date). Same query as the bump-versions skill's Step 2.
+        run: |
+          scala_lts="$(gh api 'repos/scala/scala3/releases?per_page=100' --jq '[.[] | select(.prerelease | not) | select((.name // "") | test("LTS")) | .tag_name | select(test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))] | max_by(split(".") | map(tonumber))')"
+          if [[ -z "$scala_lts" || "$scala_lts" == null ]]; then
+            echo "::error::No LTS release found in the last 100 scala/scala3 GitHub releases." >&2
+            exit 1
+          fi
+          {
+            echo '## Scala (LTS only)'
+            echo '```'
+            echo "current: $(grep -E '^\s*val scala3\b' project/Versions.scala)"
+            echo "latest LTS: $scala_lts"
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Report SBT / scalafmt formatter versions
-        # Not covered by `sbt xdup` (that's the main build's dependencies only) or by Dependabot's
-        # "sbt" ecosystem entry, as far as could be confirmed — these two need a direct GitHub
-        # releases check, mirroring the bump-versions skill's Step 2 (same `gh api` queries). The
+        # Not covered by `sbt xdup` (that's the main build's dependencies only). Dependabot's "sbt"
+        # ecosystem reads project/build.properties, but its docs don't say it bumps sbt.version and
+        # it has no notion of the 1.x ceiling; .scalafmt.conf isn't a manifest it reads at all. So
+        # these two need a direct GitHub releases check, mirroring the bump-versions skill's Step 2
+        # (same `gh api` queries). The
         # SBT one filters to the v1.x line on purpose: sbt/sbt's own /releases/latest now points
         # at 2.x, and CLAUDE.md's versioning policy rules out an SBT 2.x jump without a review.
         # The versions are fetched first because a failure inside `echo "$(...)"` wouldn't fail
@@ -88,5 +108,26 @@ jobs:
             echo '## GitHub Actions'
             echo '```'
             python3 .claude/skills/bump-versions/scripts/check_actions_updates.py
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Report container image updates
+        # Dependabot's docker-compose ecosystem covers docker-compose.yml, but not the
+        # Testcontainers tag in PostgresContainerSupport.scala (a string literal, no manifest).
+        # The script checks both and exits non-zero if the two postgres tags differ, which fails
+        # this step on purpose.
+        run: |
+          {
+            echo '## Container images'
+            echo '```'
+            python3 .claude/skills/bump-versions/scripts/check_container_images.py
+            echo '```'
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Report unversioned container images
+        # `:latest` or untagged images are invisible to Dependabot (it only bumps version tags).
+        run: |
+          {
+            echo '## Unversioned container images'
+            echo '```'
+            python3 .claude/skills/bump-versions/scripts/check_unversioned_images.py .
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"

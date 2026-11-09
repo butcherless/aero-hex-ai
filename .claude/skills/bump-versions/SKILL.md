@@ -56,11 +56,15 @@ a cross-file tag mismatch (a broken state, not a suggestion), and 2 when a looku
 non-zero exit as "this check didn't complete": report it in Step 6 and don't infer anything from
 the rows it did print.
 
-`.github/dependabot.yml` already runs weekly `github-actions` and `docker-compose` ecosystem
-updates on its own schedule and opens PRs independently of this skill — the Actions and
-container-image checks here exist for the same reason the others do: an on-demand, single-pass
-toolchain review, not a replacement for Dependabot. Expect them to sometimes report "up to date"
-because Dependabot already caught it. The one thing Dependabot cannot see is the Testcontainers
+`.github/dependabot.yml` already runs weekly `github-actions`, `sbt` and `docker-compose`
+ecosystem updates on its own schedule and opens PRs independently of this skill. Its `sbt`
+ecosystem reads `build.sbt`, `project/plugins.sbt`, `project/build.properties` and
+`project/*.scala` (per GitHub's supported-ecosystems docs), and this repo's config ignores
+semver-major bumps there, so majors only surface through this skill or the weekly
+`dependency-updates.yml` report. The checks here exist
+as an on-demand, single-pass toolchain review, not a replacement for Dependabot — expect them to
+sometimes report "up to date" because Dependabot already caught it. Dependabot has no notion of
+the LTS-only Scala rule or the SBT 1.x ceiling, and doesn't read `.scalafmt.conf`. Nor can it see the Testcontainers
 image tag in `PostgresContainerSupport.scala` — it's a plain string literal, not a manifest
 entry — so that half of the container-image check is a genuine gap-filler, not just a mirror.
 

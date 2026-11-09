@@ -12,14 +12,17 @@ domain events still being wired in.
 - **Scala 3** (LTS) + **SBT 1** multi-module build
 - **ZIO** for functional effects, **ZIO HTTP** for the server, **Tapir** for endpoint definitions
   and code-first OpenAPI generation
-- **Quill** over **PostgreSQL** persists `Country`, `Airport`, `Airline`, `Aircraft`, and `Flight`
-  (the only repositories wired to a real database so far). Flyway migrations run in-process at
-  startup
-- **ZIO Kafka** outbox relay exists but isn't wired in yet
+- **Quill** over **PostgreSQL** persists every wired entity — `Country`, `Airport`, `Airline`,
+  `Aircraft`, `Route`, `Flight`, plus the auth `User`/revoked-token tables. Only route–airline
+  links and `FlightInstance` are still in-memory stubs. Flyway migrations run in-process at startup
+- **JWT** bearer authentication (`jwt-scala`, HS256) with **bcrypt** password hashing — every
+  business endpoint requires a token
+- **ZIO Kafka** (4.x) outbox relay exists but isn't wired in yet
 - **Circe** for JSON, **ZIO Logging** (SLF4J/Logback) for logging
+- **ZIO Prelude** `Newtype`s with validated smart constructors for the aviation codes
 
-See [CLAUDE.md](./CLAUDE.md) for the full module dependency graph, wiring status, and
-per-dependency versions.
+See [CLAUDE.md](./CLAUDE.md) for the module dependency graph and wiring status;
+versions are pinned in [`project/Versions.scala`](./project/Versions.scala).
 
 ## Running locally
 
@@ -34,10 +37,13 @@ Build and run the server as a fat JAR (`java -jar` runs the OpenAPI spec generat
 use `java -cp` to start the server):
 
 ```bash
-sbt ";clean;bootstrap/assembly"
-JAR=$(find target/out -name "bootstrap-assembly-*.jar" | sort | tail -1)
+sbt -Dcoverage=false "clean; bootstrap/assembly"
+JAR=$(find bootstrap/target -name "bootstrap-assembly-*.jar" | sort | tail -1)
 java -cp "$JAR" dev.cmartin.aerohex.bootstrap.Main
 ```
+
+`-Dcoverage=false` keeps scoverage instrumentation out of the jar (coverage is on by default
+for every module, and `coverageOff` alone can't turn it off — see the comment in `build.sbt`).
 
 On startup the app runs Flyway migrations in-process, before the HTTP port binds — new
 `V*.sql` files under `infrastructure/migration/` apply automatically, and a migration failure
@@ -45,8 +51,10 @@ aborts startup. Set `FLYWAY_MIGRATE_ON_START=false` to skip.
 
 > **One-time, per machine:** if your dev database predates migrate-on-start (hand-applied
 > schema, no `flyway_schema_history` table), reset it once — `docker compose down -v &&
-> docker compose up -d`, start the app (applies `V1`–`V7` from scratch), then re-seed:
+> docker compose up -d`, start the app (applies `V1`–`V20` from scratch), then re-seed the
+> `plans/seed-data-*.sql` scripts — at least countries/airports and users (needed to log in):
 > `docker exec -i aero-hex-ai-postgres-1 psql -U aviation -d aviation < plans/seed-data-countries-airports.sql`
+> `docker exec -i aero-hex-ai-postgres-1 psql -U aviation -d aviation < plans/seed-data-users.sql`
 
 Verify it's up:
 
@@ -55,15 +63,18 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health/live    # �
 curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/health/ready   # → 200 (503 if Postgres is unreachable)
 ```
 
-Swagger UI is served at `http://localhost:8080/docs`.
+Swagger UI is served at `http://localhost:8080/docs`. Get a token from
+`POST /api/v1/auth/login` (the dev user comes from `plans/seed-data-users.sql`) and send it as
+`Authorization: Bearer <token>`.
 
 ## API status
 
-**Countries** (CRUD + search), **Airports** (list, search, find, create, update,
-list-by-country), **Airlines** (CRUD + search), **Aircraft** (CRUD), and **Flights** (CRUD) are
-implemented end-to-end against real Postgres; Flight Instances and Route creation are stubbed.
-Liveness/readiness probes are available at `/health/live` and `/health/ready` (unversioned, no
-`/api/v1` prefix). See [CLAUDE.md](./CLAUDE.md#rest-api) for the per-endpoint status table.
+**Auth** (login, logout), **Countries** (CRUD + search), **Airports** (CRUD + search,
+list-by-country), **Airlines** (CRUD + search), **Aircraft** (CRUD), **Flights** (CRUD) and
+**Routes** (list with origin/destination filters, create) are implemented end-to-end against real
+Postgres. Flight Instances and the route–airline links are stubbed. Liveness/readiness probes are
+available at `/health/live` and `/health/ready` (unversioned, no `/api/v1` prefix). See
+[docs/api/endpoint-status.md](./docs/api/endpoint-status.md) for the per-endpoint status table.
 
 ## Development
 
@@ -81,6 +92,8 @@ sbt integrationTests/test
 ```
 
 See [CLAUDE.md](./CLAUDE.md#integration-tests-opt-in-real-postgres) for coverage and setup details.
+`master-data-sync` (bulk import of reference data, see `plans/masterdata/`) is opt-in the same
+way; run its tests with `sbt masterDataSync/test`.
 
 A third, opt-in layer exercises the actual running app end to end: real Postgres, the real HTTP
 server, and the Postman collection's `E2E — ...` folders run against it via Newman. Use the
