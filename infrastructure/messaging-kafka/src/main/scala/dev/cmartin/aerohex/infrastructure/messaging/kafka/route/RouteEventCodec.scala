@@ -9,6 +9,6 @@ case class RouteCreatedEvent(
 )
 
 object RouteEventCodec {
-  // TODO: implement with Circe + ZIO Kafka 3.x Serde API
+  // TODO: implement with Circe + ZIO Kafka 4.x Serde API
   val routeCreatedSerde: Serde[Any, RouteCreatedEvent] = ???
 }

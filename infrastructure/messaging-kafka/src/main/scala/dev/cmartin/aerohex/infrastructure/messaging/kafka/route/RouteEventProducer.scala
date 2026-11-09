@@ -12,7 +12,7 @@ import zio.{IO, TaskLayer, URLayer, ZIO, ZLayer}
 final class RouteEventProducer(@unused producer: Producer) extends EventPublisher {
 
   override def publish(event: OutboxEvent): IO[DomainError, Unit] =
-    // TODO: implement per event type using ZIO Kafka 3.x API
+    // TODO: implement per event type using ZIO Kafka 4.x API
     ZIO.logInfo(s"Publishing event: ${event.eventType} for ${event.aggregateId}").unit
 }
 

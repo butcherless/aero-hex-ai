@@ -116,7 +116,7 @@ Shapes, matching the `VARCHAR` bounds and HTTP `Validator`s: `IataCode` 3 letter
 
 | File | Status |
 |---|---|
-| `RouteEventCodec.routeCreatedSerde` | `???` — needs ZIO Kafka 3.x `Serde` with Circe JSON |
+| `RouteEventCodec.routeCreatedSerde` | `???` — needs ZIO Kafka 4.x `Serde` with Circe JSON |
 | `RouteEventProducer.publish` | compiles, but only logs the event — doesn't call `Producer.produce` |
 | `bootstrap/src/main/resources/application.conf`'s `kafka.group-id` | missing a `${?KAFKA_GROUP_ID}` override (every other setting in that file has one) — harmless today since Kafka isn't wired into `Main`, but a silent no-op once it is |
 
@@ -172,7 +172,7 @@ Independent layers, cheapest first. Run the ones relevant to what changed:
 
 ## Documentation sources
 
-Always fetch current docs before writing or modifying library API calls, especially for ZIO Kafka 3.x (breaking changes).
+Always fetch current docs before writing or modifying library API calls, especially for ZIO Kafka (4.0 changed `OffsetBatch` to carry `nextOffset` instead of `offset`; 3.0 made producers explicit).
 
 **Choosing a library for a new capability:** use the `choose-library` skill (ZIO ecosystem first; record the comparison).
 
