@@ -60,7 +60,13 @@ jobs:
         # The versions are fetched first because a failure inside `echo "$(...)"` wouldn't fail
         # the step.
         run: |
-          sbt_latest="$(gh api 'repos/sbt/sbt/releases?per_page=30' --jq '[.[] | select(.prerelease | not) | .tag_name | select(startswith("v1."))] | first')"
+          sbt_latest="$(gh api 'repos/sbt/sbt/releases?per_page=100' --jq '[.[] | select(.prerelease | not) | .tag_name | select(test("^v1\\.[0-9]+\\.[0-9]+$"))] | max_by(ltrimstr("v") | split(".") | map(tonumber))')"
+          # Highest 1.x, not the first listed: a late patch on an older 1.x line comes first by date.
+          # `null` means 2.x releases pushed every 1.x one off the page — fail rather than report it.
+          if [[ -z "$sbt_latest" || "$sbt_latest" == null ]]; then
+            echo "::error::No SBT 1.x release in the last 100 GitHub releases; the query needs paging." >&2
+            exit 1
+          fi
           scalafmt_latest="$(gh api repos/scalameta/scalafmt/releases/latest --jq .tag_name)"
           {
             echo '## SBT itself'

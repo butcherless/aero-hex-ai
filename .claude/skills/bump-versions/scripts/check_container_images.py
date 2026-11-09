@@ -14,7 +14,9 @@ Two places pin container images, and only the first is covered by
 
 Like the plugin/actions checks in this skill, this only reports — it never
 rewrites a file. It queries the Docker Hub registry API for available tags.
-Exit code is 1 if the same image is pinned to different tags across files.
+Exit code is 1 if the same image is pinned to different tags across files, and 2
+(taking precedence) if a Docker Hub lookup failed (network error, bad response, or no tags returned), so a
+broken check can't pass as "up to date".
 """
 import json
 import re
@@ -48,23 +50,29 @@ def version_key(v: str):
     return tuple(int(n) for n in re.findall(r"\d+", v))
 
 
-def hub_tags(ns: str, repo: str, pages: int = 3) -> list:
-    """Tag names for a Docker Hub repo, following pagination up to `pages` pages."""
+def hub_tags(ns: str, repo: str, pages: int = 3) -> Optional[list]:
+    """Tag names for a Docker Hub repo, following pagination up to `pages` pages.
+    None if the first page couldn't be fetched or parsed, or listed no tags."""
     names: list = []
     url = f"https://hub.docker.com/v2/namespaces/{ns}/repositories/{repo}/tags?page_size=100"
-    for _ in range(pages):
-        result = subprocess.run(["curl", "-s", url], capture_output=True, text=True, timeout=20)
+    for page in range(pages):
+        # -f: an HTTP error is a non-zero exit, not an error body parsed as an empty tag list.
+        result = subprocess.run(["curl", "-sfL", url], capture_output=True, text=True, timeout=20)
         try:
-            data = json.loads(result.stdout)
+            data = json.loads(result.stdout) if result.returncode == 0 else None
         except json.JSONDecodeError:
-            break
+            data = None
+        if not isinstance(data, dict):
+            if page == 0:
+                return None
+            break  # later pages are a bonus; the first page has the newest tags
         for t in data.get("results", []):
             if t.get("name"):
                 names.append(t["name"])
         url = data.get("next")
         if not url:
             break
-    return names
+    return names or None
 
 
 def latest_for(tag: str, tags: list) -> Optional[str]:
@@ -126,14 +134,20 @@ def main() -> None:
 
         latest: Optional[str] = None
         for t in current_tags:
-            found_latest = latest_for(t, tags)
+            found_latest = latest_for(t, tags or [])
             if found_latest:
                 latest = found_latest if latest is None else max([latest, found_latest], key=version_key)
 
+        # The cross-file check needs no network, so it's reported even when the lookup failed.
         marker = ""
         if len(current_tags) > 1:
             marker = "  <-- INCONSISTENT tag across files (bump them together)"
-            exit_code = 1
+            exit_code = max(exit_code, 1)
+        if tags is None:
+            marker += "  <-- Docker Hub lookup failed"
+            exit_code = 2
+        elif len(current_tags) > 1:
+            pass  # an update suggestion is meaningless until the tags agree
         elif latest is None:
             marker = "  <-- tag shape not recognised, check Docker Hub manually"
         elif latest != current_tags[0]:
