@@ -67,14 +67,14 @@ object RouteSyncSpec extends ZIOSpecDefault:
         state.update(_.filterNot(r => r.origin == origin && r.destination == destination)).unit
 
       val find: FindRouteUseCase = new FindRouteUseCase:
-        def findBySegment(origin: IataCode, destination: IataCode): IO[DomainError, Route]        =
+        def findBySegment(origin: IataCode, destination: IataCode): IO[DomainError, RouteWithAirportNames]        =
           ZIO.die(new NotImplementedError("findBySegment"))
-        def findAll(p: Pagination): IO[DomainError, List[Route]]                                  =
+        def findAll(p: Pagination): IO[DomainError, List[RouteWithAirportNames]]                                  =
           ZIO.die(new NotImplementedError("findAll"))
         def findAllUnbounded: IO[DomainError, List[Route]]                                        = state.get
-        def findByOrigin(origin: IataCode, p: Pagination): IO[DomainError, List[Route]]           =
+        def findByOrigin(origin: IataCode, p: Pagination): IO[DomainError, List[RouteWithAirportNames]]           =
           ZIO.die(new NotImplementedError("findByOrigin"))
-        def findByDestination(destination: IataCode, p: Pagination): IO[DomainError, List[Route]] =
+        def findByDestination(destination: IataCode, p: Pagination): IO[DomainError, List[RouteWithAirportNames]] =
           ZIO.die(new NotImplementedError("findByDestination"))
 
       StubUseCases(create, update, delete, find, state.get)

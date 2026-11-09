@@ -21,7 +21,7 @@ object UserRepositoryContractSpec:
           try {
             stmt.setString(1, username)
             stmt.setString(2, passwordHash)
-            stmt.executeUpdate()
+            stmt.executeUpdate(): Unit
           } finally stmt.close()
         } finally conn.close()
       }
