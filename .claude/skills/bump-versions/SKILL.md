@@ -1,20 +1,22 @@
 ---
 name: bump-versions
 description: >
-  Checks for and applies dependency, SBT plugin, SBT-itself, scalafmt-formatter, and GitHub
-  Actions version updates in this Scala/ZIO project, following the versioning policy in
+  Checks for and applies dependency, SBT plugin, SBT-itself, scalafmt-formatter, GitHub
+  Actions, and container image (Docker Compose / Testcontainers) version updates in this
+  Scala/ZIO project, following the versioning policy in
   CLAUDE.md (LTS-only Scala, stable-GA-only deps except ZIO Prelude's RC exception, free
   patch/minor bumps, reviewed major bumps). Use this whenever the user asks to bump, upgrade, or update
-  dependencies/libraries/plugins/SBT/scalafmt/GitHub-Actions, runs `sbt xdup`/`dependencyUpdates`
+  dependencies/libraries/plugins/SBT/scalafmt/GitHub-Actions/Docker images, runs `sbt xdup`/`dependencyUpdates`
   and wants to act on the results, asks "are we behind on any libraries", "check for outdated
   deps", "update sbt-scoverage", "bump flyway", "check latest scalafmt version", "check GitHub
-  Actions versions", "are our workflow actions up to date", or anything else about keeping this
+  Actions versions", "are our workflow actions up to date", "bump postgres", "is the kafka image
+  current", "any images on latest", or anything else about keeping this
   project's toolchain current — even when only one dependency is named.
 ---
 
 # Bump versions
 
-This project keeps versions in seven places, each needing a different check:
+This project keeps versions in eight places, each needing a different check:
 
 | What | Lives in | How to check |
 |---|---|---|
@@ -25,14 +27,15 @@ This project keeps versions in seven places, each needing a different check:
 | scalafmt formatter | `.scalafmt.conf` (`version =`) | `gh api` GitHub `releases/latest` |
 | GitHub Actions | `.github/workflows/*.yml`, `.github/actions/*/action.yml` | `scripts/check_actions_updates.py` (bundled here) |
 | Container image tags | `docker-compose.yml`, `infrastructure/integration-tests/.../PostgresContainerSupport.scala` | `scripts/check_container_images.py` (bundled here) |
+| Unversioned images (`:latest` / no tag) | any `*.yml`/`*.yaml` | `scripts/check_unversioned_images.py` (bundled here, report only) |
 
 `xdup` only sees the main build's dependencies, not the Scala language version, `plugins.sbt`
 (the meta-build), `build.properties`, `.scalafmt.conf`, the workflow/action files, or the
-container image tags — all seven checks are needed for a full picture. Note that `.scalafmt.conf`'s
+container image tags — all eight checks are needed for a full picture. Note that `.scalafmt.conf`'s
 `version` pins the standalone scalafmt formatter, which is separate from the `sbt-scalafmt`
 plugin version in `plugins.sbt` — the two are checked independently and can be a version apart
 from each other. If the user named one specific dependency, skip straight to its check in Step 2
-instead of running all seven — but Step 1's git sync always runs first regardless of scope,
+instead of running all eight — but Step 1's git sync always runs first regardless of scope,
 single dependency or not.
 
 **Fetch conventions** — every check uses one of three mechanisms, by source:
@@ -101,8 +104,11 @@ are opt-in and not in that aggregate (see CLAUDE.md's module graph), so their ow
 own tests too (`sbt integrationTests/test`, which needs Docker, or `sbt masterDataSync/test`),
 since `sbt test` doesn't run them.
 
-Ignore any `org.scala-lang:scala3-library` line — that's the SBT meta-build's own Scala version,
-not this project's. The output will also include updates for excluded deps (e.g. ZIO Prelude's
+Ignore any `org.scala-lang:scala3-library` line — on sbt 1 (this project) that's the SBT
+meta-build's own Scala version, not this project's. On sbt 2 (e.g. `../tapir-learn` in a
+multi-project run) `dependencyUpdates` lists `scala3-library` (and `scala3-staging`) under
+*every* project instead, proposing the newest release even when it's a mainline "Next" one
+(`3.9.0 -> 3.10.0`); the Scala LTS check below is the only authority on the Scala version either way. The output will also include updates for excluded deps (e.g. ZIO Prelude's
 `zio-prelude 1.0.0-RC48 -> 1.0.0-RC50`) — leave those alone; filtering is Step 3's job, not this
 one's.
 
@@ -323,6 +329,21 @@ git status -sb   # "behind N" means the remote moved
 If the remote is ahead, `git stash` the bump edits, `git pull`, then `git stash pop`. If the pull
 touched a version-tracking file, resolve any conflict by re-reading the new value, drop bumps that
 already landed, and re-run Step 5's verify gate on the final combined result before committing.
+
+## Step 5c — Commit, then ask before pushing
+
+Commit each bump on its own once its verify gate has passed — one commit per bump, mirroring
+Step 5's one-at-a-time rule, so a later revert or `git bisect` lands on exactly one version
+change. Commit on the current branch (this repo commits straight to `main`; Dependabot is the only
+source of PRs). Message shape: `chore: bump <dependency> to <version>`, with a body for anything
+the diff doesn't say on its own: a major bump's migration notes, fallout fixed alongside it, or
+which verify layers ran. Stage only the files that bump touched. A fix to an unrelated problem the
+verify gate exposed gets its own commit (see the zio-kafka 4.0.0 run, where stale opt-in-module
+tests were fixed separately from the bump).
+
+**Never push without asking** — CLAUDE.md's git workflow rule. Once the user says yes, push, and
+after the push don't watch CI unless they ask, with the one exception from Step 5: a GitHub
+Actions major bump needs its first CI run checked.
 
 ## Step 6 — Report
 
