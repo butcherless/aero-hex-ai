@@ -18,7 +18,7 @@ This project keeps versions in seven places, each needing a different check:
 
 | What | Lives in | How to check |
 |---|---|---|
-| Library dependencies | `project/Versions.scala` | `sbt xdup` (alias for `dependencyUpdates`) |
+| Library dependencies | `project/Versions.scala` | `sbt xdup` (alias for `dependencyUpdates`), plus the two opt-in modules |
 | Scala language version | `project/Versions.scala` (`scala3`) | `gh api` GitHub releases, filtered to latest **LTS** |
 | SBT plugins | `project/plugins.sbt` | `scripts/check_plugin_updates.py` (bundled here) |
 | SBT itself | `project/build.properties` | `gh api` GitHub releases, filtered to the **1.x** line |
@@ -36,7 +36,8 @@ instead of running all seven — but Step 1's git sync always runs first regardl
 single dependency or not.
 
 **Fetch conventions** — every check uses one of three mechanisms, by source:
-- **`sbt xdup`** for the main build's declared dependencies.
+- **`sbt xdup`** (plus `dependencyUpdates` on the two opt-in modules) for the build's declared
+  dependencies.
 - **`gh api <path> --jq <expr>`** for anything hosted on GitHub (Scala, SBT, scalafmt, and the
   Actions script). Never `curl https://api.github.com/...` — `gh` is authenticated here (5000
   req/hr vs. 60 unauthenticated) and `--jq` removes the inline `python3 -c` parsing. `gh` being
@@ -88,7 +89,14 @@ report instead of re-reporting it as this run's work.
 **Library deps:**
 ```bash
 sbt xdup
+sbt "integrationTests/dependencyUpdates; masterDataSync/dependencyUpdates"
 ```
+`xdup` only covers the modules in root's aggregate. `integration-tests` and `master-data-sync`
+are opt-in and not in that aggregate (see CLAUDE.md's module graph), so their own dependencies
+(e.g. Testcontainers) need the second command. A bump found there is verified with that module's
+own tests too (`sbt integrationTests/test`, which needs Docker, or `sbt masterDataSync/test`),
+since `sbt test` doesn't run them.
+
 Ignore any `org.scala-lang:scala3-library` line — that's the SBT meta-build's own Scala version,
 not this project's. The output will also include updates for excluded deps (e.g. ZIO Prelude's
 `zio-prelude 1.0.0-RC48 -> 1.0.0-RC50`) — leave those alone; filtering is Step 3's job, not this

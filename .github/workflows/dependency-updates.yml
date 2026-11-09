@@ -40,7 +40,9 @@ jobs:
           {
             echo '## Library dependencies'
             echo '```'
-            sbt -no-colors xdup
+            # integration-tests and master-data-sync are opt-in (not in root's aggregate), so
+            # `xdup` skips them; one sbt invocation covers all three.
+            sbt -no-colors "xdup; integrationTests/dependencyUpdates; masterDataSync/dependencyUpdates"
             echo '```'
           } | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Report SBT plugin updates
