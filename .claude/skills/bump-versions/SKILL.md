@@ -279,6 +279,12 @@ For each approved **Scala/library/plugin/SBT/scalafmt** bump, in turn:
    `;`-separated argument: `sbt "clean; scalafmtAll; compile; test"`. That form works on sbt 1
    and 2 alike; the space-separated `sbt clean compile test` fails to parse under sbt 2's thin
    client, which matters in a multi-project run (tapir-learn, incubator and scala are on sbt 2).
+
+   **On sbt 2, use `testFull`, not `test`.** sbt 2's `test` is `testQuick`, and its disk cache
+   survives `clean`, so after a dependency bump it can report "No tests to run" / "Total number of
+   tests run: 0" and still end in `[success]` — a pass that verified nothing. Run
+   `sbt "clean; scalafmtAll; compile; testFull"` there (what those repos' CI runs), and check the
+   output shows a non-zero test count before calling the gate passed.
 3. If it passes, move on to the next approved bump. If it fails, stop — don't layer further bumps
    on top of a broken one. Investigate before deciding whether to revert this one, fix the fallout,
    or tell the user it needs more review than expected.
