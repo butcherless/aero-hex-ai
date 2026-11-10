@@ -11,7 +11,7 @@ object Versions {
   val postgresql     = "42.7.14"
   val hikaricp       = "7.1.0"
   val circe          = "0.14.17"
-  val zioLogging     = "2.5.3"
+  val zioLogging     = "2.5.4"
   val logback        = "1.6.6"
   val sttpClient4    = "4.1.1"
   val protoQuill     = "4.8.6"
