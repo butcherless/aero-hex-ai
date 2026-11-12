@@ -1,0 +1,44 @@
+name: Dependency Graph
+
+# Submits the resolved sbt dependency tree to GitHub's dependency graph. GitHub can't read an sbt
+# build on its own, so without this step Dependabot security alerts never see the Scala/Java
+# libraries (Dependabot's `sbt` version updates are a separate feature and don't feed the graph).
+# Runs on every push to main that can change dependencies, and weekly, so alerts also reflect
+# newly published advisories against versions that haven't changed.
+
+on:
+  push:
+    branches:
+      - 'main'
+    paths:
+      - 'build.sbt'
+      - 'project/**'
+      - '.github/workflows/dependency-graph.yml'
+  schedule:
+    - cron: '0 6 * * 1'  # every Monday at 06:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  submit:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    # The submission API needs write access to repository contents. Scoped to this job only.
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Setup build environment
+        uses: ./.github/actions/setup-build-env
+      - name: Submit sbt dependency graph
+        uses: scalacenter/sbt-dependency-submission@v3

@@ -165,6 +165,7 @@ Independent layers, cheapest first. Run the ones relevant to what changed:
    - The `build` job runs format check, compile, test and `coverageAggregate`, and a parallel `assembly` job builds the coverage-free jar, on every push/PR except docs-only pushes. Neither runs `integrationTests`, so CI coverage is lower than a local run that includes them. That's expected.
    - The `build` job caches `**/target` **and** `**/.coverage-data` in one entry: the cached classes are scoverage-instrumented, and restoring them without their data dir fails every test with `FileNotFoundException`. Keep the two paths together (and identical in the `integration-tests` job, or its cache never matches).
    - `dependency-updates.yml` (weekly, Fridays) reports available updates in the job summary; it never edits files.
+   - `dependency-graph.yml` (pushes to main touching `build.sbt`/`project/**`, plus weekly) submits the sbt dependency tree to GitHub, so Dependabot security alerts cover the Scala/Java libraries. It is the only job with `contents: write`.
    - The `integration-tests` job only runs when manually dispatched with `run_integration_tests` checked.
    - Workflow design decisions are in `plans/refactor-github-actions-workflows.md`.
 
