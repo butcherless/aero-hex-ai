@@ -13,7 +13,7 @@ import dev.cmartin.aerohex.domain.user.{
 }
 import java.time.Instant
 import zio.test.*
-import zio.{IO, Scope, UIO, ZIO, ZLayer}
+import zio.{IO, Ref, Scope, UIO, ZIO, ZLayer}
 
 object LoginServiceSpec extends ZIOSpecDefault:
 
@@ -22,8 +22,9 @@ object LoginServiceSpec extends ZIOSpecDefault:
   private def repoReturning(user: Option[User]): UserRepository =
     (_: String) => ZIO.succeed(user)
 
-  private def hasherReturning(valid: Boolean): PasswordHasher =
-    (_: String, _: String) => ZIO.succeed(valid)
+  private def hasherReturning(valid: Boolean): PasswordHasher = new PasswordHasher:
+    def verify(plain: String, hash: String): UIO[Boolean] = ZIO.succeed(valid)
+    def simulateVerify(plain: String): UIO[Unit]          = ZIO.unit
 
   private val issuingTokenService: TokenService = new TokenService:
     def generate(username: String): UIO[AccessToken]             =
@@ -38,15 +39,17 @@ object LoginServiceSpec extends ZIOSpecDefault:
         for result <- service.login("alice", "correct-password")
         yield assertTrue(result == AccessToken("token-for-alice", 3600))
       },
-      test("fails with InvalidCredentials when the username does not exist, and never calls the password hasher") {
-        val service =
-          new LoginService(
-            repoReturning(None),
-            (_: String, _: String) => ZIO.die(new NotImplementedError("verify")),
-            issuingTokenService
-          )
-        for error <- service.login("nobody", "whatever").flip
-        yield assertTrue(error == DomainError.InvalidCredentials)
+      test("fails with InvalidCredentials when the username does not exist, after a simulated hash check") {
+        for
+          simulated <- Ref.make(List.empty[String])
+          hasher     = new PasswordHasher:
+                         def verify(plain: String, hash: String): UIO[Boolean] =
+                           ZIO.die(new NotImplementedError("verify"))
+                         def simulateVerify(plain: String): UIO[Unit]          = simulated.update(plain :: _)
+          service    = new LoginService(repoReturning(None), hasher, issuingTokenService)
+          error     <- service.login("nobody", "whatever").flip
+          calls     <- simulated.get
+        yield assertTrue(error == DomainError.InvalidCredentials, calls == List("whatever"))
       },
       test("fails with InvalidCredentials (the same error as an unknown username) when the password does not match") {
         val service = new LoginService(repoReturning(Some(alice)), hasherReturning(false), issuingTokenService)

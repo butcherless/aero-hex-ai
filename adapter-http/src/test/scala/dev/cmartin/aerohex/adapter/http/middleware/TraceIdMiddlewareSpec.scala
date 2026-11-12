@@ -46,6 +46,18 @@ object TraceIdMiddlewareSpec extends ZIOSpecDefault:
           seen.contains(incoming)
         )
       },
+      test("replaces an incoming X-Trace-Id that is too long or has disallowed characters") {
+        val rejected = List("x" * 65, "has space", "semi;colon", "brace{}")
+        ZIO
+          .foreach(rejected) { incoming =>
+            run(Request.get("/probe").addHeader(TraceIdMiddleware.TraceIdHeaderName, incoming)).map {
+              case (response, seen) =>
+                val echoed = response.headers.get(TraceIdMiddleware.TraceIdHeaderName)
+                echoed.isDefined && !echoed.contains(incoming) && seen == echoed
+            }
+          }
+          .map(results => assertTrue(results.forall(identity)))
+      },
       test("generates a different traceId on each request when none is supplied") {
         for
           firstResult  <- run(Request.get("/probe"))

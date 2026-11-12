@@ -138,6 +138,14 @@ jwt {
 }
 ```
 
+**Revision (2026-11-13):** the `"dev-only-change-me"` default secret is removed. Anyone who
+knows a hardcoded fallback can forge tokens on any deployment that forgot to set the variable.
+`JwtConfig.fromEnv` now either uses a random per-process secret, with a warning, when
+`JWT_SECRET_KEY` is unset, or aborts startup when the value is shorter than 32 bytes (the RFC 7518
+§3.2 minimum for HS256). The same change makes an unknown username still run one bcrypt check
+(`PasswordHasher.simulateVerify`), so decision 6's user-enumeration protection also holds for
+response time.
+
 ### 8. JWT claims: RFC 7519 registered claims, no private claims yet
 
 Confirmed against `jwt-scala`'s own `JwtClaim` API (`.by`/`.to`/`.about`/`.withId`/`.expiresIn`/

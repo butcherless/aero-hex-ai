@@ -21,8 +21,10 @@ permissions:
   contents: read
 
 concurrency:
+  # Only PR runs are cancelled when a newer commit arrives. On main, every commit runs to the end
+  # so each one gets a CI result and saves its build cache; newer runs wait in the queue.
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   SBT_OPTS: "-Xmx3g"

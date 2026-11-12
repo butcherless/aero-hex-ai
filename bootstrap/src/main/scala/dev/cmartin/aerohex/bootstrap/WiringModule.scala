@@ -70,7 +70,7 @@ object WiringModule {
     QuillDataSourceLayer.live >>> QuillRevokedTokenRepository.layer
 
   private val jwtServiceLayer: TaskLayer[TokenService] =
-    (ZLayer.succeed(JwtConfig.default) ++ revokedTokenRepoLayer) >>> JwtService.layer
+    (ZLayer.fromZIO(JwtConfig.fromEnv()) ++ revokedTokenRepoLayer) >>> JwtService.layer
 
   private val passwordHasherLayer: ULayer[PasswordHasher] = BcryptPasswordHasher.layer
 

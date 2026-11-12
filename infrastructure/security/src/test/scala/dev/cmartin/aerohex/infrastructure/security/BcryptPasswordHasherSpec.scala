@@ -19,5 +19,9 @@ object BcryptPasswordHasherSpec extends ZIOSpecDefault:
       test("verify fails for the wrong plaintext") {
         for result <- new BcryptPasswordHasher().verify("wrong-password", hash)
         yield assertTrue(!result)
+      },
+      test("simulateVerify completes without needing a stored hash") {
+        for exit <- new BcryptPasswordHasher(dummyCost = 4).simulateVerify("anything").exit
+        yield assertTrue(exit.isSuccess)
       }
     )

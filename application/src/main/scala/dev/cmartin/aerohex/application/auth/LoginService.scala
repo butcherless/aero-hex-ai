@@ -13,10 +13,15 @@ final class LoginService(
 
   // Unknown username and wrong password both collapse to the same InvalidCredentials — never
   // distinguished in the response, to avoid a user-enumeration oracle (plans/security/login.md
-  // decision 6).
+  // decision 6). They also take the same time: an unknown username still pays for one hash
+  // check (simulateVerify), or the fast reply would give the username away.
   override def login(username: String, password: String): IO[DomainError, AccessToken] =
     (for {
-      user  <- userRepo.findByUsername(username).someOrFail(DomainError.InvalidCredentials)
+      user  <- userRepo.findByUsername(username).flatMap {
+                 case Some(u) => ZIO.succeed(u)
+                 case None    =>
+                   passwordHasher.simulateVerify(password) *> ZIO.fail(DomainError.InvalidCredentials)
+               }
       valid <- passwordHasher.verify(password, user.passwordHash)
       _     <- if valid then ZIO.unit else ZIO.fail(DomainError.InvalidCredentials)
       token <- tokenService.generate(user.username)
