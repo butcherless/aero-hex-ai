@@ -34,6 +34,18 @@ object CountryRepositoryContractSpec:
         results <- repo.searchByName("ital")
       yield assertTrue(results.exists(_.code.value == "IT"))
     },
+    test("searchByName treats % and _ in the query as literal characters, not wildcards") {
+      for
+        repo       <- ZIO.service[CountryRepository]
+        _          <- repo.save(Country(CountryCode("SE"), "Snake_case 100% Land"))
+        _          <- repo.save(Country(CountryCode("NO"), "Norway"))
+        underscore <- repo.searchByName("_")
+        percent    <- repo.searchByName("%")
+      yield assertTrue(
+        underscore.map(_.code.value) == List("SE"),
+        percent.map(_.code.value) == List("SE")
+      )
+    },
     test("update changes the name of an existing country") {
       for
         repo    <- ZIO.service[CountryRepository]

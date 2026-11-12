@@ -4,7 +4,7 @@ import dev.cmartin.aerohex.domain.airline.AirlineRepository
 import dev.cmartin.aerohex.domain.airline.{Airline, AirlineIcaoCode}
 import dev.cmartin.aerohex.domain.country.CountryCode
 import dev.cmartin.aerohex.domain.error.DomainError
-import dev.cmartin.aerohex.infrastructure.persistence.quill.common.QuillSqlState
+import dev.cmartin.aerohex.infrastructure.persistence.quill.common.{QuillSearch, QuillSqlState}
 import dev.cmartin.aerohex.infrastructure.persistence.quill.country.QuillCountryIdResolver
 import dev.cmartin.aerohex.shared.Pagination
 import io.getquill.*
@@ -74,12 +74,14 @@ final class QuillAirlineRepository(dataSource: DataSource) extends AirlineReposi
       .orDie
 
   override def searchByName(query: String): IO[DomainError, List[Airline]] = {
-    val pattern = "%" + query + "%"
+    val pattern = QuillSearch.containsPattern(query)
+    val limit   = QuillSearch.MaxResults
     ctx
       .run(quote {
         querySchema[AirlineRow]("airlines")
           .filter(r => infix"${r.name} ILIKE ${lift(pattern)}".as[Boolean])
           .sortBy(_.name)
+          .take(lift(limit))
       })
       .map(_.map(toAirline))
       .orDie
