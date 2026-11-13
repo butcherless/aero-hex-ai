@@ -146,6 +146,11 @@ knows a hardcoded fallback can forge tokens on any deployment that forgot to set
 (`PasswordHasher.simulateVerify`), so decision 6's user-enumeration protection also holds for
 response time.
 
+Later the same day, `application.conf` became the real config source (ZIO Config,
+`plans/configuration-zio-config.md`). `JwtConfig.load` reads the `jwt {}` block, and
+`secret-key` has no default value in the file. The "nothing parses the HOCON file" notes
+further down describe the situation before that change.
+
 ### 8. JWT claims: RFC 7519 registered claims, no private claims yet
 
 Confirmed against `jwt-scala`'s own `JwtClaim` API (`.by`/`.to`/`.about`/`.withId`/`.expiresIn`/

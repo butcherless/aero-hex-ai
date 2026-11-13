@@ -74,7 +74,7 @@ object WiringModule {
       QuillRevokedTokenRepository.layer,
       routeAirlineRepoStub,
       flightInstanceRepoStub,
-      ZLayer.fromZIO(JwtConfig.fromEnv()),
+      ZLayer.fromZIO(JwtConfig.load),
       JwtService.layer,
       BcryptPasswordHasher.layer,
       // Use cases

@@ -21,8 +21,6 @@ object HttpServer {
     CountryRoutes & AirportRoutes & AirlineRoutes & RouteRoutes &
       AircraftRoutes & FlightRoutes & FlightInstanceRoutes & HealthRoutes & AuthRoutes
 
-  val port: Int = sys.env.get("HTTP_PORT").flatMap(_.toIntOption).getOrElse(8080)
-
   val serve: ZIO[AppRoutes, Throwable, Nothing] =
     for {
       countries       <- ZIO.service[CountryRoutes]
@@ -45,6 +43,7 @@ object HttpServer {
                            auth.serverEndpoints
       swagger          = SwaggerInterpreter(customiseDocsModel = _.tags(ApiSpec.topLevelTags))
                            .fromServerEndpoints[Task](business, ApiSpec.info)
+      port            <- ZIO.config(HttpConfig.config).map(_.port)
       _               <- ZIO.logInfo(s"HTTP server starting on port $port")
       result          <- Server
                            .serve(

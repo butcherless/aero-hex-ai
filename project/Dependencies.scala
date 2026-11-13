@@ -38,6 +38,7 @@ object Dependencies {
 
   // Logging
   val zioLogging      = "dev.zio"       %% "zio-logging"        % Versions.zioLogging
+  val zioConfigTypesafe = "dev.zio" %% "zio-config-typesafe" % Versions.zioConfig
   val zioLoggingSlf4j = "dev.zio"       %% "zio-logging-slf4j"  % Versions.zioLogging
   val logback         = "ch.qos.logback" % "logback-classic"    % Versions.logback
 

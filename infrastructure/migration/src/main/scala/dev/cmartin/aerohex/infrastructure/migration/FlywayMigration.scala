@@ -3,6 +3,8 @@ package dev.cmartin.aerohex.infrastructure.migration
 import org.flywaydb.core.Flyway
 import zio.*
 
+// Connection settings are passed in by the caller (bootstrap's Main reads them through ZIO
+// Config, see plans/configuration-zio-config.md), so this module stays free of config concerns.
 object FlywayMigration {
 
   def migrate(url: String, user: String, password: String): Task[Unit] =
@@ -15,14 +17,4 @@ object FlywayMigration {
         .migrate()
       ZIO.logInfo(s"Flyway: applied ${result.migrationsExecuted} migration(s)")
     }.flatten
-
-  val migrateFromEnv: Task[Unit] =
-    migrate(
-      url = sys.env.getOrElse("POSTGRES_URL", "jdbc:postgresql://localhost:5432/aviation"),
-      user = sys.env.getOrElse("POSTGRES_USER", "aviation"),
-      password = sys.env.getOrElse("POSTGRES_PASSWORD", "aviation")
-    )
-
-  val layer: TaskLayer[Unit] =
-    ZLayer.fromZIO(migrateFromEnv)
 }

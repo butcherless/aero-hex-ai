@@ -23,8 +23,8 @@ object RouteEventProducer {
 
   val producerLayer: TaskLayer[Producer] =
     ZLayer.scoped {
-      Producer.make(
-        ProducerSettings(List(KafkaConfig.default.bootstrapServers))
-      )
+      ZIO.config(KafkaConfig.config).flatMap { kafka =>
+        Producer.make(ProducerSettings(List(kafka.bootstrapServers)))
+      }
     }
 }

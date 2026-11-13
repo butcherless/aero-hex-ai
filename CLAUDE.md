@@ -62,9 +62,9 @@ Rule: inner modules never depend on outer ones. `domain` has zero framework depe
 - **`security/`** — implements `TokenService` (`JwtService`, `jwt-scala`/`jwt-circe`, HS256, RFC
   7519 registered claims only) and `PasswordHasher` (`BcryptPasswordHasher`, `jbcrypt`). Depends
   only on `domain`, mirroring `persistence-quill`/`messaging-kafka`. See `plans/security/`.
-- **`migration/`** — Flyway SQL migrations; no domain dependency. `Main` runs `FlywayMigration.migrateFromEnv` at startup (see the `bootstrap` bullet).
+- **`migration/`** — Flyway SQL migrations; no domain dependency. `Main` calls `FlywayMigration.migrate` at startup (see the `bootstrap` bullet).
 - **`adapter-http/`** — Tapir endpoint definitions + ZIO HTTP server. DTOs live here; `ErrorMapper` maps `DomainError` → HTTP status. Every business resource's endpoints require a valid bearer token (see `## Key patterns`'s Tapir endpoints entry and `## REST API`).
-- **`bootstrap/`** — sole composition root. `WiringModule` wires all `ZLayer`s. `Main` runs Flyway migrations in-process (skip with `FLYWAY_MIGRATE_ON_START=false`), then starts the HTTP server (`WiringModule.appLayer`) — no outbox relay.
+- **`bootstrap/`** — sole composition root. `WiringModule` wires all `ZLayer`s with `ZLayer.make` (compile-checked). `Main` installs a `TypesafeConfigProvider` so every `ZIO.config` reads `application.conf` (env vars override via `${?VAR}`); each module owns its own `zio.Config` and never reads `sys.env` (`plans/configuration-zio-config.md`). `Main` runs Flyway migrations in-process (skip with `FLYWAY_MIGRATE_ON_START=false`), then starts the HTTP server (`WiringModule.appLayer`) — no outbox relay.
 - **`shared-kernel/`** — cross-cutting value types (`Pagination`, `NonEmptyString`).
 
 ## Integration tests (opt-in, real Postgres)
@@ -118,7 +118,6 @@ Shapes, matching the `VARCHAR` bounds and HTTP `Validator`s: `IataCode` 3 letter
 |---|---|
 | `RouteEventCodec.routeCreatedSerde` | `???` — needs ZIO Kafka 4.x `Serde` with Circe JSON |
 | `RouteEventProducer.publish` | compiles, but only logs the event — doesn't call `Producer.produce` |
-| `bootstrap/src/main/resources/application.conf`'s `kafka.group-id` | missing a `${?KAFKA_GROUP_ID}` override (every other setting in that file has one) — harmless today since Kafka isn't wired into `Main`, but a silent no-op once it is |
 
 ## Database schema
 
@@ -128,7 +127,7 @@ Flyway migrations in `infrastructure/migration/src/main/resources/db/migration/`
 - The ISO country check is `CountryCode.isRecognized`/`validateIso`, a pure in-memory `Set` in `domain/country/IsoCountryCodes.scala`. V19 dropped the old `country_codes` table.
 - `users` and `revoked_tokens` back JWT authentication, a separate bounded context (`docs/todo/auth-jwt.md`).
 
-**Flyway runs at startup:** `Main` runs `FlywayMigration.migrateFromEnv` before the server binds (disable with `FLYWAY_MIGRATE_ON_START=false`; a failure aborts startup). New migrations apply on the next start with no manual step. For a machine whose database predates this, see `plans/run-flyway-on-startup.md`.
+**Flyway runs at startup:** `Main` runs `FlywayMigration.migrate` (connection from `PostgresConfig`) before the server binds (disable with `FLYWAY_MIGRATE_ON_START=false`; a failure aborts startup). New migrations apply on the next start with no manual step. For a machine whose database predates this, see `plans/run-flyway-on-startup.md`.
 
 ## Aircraft demo data
 

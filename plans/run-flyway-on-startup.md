@@ -121,3 +121,8 @@ if a third reader appears.
 
 Out of scope: wiring `OutboxRelay`, Route persistence, shared DB-config module (D4), any
 production migration pipeline.
+
+**Revision (2026-11-13):** `migrateFromEnv` and `FlywayMigration.layer` were removed when config
+moved to ZIO Config (`plans/configuration-zio-config.md`). `Main` now reads `PostgresConfig` and
+`flyway.migrate-on-start` and calls `FlywayMigration.migrate` directly. `FLYWAY_MIGRATE_ON_START`
+still works through `application.conf`, but the value must now be a valid boolean.

@@ -250,6 +250,7 @@ lazy val bootstrap = project
       zio,
       zioLogging,
       zioLoggingSlf4j,
+      zioConfigTypesafe,
       logback
     ),
     Compile / mainClass  := Some("dev.cmartin.aerohex.bootstrap.Main"),
