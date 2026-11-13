@@ -172,3 +172,16 @@ independent additions). G3 goes first because it changes the line numbers G1 tou
 
 Out of scope: wiring integration tests into CI, any change to the `runs-on` OS pin, any action
 major-version bump.
+
+## Later revisions
+
+**2026-11-13:**
+- `scala.yml`'s concurrency group cancels superseded runs on pull requests only, so every commit
+  on `main` runs to completion and gets a result.
+- The target-dir caches split into `actions/cache/restore` + `actions/cache/save`, and the save
+  is skipped on `pull_request` events. The `integration-tests` job only restores. PR runs no
+  longer write per-commit entries that evict `main`'s.
+- New `dependency-graph.yml` submits the sbt dependency tree (`scalacenter/sbt-dependency-submission`)
+  so Dependabot security alerts cover Scala dependencies. It is the only job with `contents: write`.
+- G1's reversal (floating major tags, no SHA pins) was reconsidered in the 2026-11-13 review and
+  kept unchanged.

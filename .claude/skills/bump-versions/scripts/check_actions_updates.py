@@ -21,10 +21,12 @@ import sys
 from pathlib import Path
 from typing import Optional, Tuple
 
-# Matches `uses: owner/repo@<ref>` where <ref> is a version tag (`v7`, `v7.0.1`).
-# Local actions (`uses: ./...`), Docker actions (`uses: docker://...`), and
-# branch/SHA refs don't match and are skipped.
-USES_RE = re.compile(r"uses:\s*([\w.-]+/[\w.-]+)@(v[0-9][\w.-]*)")
+# Matches `uses: owner/repo@<ref>` or `uses: owner/repo/sub/path@<ref>` (e.g.
+# `actions/cache/restore@v6`) where <ref> is a version tag (`v7`, `v7.0.1`). Only
+# `owner/repo` is captured: a sub-path action is released with its repo. Local actions
+# (`uses: ./...`), Docker actions (`uses: docker://...`), and branch/SHA refs don't
+# match and are skipped.
+USES_RE = re.compile(r"uses:\s*([\w.-]+/[\w.-]+)(?:/[\w./-]+)?@(v[0-9][\w.-]*)")
 
 
 def version_key(v: str) -> Tuple[int, ...]:

@@ -42,7 +42,7 @@ jobs:
           persist-credentials: false
       - name: Setup build environment
         uses: ./.github/actions/setup-build-env
-      - name: Cache incremental compilation state
+      - name: Restore incremental compilation state
         # setup-build-env's actions/setup-java (cache: sbt) already caches resolved
         # dependencies (~/.ivy2, ~/.sbt, the Coursier cache) keyed on build.sbt/plugins.sbt — this
         # is the separate, much larger win: zinc's per-module target/ analysis, so an unchanged
@@ -53,13 +53,18 @@ jobs:
         # the `assembly` job builds the shipped jar from its own coverage-free cache, never this one.
         # The `cov` segment keeps this key's restore prefix from matching that job's `nocov` keys.
         #
+        # Restore and save are separate steps so pull-request runs restore but never save. A PR's
+        # per-commit entries would only crowd main's entries out of the 10 GB repo cache quota;
+        # pushes to main and manual dispatches still save (see the "Save" step below).
+        #
         # .coverage-data/ is cached in the same entry as target/: the cached classes are
         # scoverage-instrumented, and zinc won't recompile an unchanged module, so scoverage never
         # recreates its data dir. Restoring target/ alone left instrumented classes writing to a
         # missing .coverage-data/scoverage-data/ (FileNotFoundException in every test). Keeping
         # both in one entry also keeps each module's statement catalog (scoverage.coverage) in step
         # with the classes it describes.
-        uses: actions/cache@v6
+        id: restore-cov
+        uses: actions/cache/restore@v6
         with:
           path: |
             **/target
@@ -79,6 +84,14 @@ jobs:
         # build (that alone was most of the old 29s "Check formatting" step). coverageAggregate only
         # reads the statement data `test` already wrote to .coverage-data.
         run: sbt scalafmtCheckAll test coverageAggregate
+      - name: Save incremental compilation state
+        if: github.event_name != 'pull_request'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            **/target
+            **/.coverage-data
+          key: ${{ steps.restore-cov.outputs.cache-primary-key }}
 
   assembly:
     # Runs in parallel with `build` instead of after it. -Dcoverage=false: coverageEnabled is
@@ -96,8 +109,9 @@ jobs:
           persist-credentials: false
       - name: Setup build environment
         uses: ./.github/actions/setup-build-env
-      - name: Cache incremental compilation state (coverage-free)
-        uses: actions/cache@v6
+      - name: Restore incremental compilation state (coverage-free)
+        id: restore-nocov
+        uses: actions/cache/restore@v6
         with:
           path: |
             **/target
@@ -106,6 +120,13 @@ jobs:
             ${{ runner.os }}-sbt-target-nocov-
       - name: Assembly (coverage-free artifact)
         run: sbt -Dcoverage=false "bootstrap/assembly"
+      - name: Save incremental compilation state (coverage-free)
+        if: github.event_name != 'pull_request'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            **/target
+          key: ${{ steps.restore-nocov.outputs.cache-primary-key }}
 
   integration-tests:
     # Opt-in only: manually dispatched with the run_integration_tests input checked. Never runs
@@ -128,7 +149,7 @@ jobs:
           persist-credentials: false
       - name: Setup build environment
         uses: ./.github/actions/setup-build-env
-      - name: Cache incremental compilation state
+      - name: Restore incremental compilation state
         # Same key as the build job's cache above (this job only runs after it, via `needs: build`)
         # — reuses the exact target/ state build already compiled this commit for the shared modules
         # (domain, migration, persistenceQuill), so this job only compiles
@@ -136,7 +157,8 @@ jobs:
         # identical to the build job's: actions/cache folds the path list into the cache version, so
         # any difference means no match. It includes .coverage-data for the same reason as there —
         # the restored classes are instrumented and need their scoverage data dir.
-        uses: actions/cache@v6
+        # Restore only: the build job has already saved this exact key for this commit.
+        uses: actions/cache/restore@v6
         with:
           path: |
             **/target
