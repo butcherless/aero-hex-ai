@@ -2,7 +2,6 @@ package dev.cmartin.aerohex.adapter.http.flight
 
 import dev.cmartin.aerohex.adapter.http.airline.AirlineDto
 import dev.cmartin.aerohex.adapter.http.common.SecuredEndpoint
-import dev.cmartin.aerohex.adapter.http.error.ErrorMapper
 import dev.cmartin.aerohex.domain.airline.AirlineIcaoCode
 import dev.cmartin.aerohex.domain.flight.{
   CreateFlightUseCase,
@@ -15,7 +14,7 @@ import dev.cmartin.aerohex.domain.flight.{
 }
 import dev.cmartin.aerohex.domain.user.TokenService
 import dev.cmartin.aerohex.shared.Pagination
-import sttp.tapir.ztapir.{RichZEndpoint, ZServerEndpoint}
+import sttp.tapir.ztapir.ZServerEndpoint
 import zio.*
 
 class FlightRoutes(
@@ -27,22 +26,20 @@ class FlightRoutes(
     findAirlineSvc: FindAirlineForFlightUseCase,
     tokenService: TokenService
 ):
-  private val secured = SecuredEndpoint.securityLogic(tokenService)
+  private val secured = SecuredEndpoint(tokenService)
 
   val serverEndpoints: List[ZServerEndpoint[Any, Any]] = List(
-    FlightEndpoints.findAll.zServerSecurityLogic(secured).serverLogic { _ => (page, pageSize) =>
+    secured(FlightEndpoints.findAll) { (page, pageSize) =>
       useCase
         .findAll(Pagination(page, pageSize))
         .map(_.map(FlightDto.fromDomain))
-        .mapError(ErrorMapper.toHttpError)
     },
-    FlightEndpoints.findByCode.zServerSecurityLogic(secured).serverLogic { _ => code =>
+    secured(FlightEndpoints.findByCode) { code =>
       useCase
         .findByCode(code)
         .map(FlightDto.fromDomain)
-        .mapError(ErrorMapper.toHttpError)
     },
-    FlightEndpoints.create.zServerSecurityLogic(secured).serverLogic { _ => req =>
+    secured(FlightEndpoints.create) { req =>
       CreateFlightRequest
         .toCommand(req)
         .flatMap(createSvc.create)
@@ -50,30 +47,25 @@ class FlightRoutes(
           val dto = FlightDto.fromDomain(flight)
           (dto, s"/api/v1/flights/${dto.code}")
         }
-        .mapError(ErrorMapper.toHttpError)
     },
-    FlightEndpoints.update.zServerSecurityLogic(secured).serverLogic { _ => (code, req) =>
+    secured(FlightEndpoints.update) { (code, req) =>
       updateSvc
         .update(UpdateFlightRequest.toCommand(code, req))
         .map(FlightDto.fromDomain)
-        .mapError(ErrorMapper.toHttpError)
     },
-    FlightEndpoints.delete.zServerSecurityLogic(secured).serverLogic { _ => code =>
+    secured(FlightEndpoints.delete) { code =>
       deleteSvc
         .delete(FlightCode.unsafeMake(code))
-        .mapError(ErrorMapper.toHttpError)
     },
-    FlightEndpoints.findByAirline.zServerSecurityLogic(secured).serverLogic { _ => (icao, page, pageSize) =>
+    secured(FlightEndpoints.findByAirline) { (icao, page, pageSize) =>
       findByAirlineSvc
         .findByAirline(AirlineIcaoCode.unsafeMake(icao), Pagination(page, pageSize))
         .map(_.map(FlightDto.fromDomain))
-        .mapError(ErrorMapper.toHttpError)
     },
-    FlightEndpoints.findAirline.zServerSecurityLogic(secured).serverLogic { _ => code =>
+    secured(FlightEndpoints.findAirline) { code =>
       findAirlineSvc
         .findAirline(FlightCode.unsafeMake(code))
         .map(AirlineDto.fromDomain)
-        .mapError(ErrorMapper.toHttpError)
     }
   )
 

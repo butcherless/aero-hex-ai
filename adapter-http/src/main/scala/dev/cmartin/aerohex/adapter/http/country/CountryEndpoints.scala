@@ -1,7 +1,7 @@
 package dev.cmartin.aerohex.adapter.http.country
 
-import dev.cmartin.aerohex.adapter.http.common.CodePatterns
 import dev.cmartin.aerohex.adapter.http.common.PaginationParams
+import dev.cmartin.aerohex.adapter.http.common.PathParams
 import dev.cmartin.aerohex.adapter.http.error.{EndpointErrors, HttpErrorResponse}
 import io.circe.generic.auto.*
 import sttp.model.StatusCode
@@ -14,11 +14,7 @@ object CountryEndpoints {
 
   // #6 reusable validated path param — auto-rejects non-alpha or wrong-length codes with 400
   private val codeParam =
-    path[String]("code")
-      .description("ISO 3166-1 alpha-2 country code (e.g. ES).")
-      .validate(Validator.minLength(2))
-      .validate(Validator.maxLength(2))
-      .validate(Validator.pattern(CodePatterns.alpha2))
+    PathParams.alphaCode("code", "ISO 3166-1 alpha-2 country code (e.g. ES).", 2)
 
   private val notFoundErrorOut: EndpointOutput[(StatusCode, HttpErrorResponse)] =
     oneOf[(StatusCode, HttpErrorResponse)](

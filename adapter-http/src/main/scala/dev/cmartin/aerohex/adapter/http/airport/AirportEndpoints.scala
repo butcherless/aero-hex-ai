@@ -1,7 +1,7 @@
 package dev.cmartin.aerohex.adapter.http.airport
 
-import dev.cmartin.aerohex.adapter.http.common.CodePatterns
 import dev.cmartin.aerohex.adapter.http.common.PaginationParams
+import dev.cmartin.aerohex.adapter.http.common.PathParams
 import dev.cmartin.aerohex.adapter.http.country.CountryDto
 import dev.cmartin.aerohex.adapter.http.error.{EndpointErrors, HttpErrorResponse}
 import io.circe.generic.auto.*
@@ -15,19 +15,11 @@ object AirportEndpoints {
 
   // #6 same validated shape as CountryEndpoints.codeParam — kept local since that one is private
   private val countryCodeParam =
-    path[String]("code")
-      .description("ISO 3166-1 alpha-2 country code (e.g. ES).")
-      .validate(Validator.minLength(2))
-      .validate(Validator.maxLength(2))
-      .validate(Validator.pattern(CodePatterns.alpha2))
+    PathParams.alphaCode("code", "ISO 3166-1 alpha-2 country code (e.g. ES).", 2)
 
   // #6 shared validated path param — findByIata previously captured "iata" with no validation at all
   private val iataParam =
-    path[String]("iata")
-      .description("3-letter IATA airport code (e.g. MAD).")
-      .validate(Validator.minLength(3))
-      .validate(Validator.maxLength(3))
-      .validate(Validator.pattern(CodePatterns.alpha3))
+    PathParams.alphaCode("iata", "3-letter IATA airport code (e.g. MAD).", 3)
 
   // Same shape as findByIata's/delete's errorOut below — extracted since a third occurrence
   // (findCountry) would otherwise triplicate it.

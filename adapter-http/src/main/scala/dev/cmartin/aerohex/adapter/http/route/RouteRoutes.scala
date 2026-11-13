@@ -1,7 +1,6 @@
 package dev.cmartin.aerohex.adapter.http.route
 
 import dev.cmartin.aerohex.adapter.http.common.SecuredEndpoint
-import dev.cmartin.aerohex.adapter.http.error.ErrorMapper
 import dev.cmartin.aerohex.domain.airport.IataCode
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.route.RouteWithAirportNames
@@ -9,7 +8,7 @@ import dev.cmartin.aerohex.domain.route.{AssociateAirlineUseCase, CreateRouteCom
 import dev.cmartin.aerohex.domain.route.{DisassociateAirlineUseCase, FindRouteUseCase, FindRoutesByAirlineUseCase}
 import dev.cmartin.aerohex.domain.user.TokenService
 import dev.cmartin.aerohex.shared.Pagination
-import sttp.tapir.ztapir.{RichZEndpoint, ZServerEndpoint}
+import sttp.tapir.ztapir.ZServerEndpoint
 import zio.*
 
 class RouteRoutes(
@@ -20,16 +19,15 @@ class RouteRoutes(
     findRouteSvc: FindRouteUseCase,
     tokenService: TokenService
 ):
-  private val secured = SecuredEndpoint.securityLogic(tokenService)
+  private val secured = SecuredEndpoint(tokenService)
 
   val serverEndpoints: List[ZServerEndpoint[Any, Any]] = List(
-    RouteEndpoints.create.zServerSecurityLogic(secured).serverLogic { _ => req =>
+    secured(RouteEndpoints.create) { req =>
       createSvc
         .create(CreateRouteCommand(req.originIata, req.destinationIata, req.distanceKm))
         .map(RouteDto.fromDomain)
-        .mapError(ErrorMapper.toHttpError)
     },
-    RouteEndpoints.findAll.zServerSecurityLogic(secured).serverLogic { _ => (origin, destination, page, pageSize) =>
+    secured(RouteEndpoints.findAll) { (origin, destination, page, pageSize) =>
       val pagination                                           = Pagination(page, pageSize)
       val routes: IO[DomainError, List[RouteWithAirportNames]] = (origin, destination) match
         case (Some(o), Some(d)) =>
@@ -43,23 +41,20 @@ class RouteRoutes(
           findRouteSvc.findByDestination(IataCode.unsafeMake(d), pagination)
         case (None, None)       =>
           findRouteSvc.findAll(pagination)
-      routes.map(_.map(RouteDto.fromDomainWithNames)).mapError(ErrorMapper.toHttpError)
+      routes.map(_.map(RouteDto.fromDomainWithNames))
     },
-    RouteEndpoints.associate.zServerSecurityLogic(secured).serverLogic { _ => (origin, destination, icao) =>
+    secured(RouteEndpoints.associate) { (origin, destination, icao) =>
       associateSvc
         .associate(origin, destination, icao)
-        .mapError(ErrorMapper.toHttpError)
     },
-    RouteEndpoints.disassociate.zServerSecurityLogic(secured).serverLogic { _ => (origin, destination, icao) =>
+    secured(RouteEndpoints.disassociate) { (origin, destination, icao) =>
       disassociateSvc
         .disassociate(origin, destination, icao)
-        .mapError(ErrorMapper.toHttpError)
     },
-    RouteEndpoints.findByAirline.zServerSecurityLogic(secured).serverLogic { _ => (icao, page, pageSize) =>
+    secured(RouteEndpoints.findByAirline) { (icao, page, pageSize) =>
       findByAirlineSvc
         .findByAirline(icao, Pagination(page, pageSize))
         .map(_.map(RouteDto.fromDomain))
-        .mapError(ErrorMapper.toHttpError)
     }
   )
 

@@ -1,7 +1,7 @@
 package dev.cmartin.aerohex.adapter.http.airline
 
-import dev.cmartin.aerohex.adapter.http.common.CodePatterns
 import dev.cmartin.aerohex.adapter.http.common.PaginationParams
+import dev.cmartin.aerohex.adapter.http.common.PathParams
 import dev.cmartin.aerohex.adapter.http.error.{EndpointErrors, HttpErrorResponse}
 import io.circe.generic.auto.*
 import sttp.model.StatusCode
@@ -12,31 +12,20 @@ object AirlineEndpoints {
 
   private val base = endpoint.in("api" / "v1" / "airlines")
 
-  // Same 4-validator shape needed by every alpha code path param in this file (and, per the
-  // AirportEndpoints/CountryEndpoints equivalents, in theirs too — kept local here rather than
-  // shared across files since each of those is private to its own endpoint object).
-  private def alphaCodeParam(name: String, description: String, length: Int, pattern: String) =
-    path[String](name)
-      .description(description)
-      .validate(Validator.minLength(length))
-      .validate(Validator.maxLength(length))
-      .validate(Validator.pattern(pattern))
-
   private val icaoParam =
-    alphaCodeParam("icao", "3-letter ICAO airline code (e.g. IBE).", 3, CodePatterns.alpha3)
+    PathParams.alphaCode("icao", "3-letter ICAO airline code (e.g. IBE).", 3)
 
   private val countryCodeParam =
-    alphaCodeParam("code", "ISO 3166-1 alpha-2 country code (e.g. ES).", 2, CodePatterns.alpha2)
+    PathParams.alphaCode("code", "ISO 3166-1 alpha-2 country code (e.g. ES).", 2)
 
   private val originParam =
-    alphaCodeParam("origin", "3-letter IATA code of the origin airport (e.g. MAD).", 3, CodePatterns.alpha3)
+    PathParams.alphaCode("origin", "3-letter IATA code of the origin airport (e.g. MAD).", 3)
 
   private val destinationParam =
-    alphaCodeParam(
+    PathParams.alphaCode(
       "destination",
       "3-letter IATA code of the destination airport (e.g. TFN).",
-      3,
-      CodePatterns.alpha3
+      3
     )
 
   private val notFoundErrorOut: EndpointOutput[(StatusCode, HttpErrorResponse)] =

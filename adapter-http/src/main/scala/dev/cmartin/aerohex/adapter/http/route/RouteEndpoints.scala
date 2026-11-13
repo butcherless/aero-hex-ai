@@ -2,6 +2,7 @@ package dev.cmartin.aerohex.adapter.http.route
 
 import dev.cmartin.aerohex.adapter.http.common.CodePatterns
 import dev.cmartin.aerohex.adapter.http.common.PaginationParams
+import dev.cmartin.aerohex.adapter.http.common.PathParams
 import dev.cmartin.aerohex.adapter.http.error.{EndpointErrors, HttpErrorResponse}
 import io.circe.generic.auto.*
 import sttp.model.StatusCode
@@ -12,26 +13,18 @@ object RouteEndpoints {
 
   private val base = endpoint.in("api" / "v1" / "routes")
 
-  private def alphaCodeParam(name: String, description: String, length: Int, pattern: String) =
-    path[String](name)
-      .description(description)
-      .validate(Validator.minLength(length))
-      .validate(Validator.maxLength(length))
-      .validate(Validator.pattern(pattern))
-
   private val originParam =
-    alphaCodeParam("origin", "3-letter IATA code of the origin airport (e.g. MAD).", 3, CodePatterns.alpha3)
+    PathParams.alphaCode("origin", "3-letter IATA code of the origin airport (e.g. MAD).", 3)
 
   private val destinationParam =
-    alphaCodeParam(
+    PathParams.alphaCode(
       "destination",
       "3-letter IATA code of the destination airport (e.g. TFN).",
-      3,
-      CodePatterns.alpha3
+      3
     )
 
   private val icaoParam =
-    alphaCodeParam("icao", "3-letter ICAO airline code (e.g. AEA).", 3, CodePatterns.alpha3)
+    PathParams.alphaCode("icao", "3-letter ICAO airline code (e.g. AEA).", 3)
 
   private def optionalAlphaCodeQueryParam(name: String, description: String, length: Int, pattern: String) =
     query[Option[String]](name)

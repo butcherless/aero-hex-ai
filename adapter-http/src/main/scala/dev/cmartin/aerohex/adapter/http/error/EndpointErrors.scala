@@ -11,26 +11,15 @@ object EndpointErrors:
   val unexpectedError =
     oneOfDefaultVariant(statusCode.and(jsonBody[HttpErrorResponse].description("Unexpected error.")))
 
-  def notFoundVariant(message: String) =
+  // One documented error variant: selected when the handler fails with `status`, and listed in
+  // the OpenAPI spec with `message` as the response description.
+  private def variant(status: StatusCode, message: String) =
     oneOfVariantValueMatcher(
-      StatusCode.NotFound,
+      status,
       statusCode.and(jsonBody[HttpErrorResponse].description(message))
-    ) { case (s, _) => s == StatusCode.NotFound }
+    ) { case (s, _) => s == status }
 
-  def conflictVariant(message: String) =
-    oneOfVariantValueMatcher(
-      StatusCode.Conflict,
-      statusCode.and(jsonBody[HttpErrorResponse].description(message))
-    ) { case (s, _) => s == StatusCode.Conflict }
-
-  def badRequestVariant(message: String) =
-    oneOfVariantValueMatcher(
-      StatusCode.BadRequest,
-      statusCode.and(jsonBody[HttpErrorResponse].description(message))
-    ) { case (s, _) => s == StatusCode.BadRequest }
-
-  def unauthorizedVariant(message: String) =
-    oneOfVariantValueMatcher(
-      StatusCode.Unauthorized,
-      statusCode.and(jsonBody[HttpErrorResponse].description(message))
-    ) { case (s, _) => s == StatusCode.Unauthorized }
+  def notFoundVariant(message: String)     = variant(StatusCode.NotFound, message)
+  def conflictVariant(message: String)     = variant(StatusCode.Conflict, message)
+  def badRequestVariant(message: String)   = variant(StatusCode.BadRequest, message)
+  def unauthorizedVariant(message: String) = variant(StatusCode.Unauthorized, message)

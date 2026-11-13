@@ -55,8 +55,6 @@ object ErrorMapper {
     case TokenRevoked                          => ApiError(StatusCode.Unauthorized, "Token revoked")
   }
 
-  def toMessage(error: DomainError): String = toApiError(error).message
-
   def toHttpError(error: DomainError): (StatusCode, HttpErrorResponse) = {
     val e = toApiError(error)
     (e.statusCode, HttpErrorResponse(e.message, e.errors))

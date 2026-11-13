@@ -1,7 +1,7 @@
 package dev.cmartin.aerohex.adapter.http.flight
 
 import dev.cmartin.aerohex.adapter.http.airline.AirlineDto
-import dev.cmartin.aerohex.adapter.http.common.{CodePatterns, PaginationParams}
+import dev.cmartin.aerohex.adapter.http.common.{PaginationParams, PathParams}
 import dev.cmartin.aerohex.adapter.http.error.{EndpointErrors, HttpErrorResponse}
 import io.circe.generic.auto.*
 import sttp.model.StatusCode
@@ -21,11 +21,7 @@ object FlightEndpoints {
       .validate(Validator.maxLength(8))
 
   private val icaoParam =
-    path[String]("icao")
-      .description("3-letter ICAO airline code (e.g. IBE).")
-      .validate(Validator.minLength(3))
-      .validate(Validator.maxLength(3))
-      .validate(Validator.pattern(CodePatterns.alpha3))
+    PathParams.alphaCode("icao", "3-letter ICAO airline code (e.g. IBE).", 3)
 
   // Same shape as findByCode's/delete's errorOut below — extracted since a third occurrence
   // (findAirline) would otherwise triplicate it.

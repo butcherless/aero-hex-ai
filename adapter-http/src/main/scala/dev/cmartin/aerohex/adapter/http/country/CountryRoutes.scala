@@ -1,11 +1,10 @@
 package dev.cmartin.aerohex.adapter.http.country
 
 import dev.cmartin.aerohex.adapter.http.common.SecuredEndpoint
-import dev.cmartin.aerohex.adapter.http.error.ErrorMapper
 import dev.cmartin.aerohex.domain.country.*
 import dev.cmartin.aerohex.domain.user.TokenService
 import dev.cmartin.aerohex.shared.Pagination
-import sttp.tapir.ztapir.{RichZEndpoint, ZServerEndpoint}
+import sttp.tapir.ztapir.ZServerEndpoint
 import zio.{URLayer, ZLayer}
 
 class CountryRoutes(
@@ -15,10 +14,10 @@ class CountryRoutes(
     deleteSvc: DeleteCountryUseCase,
     tokenService: TokenService
 ):
-  private val secured = SecuredEndpoint.securityLogic(tokenService)
+  private val secured = SecuredEndpoint(tokenService)
 
   val serverEndpoints: List[ZServerEndpoint[Any, Any]] = List(
-    CountryEndpoints.findAll.zServerSecurityLogic(secured).serverLogic { _ => (name, page, pageSize) =>
+    secured(CountryEndpoints.findAll) { (name, page, pageSize) =>
       val pagination = Pagination(page, pageSize)
       name match
         case Some(query) =>
@@ -31,13 +30,12 @@ class CountryRoutes(
             .findAll(pagination)
             .map(_.map(CountryDto.fromDomain))
     },
-    CountryEndpoints.findByCode.zServerSecurityLogic(secured).serverLogic { _ => code =>
+    secured(CountryEndpoints.findByCode) { code =>
       findSvc
         .findByCode(CountryCode.unsafeMake(code))
         .map(CountryDto.fromDomain)
-        .mapError(ErrorMapper.toHttpError)
     },
-    CountryEndpoints.create.zServerSecurityLogic(secured).serverLogic { _ => req =>
+    secured(CountryEndpoints.create) { req =>
       CreateCountryRequest
         .toCommand(req)
         .flatMap(createSvc.create)
@@ -45,18 +43,15 @@ class CountryRoutes(
           val dto = CountryDto.fromDomain(country)
           (dto, s"/api/v1/countries/${dto.code}")
         }
-        .mapError(ErrorMapper.toHttpError)
     },
-    CountryEndpoints.update.zServerSecurityLogic(secured).serverLogic { _ => (code, req) =>
+    secured(CountryEndpoints.update) { (code, req) =>
       updateSvc
         .update(UpdateCountryRequest.toCommand(code, req))
         .map(CountryDto.fromDomain)
-        .mapError(ErrorMapper.toHttpError)
     },
-    CountryEndpoints.delete.zServerSecurityLogic(secured).serverLogic { _ => code =>
+    secured(CountryEndpoints.delete) { code =>
       deleteSvc
         .delete(CountryCode.unsafeMake(code))
-        .mapError(ErrorMapper.toHttpError)
     }
   )
 

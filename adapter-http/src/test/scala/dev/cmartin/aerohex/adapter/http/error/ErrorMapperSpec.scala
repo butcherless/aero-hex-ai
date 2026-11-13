@@ -92,11 +92,5 @@ object ErrorMapperSpec extends ZIOSpecDefault:
           val (status, body) = ErrorMapper.toHttpError(DomainError.InvalidRoute("origin and destination must differ"))
           assertTrue(status == StatusCode.BadRequest, body.message == "origin and destination must differ")
         }
-      ),
-      suite("toMessage")(
-        test("returns the same message as toHttpError's body") {
-          val error = DomainError.CountryNotFound("XX")
-          assertTrue(ErrorMapper.toMessage(error) == ErrorMapper.toHttpError(error)._2.message)
-        }
       )
     )
