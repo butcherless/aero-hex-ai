@@ -91,7 +91,7 @@ object WiringModule {
   private val flightInstanceRepoLayer: ULayer[FlightInstanceRepository] = ZLayer.succeed(
     new FlightInstanceRepository:
       def findById(id: FlightInstanceId): IO[DomainError, Option[FlightInstance]] = ZIO.none
-      def findAll(p: Pagination): IO[DomainError, List[FlightInstance]]           = ZIO.succeed(Nil)
+      def findAll(p: Pagination): UIO[List[FlightInstance]]                       = ZIO.succeed(Nil)
       def save(j: FlightInstance): IO[DomainError, FlightInstance]                = ZIO.succeed(j)
       def delete(id: FlightInstanceId): IO[DomainError, Unit]                     = ZIO.unit
   )

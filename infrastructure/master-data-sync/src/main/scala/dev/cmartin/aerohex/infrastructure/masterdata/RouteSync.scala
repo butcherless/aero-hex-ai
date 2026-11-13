@@ -35,7 +35,7 @@ object RouteSync:
   ] =
     for
       findAirportUseCase <- ZIO.service[FindAirportUseCase]
-      airports           <- findAirportUseCase.findAllUnbounded.orDieWith(e => new RuntimeException(e.toString))
+      airports           <- findAirportUseCase.findAllUnbounded
       airportsByIata      = airports.map(a => a.iataCode -> a).toMap
       rows               <- RouteCsvParser.parse(file)
       rowsByKey           = rows.groupBy(r => (r.sourceIata, r.destinationIata))
@@ -50,7 +50,7 @@ object RouteSync:
       findRouteUseCase   <- ZIO.service[FindRouteUseCase]
       existing           <-
         EntitySync.loadExisting(
-          findRouteUseCase.findAllUnbounded.orDieWith(e => new RuntimeException(e.toString)),
+          findRouteUseCase.findAllUnbounded,
           keyOf
         )
       plan                = EntitySync.reconcile(routes, existing, keyOf)

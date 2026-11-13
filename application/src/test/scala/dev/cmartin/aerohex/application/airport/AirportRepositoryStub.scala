@@ -4,7 +4,7 @@ import dev.cmartin.aerohex.domain.airport.{Airport, AirportRepository, IataCode}
 import dev.cmartin.aerohex.domain.country.{Country, CountryCode}
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.shared.Pagination
-import zio.{IO, ZIO}
+import zio.{IO, UIO, ZIO}
 
 // Repository stub where every method dies unless overridden — any call a test doesn't
 // expect surfaces as a loud failure instead of a silently wrong default. stubAirportRepo
@@ -15,13 +15,13 @@ private[application] object AirportRepositoryStub:
   val unimplementedAirportRepo: AirportRepository = new AirportRepository:
     def findByIata(iata: IataCode): IO[DomainError, Option[Airport]]                 =
       ZIO.die(new NotImplementedError("findByIata"))
-    def findAll(p: Pagination): IO[DomainError, List[Airport]]                       =
+    def findAll(p: Pagination): UIO[List[Airport]]                                   =
       ZIO.die(new NotImplementedError("findAll"))
-    def findAllUnbounded: IO[DomainError, List[Airport]]                             =
+    def findAllUnbounded: UIO[List[Airport]]                                         =
       ZIO.die(new NotImplementedError("findAllUnbounded"))
-    def findAllUnboundedWithCountry: IO[DomainError, List[(Airport, CountryCode)]]   =
+    def findAllUnboundedWithCountry: UIO[List[(Airport, CountryCode)]]               =
       ZIO.die(new NotImplementedError("findAllUnboundedWithCountry"))
-    def searchByName(q: String): IO[DomainError, List[Airport]]                      =
+    def searchByName(q: String): UIO[List[Airport]]                                  =
       ZIO.die(new NotImplementedError("searchByName"))
     def findByCountry(c: CountryCode, p: Pagination): IO[DomainError, List[Airport]] =
       ZIO.die(new NotImplementedError("findByCountry"))
@@ -36,11 +36,11 @@ private[application] object AirportRepositoryStub:
 
   def stubAirportRepo(
       onFindByIata: IataCode => IO[DomainError, Option[Airport]] = unimplementedAirportRepo.findByIata,
-      onFindAll: Pagination => IO[DomainError, List[Airport]] = unimplementedAirportRepo.findAll,
-      onFindAllUnbounded: IO[DomainError, List[Airport]] = unimplementedAirportRepo.findAllUnbounded,
-      onFindAllUnboundedWithCountry: IO[DomainError, List[(Airport, CountryCode)]] =
+      onFindAll: Pagination => UIO[List[Airport]] = unimplementedAirportRepo.findAll,
+      onFindAllUnbounded: UIO[List[Airport]] = unimplementedAirportRepo.findAllUnbounded,
+      onFindAllUnboundedWithCountry: UIO[List[(Airport, CountryCode)]] =
         unimplementedAirportRepo.findAllUnboundedWithCountry,
-      onSearchByName: String => IO[DomainError, List[Airport]] = unimplementedAirportRepo.searchByName,
+      onSearchByName: String => UIO[List[Airport]] = unimplementedAirportRepo.searchByName,
       onFindByCountry: (CountryCode, Pagination) => IO[DomainError, List[Airport]] =
         unimplementedAirportRepo.findByCountry,
       onFindCountryByIata: IataCode => IO[DomainError, Option[Country]] = unimplementedAirportRepo.findCountryByIata,
@@ -49,10 +49,10 @@ private[application] object AirportRepositoryStub:
       onDelete: IataCode => IO[DomainError, Unit] = unimplementedAirportRepo.delete
   ): AirportRepository = new AirportRepository:
     def findByIata(iata: IataCode): IO[DomainError, Option[Airport]]                 = onFindByIata(iata)
-    def findAll(p: Pagination): IO[DomainError, List[Airport]]                       = onFindAll(p)
-    def findAllUnbounded: IO[DomainError, List[Airport]]                             = onFindAllUnbounded
-    def findAllUnboundedWithCountry: IO[DomainError, List[(Airport, CountryCode)]]   = onFindAllUnboundedWithCountry
-    def searchByName(q: String): IO[DomainError, List[Airport]]                      = onSearchByName(q)
+    def findAll(p: Pagination): UIO[List[Airport]]                                   = onFindAll(p)
+    def findAllUnbounded: UIO[List[Airport]]                                         = onFindAllUnbounded
+    def findAllUnboundedWithCountry: UIO[List[(Airport, CountryCode)]]               = onFindAllUnboundedWithCountry
+    def searchByName(q: String): UIO[List[Airport]]                                  = onSearchByName(q)
     def findByCountry(c: CountryCode, p: Pagination): IO[DomainError, List[Airport]] = onFindByCountry(c, p)
     def findCountryByIata(iata: IataCode): IO[DomainError, Option[Country]]          = onFindCountryByIata(iata)
     def save(a: Airport, c: CountryCode): IO[DomainError, Airport]                   = onSave(a, c)

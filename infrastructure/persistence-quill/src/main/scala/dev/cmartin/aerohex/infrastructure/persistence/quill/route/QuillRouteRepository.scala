@@ -9,7 +9,7 @@ import dev.cmartin.aerohex.shared.Pagination
 import io.getquill.*
 import io.getquill.jdbczio.Quill
 import javax.sql.DataSource
-import zio.{IO, URLayer, ZLayer}
+import zio.{IO, UIO, URLayer, ZLayer}
 
 final class QuillRouteRepository(dataSource: DataSource) extends RouteRepository with QuillAirportIdResolver {
 
@@ -58,7 +58,7 @@ final class QuillRouteRepository(dataSource: DataSource) extends RouteRepository
       })
       .orDie
 
-  override def findAll(pagination: Pagination): IO[DomainError, List[RouteWithAirportNames]] = {
+  override def findAll(pagination: Pagination): UIO[List[RouteWithAirportNames]] = {
     val offset = pagination.offset
     val limit  = pagination.pageSize
     ctx
@@ -76,7 +76,7 @@ final class QuillRouteRepository(dataSource: DataSource) extends RouteRepository
       .orDie
   }
 
-  override def findAllUnbounded: IO[DomainError, List[Route]] =
+  override def findAllUnbounded: UIO[List[Route]] =
     ctx
       .run(quote {
         (for {

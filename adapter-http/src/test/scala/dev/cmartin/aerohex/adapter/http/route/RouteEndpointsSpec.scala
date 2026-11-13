@@ -16,7 +16,7 @@ import sttp.client4.testing.BackendStub
 import sttp.model.StatusCode
 import sttp.tapir.server.stub4.TapirStubInterpreter
 import zio.test.*
-import zio.{IO, Scope, Task, ZIO, ZLayer}
+import zio.{IO, Scope, Task, UIO, ZIO, ZLayer}
 
 object RouteEndpointsSpec extends ZIOSpecDefault with AuthTestFixtures:
 
@@ -62,9 +62,9 @@ object RouteEndpointsSpec extends ZIOSpecDefault with AuthTestFixtures:
     def findBySegment(o: IataCode, d: IataCode): IO[DomainError, RouteWithAirportNames]             =
       if o.value == "MAD" && d.value == "TFN" then ZIO.succeed(routeWithNames)
       else ZIO.fail(DomainError.RouteNotFound(o.value, d.value))
-    def findAll(p: Pagination): IO[DomainError, List[RouteWithAirportNames]]                        =
+    def findAll(p: Pagination): UIO[List[RouteWithAirportNames]]                                    =
       ZIO.succeed(List(routeWithNames))
-    def findAllUnbounded: IO[DomainError, List[Route]]                                              = ZIO.succeed(List(route))
+    def findAllUnbounded: UIO[List[Route]]                                                          = ZIO.succeed(List(route))
     def findByOrigin(o: IataCode, p: Pagination): IO[DomainError, List[RouteWithAirportNames]]      =
       ZIO.succeed(if o.value == route.origin.value then List(routeWithNames) else Nil)
     def findByDestination(d: IataCode, p: Pagination): IO[DomainError, List[RouteWithAirportNames]] =
@@ -73,12 +73,12 @@ object RouteEndpointsSpec extends ZIOSpecDefault with AuthTestFixtures:
   private val failingFindRoute: FindRouteUseCase = new FindRouteUseCase:
     def findBySegment(o: IataCode, d: IataCode): IO[DomainError, RouteWithAirportNames]             =
       ZIO.die(new NotImplementedError("findBySegment"))
-    def findAll(p: Pagination): IO[DomainError, List[RouteWithAirportNames]]                        =
-      ZIO.fail(DomainError.InvalidRoute("boom"))
-    def findAllUnbounded: IO[DomainError, List[Route]]                                              =
+    def findAll(p: Pagination): UIO[List[RouteWithAirportNames]]                                    =
+      ZIO.die(new NotImplementedError("findAll"))
+    def findAllUnbounded: UIO[List[Route]]                                                          =
       ZIO.die(new NotImplementedError("findAllUnbounded"))
     def findByOrigin(o: IataCode, p: Pagination): IO[DomainError, List[RouteWithAirportNames]]      =
-      ZIO.die(new NotImplementedError("findByOrigin"))
+      ZIO.fail(DomainError.InvalidRoute("boom"))
     def findByDestination(d: IataCode, p: Pagination): IO[DomainError, List[RouteWithAirportNames]] =
       ZIO.die(new NotImplementedError("findByDestination"))
 
@@ -265,7 +265,7 @@ object RouteEndpointsSpec extends ZIOSpecDefault with AuthTestFixtures:
         },
         test("propagates the mapped domain error when the use case fails") {
           for response <- authedRequest
-                            .get(uri"https://test.com/api/v1/routes")
+                            .get(uri"https://test.com/api/v1/routes?origin=MAD")
                             .send(makeBackend(findRoute = failingFindRoute))
           yield assertTrue(response.code == StatusCode.BadRequest)
         }

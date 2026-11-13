@@ -20,7 +20,7 @@ import dev.cmartin.aerohex.domain.route.{
 }
 import dev.cmartin.aerohex.shared.Pagination
 import zio.test.*
-import zio.{IO, Scope, ZIO, ZLayer}
+import zio.{IO, Scope, UIO, ZIO, ZLayer}
 
 object RouteServiceSpec extends ZIOSpecDefault:
 
@@ -32,13 +32,13 @@ object RouteServiceSpec extends ZIOSpecDefault:
 
   private def findAirportStub(byIata: String => IO[DomainError, Airport]): FindAirportUseCase =
     new FindAirportUseCase:
-      def findByIata(iata: String): IO[DomainError, Airport]                         = byIata(iata)
-      def findAll(p: Pagination): IO[DomainError, List[Airport]]                     = ZIO.die(new NotImplementedError("findAll"))
-      def findAllUnbounded: IO[DomainError, List[Airport]]                           =
+      def findByIata(iata: String): IO[DomainError, Airport]             = byIata(iata)
+      def findAll(p: Pagination): UIO[List[Airport]]                     = ZIO.die(new NotImplementedError("findAll"))
+      def findAllUnbounded: UIO[List[Airport]]                           =
         ZIO.die(new NotImplementedError("findAllUnbounded"))
-      def findAllUnboundedWithCountry: IO[DomainError, List[(Airport, CountryCode)]] =
+      def findAllUnboundedWithCountry: UIO[List[(Airport, CountryCode)]] =
         ZIO.die(new NotImplementedError("findAllUnboundedWithCountry"))
-      def searchByName(query: String): IO[DomainError, List[Airport]]                =
+      def searchByName(query: String): UIO[List[Airport]]                =
         ZIO.die(new NotImplementedError("searchByName"))
 
   override def spec: Spec[TestEnvironment & Scope, Any] =

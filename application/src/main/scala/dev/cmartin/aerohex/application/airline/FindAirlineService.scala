@@ -8,7 +8,7 @@ import dev.cmartin.aerohex.domain.country.CountryCode
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.error.DomainError.AirlineNotFound
 import dev.cmartin.aerohex.shared.Pagination
-import zio.{IO, URLayer, ZLayer}
+import zio.{IO, UIO, URLayer, ZLayer}
 
 final class FindAirlineService(repo: AirlineRepository) extends FindAirlineUseCase {
 
@@ -16,16 +16,16 @@ final class FindAirlineService(repo: AirlineRepository) extends FindAirlineUseCa
     repo.findByIcao(AirlineIcaoCode.unsafeMake(icao)).someOrFail(AirlineNotFound(icao)) @@
       ServiceAspect.logged(s"FindAirlineService.findByIcao($icao)")
 
-  override def findAll(pagination: Pagination): IO[DomainError, List[Airline]] =
+  override def findAll(pagination: Pagination): UIO[List[Airline]] =
     repo.findAll(pagination) @@ ServiceAspect.logged("FindAirlineService.findAll")
 
-  override def findAllUnbounded: IO[DomainError, List[Airline]] =
+  override def findAllUnbounded: UIO[List[Airline]] =
     repo.findAllUnbounded @@ ServiceAspect.logged("FindAirlineService.findAllUnbounded")
 
-  override def findAllUnboundedWithCountry: IO[DomainError, List[(Airline, CountryCode)]] =
+  override def findAllUnboundedWithCountry: UIO[List[(Airline, CountryCode)]] =
     repo.findAllUnboundedWithCountry @@ ServiceAspect.logged("FindAirlineService.findAllUnboundedWithCountry")
 
-  override def searchByName(query: String): IO[DomainError, List[Airline]] =
+  override def searchByName(query: String): UIO[List[Airline]] =
     repo.searchByName(query) @@ ServiceAspect.logged(s"FindAirlineService.searchByName($query)")
 }
 

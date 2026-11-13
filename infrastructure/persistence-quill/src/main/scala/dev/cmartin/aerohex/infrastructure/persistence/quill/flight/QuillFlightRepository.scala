@@ -12,7 +12,7 @@ import io.getquill.*
 import io.getquill.jdbczio.Quill
 import java.time.LocalTime
 import javax.sql.DataSource
-import zio.{IO, URLayer, ZLayer}
+import zio.{IO, UIO, URLayer, ZLayer}
 
 final class QuillFlightRepository(dataSource: DataSource) extends FlightRepository
     with QuillAirportIdResolver with QuillAirlineIdResolver {
@@ -66,7 +66,7 @@ final class QuillFlightRepository(dataSource: DataSource) extends FlightReposito
       .map(_.headOption.map { case (f, oIata, dIata, icao) => toFlight(f, oIata, dIata, icao) })
       .orDie
 
-  override def findAll(pagination: Pagination): IO[DomainError, List[Flight]] = {
+  override def findAll(pagination: Pagination): UIO[List[Flight]] = {
     val offset = pagination.offset
     val limit  = pagination.pageSize
     ctx

@@ -15,7 +15,7 @@ import sttp.client4.testing.BackendStub
 import sttp.model.StatusCode
 import sttp.tapir.server.stub4.TapirStubInterpreter
 import zio.test.*
-import zio.{IO, Scope, Task, ZIO, ZLayer}
+import zio.{IO, Scope, Task, UIO, ZIO, ZLayer}
 
 object AirlineEndpointsSpec extends ZIOSpecDefault with AuthTestFixtures:
 
@@ -25,20 +25,20 @@ object AirlineEndpointsSpec extends ZIOSpecDefault with AuthTestFixtures:
   // ── Stub use-case implementations ─────────────────────────────────────────
 
   private val defaultFind: FindAirlineUseCase = new FindAirlineUseCase:
-    def findByIcao(icao: String): IO[DomainError, Airline]                         = ZIO.succeed(iberia)
-    def findAll(p: Pagination): IO[DomainError, List[Airline]]                     = ZIO.succeed(List(iberia, vueling))
-    def findAllUnbounded: IO[DomainError, List[Airline]]                           = ZIO.succeed(List(iberia, vueling))
-    def findAllUnboundedWithCountry: IO[DomainError, List[(Airline, CountryCode)]] =
+    def findByIcao(icao: String): IO[DomainError, Airline]             = ZIO.succeed(iberia)
+    def findAll(p: Pagination): UIO[List[Airline]]                     = ZIO.succeed(List(iberia, vueling))
+    def findAllUnbounded: UIO[List[Airline]]                           = ZIO.succeed(List(iberia, vueling))
+    def findAllUnboundedWithCountry: UIO[List[(Airline, CountryCode)]] =
       ZIO.die(new NotImplementedError("findAllUnboundedWithCountry"))
-    def searchByName(q: String): IO[DomainError, List[Airline]]                    = ZIO.succeed(List(iberia))
+    def searchByName(q: String): UIO[List[Airline]]                    = ZIO.succeed(List(iberia))
 
   private val notFoundFind: FindAirlineUseCase = new FindAirlineUseCase:
-    def findByIcao(icao: String): IO[DomainError, Airline]                         = ZIO.fail(DomainError.AirlineNotFound(icao))
-    def findAll(p: Pagination): IO[DomainError, List[Airline]]                     = ZIO.fail(DomainError.AirlineNotFound("n/a"))
-    def findAllUnbounded: IO[DomainError, List[Airline]]                           = ZIO.fail(DomainError.AirlineNotFound("n/a"))
-    def findAllUnboundedWithCountry: IO[DomainError, List[(Airline, CountryCode)]] =
+    def findByIcao(icao: String): IO[DomainError, Airline]             = ZIO.fail(DomainError.AirlineNotFound(icao))
+    def findAll(p: Pagination): UIO[List[Airline]]                     = ZIO.die(new NotImplementedError("findAll"))
+    def findAllUnbounded: UIO[List[Airline]]                           = ZIO.die(new NotImplementedError("findAllUnbounded"))
+    def findAllUnboundedWithCountry: UIO[List[(Airline, CountryCode)]] =
       ZIO.die(new NotImplementedError("findAllUnboundedWithCountry"))
-    def searchByName(q: String): IO[DomainError, List[Airline]]                    = ZIO.fail(DomainError.AirlineNotFound("n/a"))
+    def searchByName(q: String): UIO[List[Airline]]                    = ZIO.die(new NotImplementedError("searchByName"))
 
   private val defaultCreate: CreateAirlineUseCase = (_: CreateAirlineCommand) => ZIO.succeed(iberia)
 
@@ -116,13 +116,6 @@ object AirlineEndpointsSpec extends ZIOSpecDefault with AuthTestFixtures:
                           .send(makeBackend())
           yield assertTrue(response.code == StatusCode.Ok)
         },
-        test("propagates the mapped domain error when the use case fails") {
-          for
-            response <- authedRequest
-                          .get(uri"https://test.com/api/v1/airlines")
-                          .send(makeBackend(find = notFoundFind))
-          yield assertTrue(response.code == StatusCode.NotFound)
-        },
         test("returns 400 when pageSize is 0") {
           for
             response <- authedRequest.get(uri"https://test.com/api/v1/airlines?pageSize=0").send(makeBackend())
@@ -158,13 +151,6 @@ object AirlineEndpointsSpec extends ZIOSpecDefault with AuthTestFixtures:
                           .get(uri"https://test.com/api/v1/airlines/search?q=ab")
                           .send(makeBackend())
           yield assertTrue(response.code == StatusCode.BadRequest)
-        },
-        test("propagates the mapped domain error when the use case fails") {
-          for
-            response <- authedRequest
-                          .get(uri"https://test.com/api/v1/airlines/search?q=Iberia")
-                          .send(makeBackend(find = notFoundFind))
-          yield assertTrue(response.code == StatusCode.NotFound)
         }
       ),
       suite("GET /api/v1/airlines/{icao}")(

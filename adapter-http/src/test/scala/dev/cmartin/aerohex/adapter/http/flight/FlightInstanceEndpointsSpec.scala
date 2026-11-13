@@ -16,7 +16,7 @@ import sttp.client4.testing.BackendStub
 import sttp.model.StatusCode
 import sttp.tapir.server.stub4.TapirStubInterpreter
 import zio.test.*
-import zio.{IO, Scope, Task, ZIO, ZLayer}
+import zio.{IO, Scope, Task, UIO, ZIO, ZLayer}
 
 object FlightInstanceEndpointsSpec extends ZIOSpecDefault with AuthTestFixtures:
 
@@ -33,14 +33,14 @@ object FlightInstanceEndpointsSpec extends ZIOSpecDefault with AuthTestFixtures:
   // ── Stub use-case implementations ─────────────────────────────────────────
 
   private val defaultFind: FindFlightInstanceUseCase = new FindFlightInstanceUseCase:
-    def findById(id: String): IO[DomainError, FlightInstance]         = ZIO.succeed(instance)
-    def findAll(p: Pagination): IO[DomainError, List[FlightInstance]] = ZIO.succeed(List(instance))
+    def findById(id: String): IO[DomainError, FlightInstance] = ZIO.succeed(instance)
+    def findAll(p: Pagination): UIO[List[FlightInstance]]     = ZIO.succeed(List(instance))
 
   private val notFoundFind: FindFlightInstanceUseCase = new FindFlightInstanceUseCase:
-    def findById(id: String): IO[DomainError, FlightInstance]         =
+    def findById(id: String): IO[DomainError, FlightInstance] =
       ZIO.fail(DomainError.FlightInstanceNotFound(id))
-    def findAll(p: Pagination): IO[DomainError, List[FlightInstance]] =
-      ZIO.fail(DomainError.FlightInstanceNotFound("n/a"))
+    def findAll(p: Pagination): UIO[List[FlightInstance]]     =
+      ZIO.die(new NotImplementedError("findAll"))
 
   // ── Backend factory ────────────────────────────────────────────────────────
 
@@ -76,13 +76,6 @@ object FlightInstanceEndpointsSpec extends ZIOSpecDefault with AuthTestFixtures:
                           .get(uri"https://test.com/api/v1/flight-instances?page=2&pageSize=5")
                           .send(makeBackend())
           yield assertTrue(response.code == StatusCode.Ok)
-        },
-        test("propagates the mapped domain error when the use case fails") {
-          for
-            response <- authedRequest
-                          .get(uri"https://test.com/api/v1/flight-instances")
-                          .send(makeBackend(find = notFoundFind))
-          yield assertTrue(response.code == StatusCode.NotFound)
         },
         test("returns 400 when pageSize is 0") {
           for

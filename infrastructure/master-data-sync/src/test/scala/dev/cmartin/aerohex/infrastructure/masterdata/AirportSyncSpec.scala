@@ -46,11 +46,11 @@ object AirportSyncSpec extends ZIOSpecDefault:
       val find: FindAirportUseCase = new FindAirportUseCase:
         def findByIata(iata: String): IO[DomainError, Airport]                         =
           ZIO.die(new NotImplementedError("findByIata"))
-        def findAll(p: Pagination): IO[DomainError, List[Airport]]                     =
+        def findAll(p: Pagination): UIO[List[Airport]]                     =
           ZIO.die(new NotImplementedError("findAll"))
-        def findAllUnbounded: IO[DomainError, List[Airport]]                           = state.get.map(_.map(_._1))
-        def findAllUnboundedWithCountry: IO[DomainError, List[(Airport, CountryCode)]] = state.get
-        def searchByName(q: String): IO[DomainError, List[Airport]]                    =
+        def findAllUnbounded: UIO[List[Airport]]                           = state.get.map(_.map(_._1))
+        def findAllUnboundedWithCountry: UIO[List[(Airport, CountryCode)]] = state.get
+        def searchByName(q: String): UIO[List[Airport]]                    =
           ZIO.die(new NotImplementedError("searchByName"))
 
       StubUseCases(create, update, delete, find, state.get)

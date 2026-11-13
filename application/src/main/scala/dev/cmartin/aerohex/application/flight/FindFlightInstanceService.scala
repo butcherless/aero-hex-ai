@@ -7,7 +7,7 @@ import dev.cmartin.aerohex.domain.flight.FlightInstanceRepository
 import dev.cmartin.aerohex.domain.flight.{FlightInstance, FlightInstanceId}
 import dev.cmartin.aerohex.shared.Pagination
 import java.util.UUID
-import zio.{IO, URLayer, ZIO, ZLayer}
+import zio.{IO, UIO, URLayer, ZIO, ZLayer}
 
 final class FindFlightInstanceService(repo: FlightInstanceRepository) extends FindFlightInstanceUseCase {
 
@@ -17,7 +17,7 @@ final class FindFlightInstanceService(repo: FlightInstanceRepository) extends Fi
       case None       => ZIO.fail(FlightInstanceNotFound(id))
     }
 
-  override def findAll(pagination: Pagination): IO[DomainError, List[FlightInstance]] =
+  override def findAll(pagination: Pagination): UIO[List[FlightInstance]] =
     repo.findAll(pagination)
 }
 

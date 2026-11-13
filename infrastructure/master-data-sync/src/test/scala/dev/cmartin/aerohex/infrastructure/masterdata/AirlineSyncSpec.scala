@@ -41,11 +41,11 @@ object AirlineSyncSpec extends ZIOSpecDefault:
       val find: FindAirlineUseCase = new FindAirlineUseCase:
         def findByIcao(icao: String): IO[DomainError, Airline]                         =
           ZIO.die(new NotImplementedError("findByIcao"))
-        def findAll(p: Pagination): IO[DomainError, List[Airline]]                     =
+        def findAll(p: Pagination): UIO[List[Airline]]                     =
           ZIO.die(new NotImplementedError("findAll"))
-        def findAllUnbounded: IO[DomainError, List[Airline]]                           = state.get.map(_.map(_._1))
-        def findAllUnboundedWithCountry: IO[DomainError, List[(Airline, CountryCode)]] = state.get
-        def searchByName(query: String): IO[DomainError, List[Airline]]                =
+        def findAllUnbounded: UIO[List[Airline]]                           = state.get.map(_.map(_._1))
+        def findAllUnboundedWithCountry: UIO[List[(Airline, CountryCode)]] = state.get
+        def searchByName(query: String): UIO[List[Airline]]                =
           ZIO.die(new NotImplementedError("searchByName"))
 
       val findCountry: FindCountryUseCase = new FindCountryUseCase:

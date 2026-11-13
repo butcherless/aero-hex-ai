@@ -7,7 +7,7 @@ import dev.cmartin.aerohex.domain.flight.FindFlightUseCase
 import dev.cmartin.aerohex.domain.flight.FlightRepository
 import dev.cmartin.aerohex.domain.flight.{Flight, FlightCode}
 import dev.cmartin.aerohex.shared.Pagination
-import zio.{IO, URLayer, ZLayer}
+import zio.{IO, UIO, URLayer, ZLayer}
 
 final class FindFlightService(repo: FlightRepository) extends FindFlightUseCase {
 
@@ -15,7 +15,7 @@ final class FindFlightService(repo: FlightRepository) extends FindFlightUseCase 
     repo.findByCode(FlightCode.unsafeMake(code)).someOrFail(FlightNotFound(code)) @@
       ServiceAspect.logged(s"FindFlightService.findByCode($code)")
 
-  override def findAll(pagination: Pagination): IO[DomainError, List[Flight]] =
+  override def findAll(pagination: Pagination): UIO[List[Flight]] =
     repo.findAll(pagination) @@ ServiceAspect.logged("FindFlightService.findAll")
 }
 

@@ -10,7 +10,7 @@ import dev.cmartin.aerohex.shared.Pagination
 import io.getquill.*
 import io.getquill.jdbczio.Quill
 import javax.sql.DataSource
-import zio.{IO, URLayer, ZLayer}
+import zio.{IO, UIO, URLayer, ZLayer}
 
 final class QuillAirlineRepository(dataSource: DataSource) extends AirlineRepository with QuillCountryIdResolver {
 
@@ -39,7 +39,7 @@ final class QuillAirlineRepository(dataSource: DataSource) extends AirlineReposi
       .map(_.headOption.map(toAirline))
       .orDie
 
-  override def findAll(pagination: Pagination): IO[DomainError, List[Airline]] = {
+  override def findAll(pagination: Pagination): UIO[List[Airline]] = {
     val offset = pagination.offset
     val limit  = pagination.pageSize
     ctx
@@ -53,7 +53,7 @@ final class QuillAirlineRepository(dataSource: DataSource) extends AirlineReposi
       .orDie
   }
 
-  override def findAllUnbounded: IO[DomainError, List[Airline]] =
+  override def findAllUnbounded: UIO[List[Airline]] =
     ctx
       .run(quote {
         querySchema[AirlineRow]("airlines").sortBy(_.icaoCode)
@@ -61,7 +61,7 @@ final class QuillAirlineRepository(dataSource: DataSource) extends AirlineReposi
       .map(_.map(toAirline))
       .orDie
 
-  override def findAllUnboundedWithCountry: IO[DomainError, List[(Airline, CountryCode)]] =
+  override def findAllUnboundedWithCountry: UIO[List[(Airline, CountryCode)]] =
     ctx
       .run(quote {
         (for {
@@ -73,7 +73,7 @@ final class QuillAirlineRepository(dataSource: DataSource) extends AirlineReposi
       .map(_.map { case (a, c) => (toAirline(a), CountryCode.unsafeMake(c.code)) })
       .orDie
 
-  override def searchByName(query: String): IO[DomainError, List[Airline]] = {
+  override def searchByName(query: String): UIO[List[Airline]] = {
     val pattern = QuillSearch.containsPattern(query)
     val limit   = QuillSearch.MaxResults
     ctx

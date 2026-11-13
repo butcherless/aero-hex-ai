@@ -3,11 +3,11 @@ package dev.cmartin.aerohex.domain.aircraft
 import dev.cmartin.aerohex.domain.airline.AirlineIcaoCode
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.shared.Pagination
-import zio.IO
+import zio.{IO, UIO}
 
 trait AircraftRepository {
   def findByRegistration(registration: Registration): IO[DomainError, Option[Aircraft]]
-  def findAll(pagination: Pagination): IO[DomainError, List[Aircraft]]
+  def findAll(pagination: Pagination): UIO[List[Aircraft]]
   def findByAirline(icao: AirlineIcaoCode, pagination: Pagination): IO[DomainError, List[Aircraft]]
   def save(aircraft: Aircraft): IO[DomainError, Aircraft]
   def update(aircraft: Aircraft): IO[DomainError, Aircraft]

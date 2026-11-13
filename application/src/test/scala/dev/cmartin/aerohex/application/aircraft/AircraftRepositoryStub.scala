@@ -4,7 +4,7 @@ import dev.cmartin.aerohex.domain.aircraft.{Aircraft, AircraftRepository, Regist
 import dev.cmartin.aerohex.domain.airline.AirlineIcaoCode
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.shared.Pagination
-import zio.{IO, ZIO}
+import zio.{IO, UIO, ZIO}
 
 // Repository stub where every method dies unless overridden — any call a test doesn't
 // expect surfaces as a loud failure instead of a silently wrong default. stubAircraftRepo
@@ -15,7 +15,7 @@ private[application] object AircraftRepositoryStub:
   val unimplementedAircraftRepo: AircraftRepository = new AircraftRepository:
     def findByRegistration(reg: Registration): IO[DomainError, Option[Aircraft]]             =
       ZIO.die(new NotImplementedError("findByRegistration"))
-    def findAll(p: Pagination): IO[DomainError, List[Aircraft]]                              =
+    def findAll(p: Pagination): UIO[List[Aircraft]]                                          =
       ZIO.die(new NotImplementedError("findAll"))
     def findByAirline(icao: AirlineIcaoCode, p: Pagination): IO[DomainError, List[Aircraft]] =
       ZIO.die(new NotImplementedError("findByAirline"))
@@ -29,7 +29,7 @@ private[application] object AircraftRepositoryStub:
   def stubAircraftRepo(
       onFindByRegistration: Registration => IO[DomainError, Option[Aircraft]] =
         unimplementedAircraftRepo.findByRegistration,
-      onFindAll: Pagination => IO[DomainError, List[Aircraft]] = unimplementedAircraftRepo.findAll,
+      onFindAll: Pagination => UIO[List[Aircraft]] = unimplementedAircraftRepo.findAll,
       onFindByAirline: (AirlineIcaoCode, Pagination) => IO[DomainError, List[Aircraft]] =
         unimplementedAircraftRepo.findByAirline,
       onSave: Aircraft => IO[DomainError, Aircraft] = unimplementedAircraftRepo.save,
@@ -37,7 +37,7 @@ private[application] object AircraftRepositoryStub:
       onDelete: Registration => IO[DomainError, Unit] = unimplementedAircraftRepo.delete
   ): AircraftRepository = new AircraftRepository:
     def findByRegistration(reg: Registration): IO[DomainError, Option[Aircraft]]             = onFindByRegistration(reg)
-    def findAll(p: Pagination): IO[DomainError, List[Aircraft]]                              = onFindAll(p)
+    def findAll(p: Pagination): UIO[List[Aircraft]]                                          = onFindAll(p)
     def findByAirline(icao: AirlineIcaoCode, p: Pagination): IO[DomainError, List[Aircraft]] =
       onFindByAirline(icao, p)
     def save(a: Aircraft): IO[DomainError, Aircraft]                                         = onSave(a)

@@ -66,7 +66,7 @@ object AirlineSync:
       findAirlineUseCase <- ZIO.service[FindAirlineUseCase]
       existing           <-
         EntitySync.loadExisting(
-          findAirlineUseCase.findAllUnboundedWithCountry.orDieWith(e => new RuntimeException(e.toString)),
+          findAirlineUseCase.findAllUnboundedWithCountry,
           keyOf
         )
       plan                = EntitySync.reconcile(airlines, existing, keyOf)

@@ -10,7 +10,7 @@ import dev.cmartin.aerohex.shared.Pagination
 import io.getquill.*
 import io.getquill.jdbczio.Quill
 import javax.sql.DataSource
-import zio.{IO, URLayer, ZLayer}
+import zio.{IO, UIO, URLayer, ZLayer}
 
 final class QuillAircraftRepository(dataSource: DataSource) extends AircraftRepository with QuillAirlineIdResolver {
 
@@ -45,7 +45,7 @@ final class QuillAircraftRepository(dataSource: DataSource) extends AircraftRepo
       .map(_.headOption.map { case (a, icao) => toAircraft(a, icao) })
       .orDie
 
-  override def findAll(pagination: Pagination): IO[DomainError, List[Aircraft]] = {
+  override def findAll(pagination: Pagination): UIO[List[Aircraft]] = {
     val offset = pagination.offset
     val limit  = pagination.pageSize
     ctx

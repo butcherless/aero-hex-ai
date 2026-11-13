@@ -6,7 +6,7 @@ import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.error.DomainError.RouteNotFound
 import dev.cmartin.aerohex.domain.route.{FindRouteUseCase, Route, RouteRepository, RouteWithAirportNames}
 import dev.cmartin.aerohex.shared.Pagination
-import zio.{IO, URLayer, ZLayer}
+import zio.{IO, UIO, URLayer, ZLayer}
 
 final class FindRouteService(repo: RouteRepository) extends FindRouteUseCase {
 
@@ -17,10 +17,10 @@ final class FindRouteService(repo: RouteRepository) extends FindRouteUseCase {
     repo.findBySegment(origin, destination).someOrFail(RouteNotFound(origin.value, destination.value)) @@
       ServiceAspect.logged(s"FindRouteService.findBySegment(${origin.value}, ${destination.value})")
 
-  override def findAll(pagination: Pagination): IO[DomainError, List[RouteWithAirportNames]] =
+  override def findAll(pagination: Pagination): UIO[List[RouteWithAirportNames]] =
     repo.findAll(pagination) @@ ServiceAspect.logged("FindRouteService.findAll")
 
-  override def findAllUnbounded: IO[DomainError, List[Route]] =
+  override def findAllUnbounded: UIO[List[Route]] =
     repo.findAllUnbounded @@ ServiceAspect.logged("FindRouteService.findAllUnbounded")
 
   override def findByOrigin(

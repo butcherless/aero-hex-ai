@@ -2,11 +2,11 @@ package dev.cmartin.aerohex.domain.flight
 
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.shared.Pagination
-import zio.IO
+import zio.{IO, UIO}
 
 trait FlightInstanceRepository {
   def findById(id: FlightInstanceId): IO[DomainError, Option[FlightInstance]]
-  def findAll(pagination: Pagination): IO[DomainError, List[FlightInstance]]
+  def findAll(pagination: Pagination): UIO[List[FlightInstance]]
   def save(flightInstance: FlightInstance): IO[DomainError, FlightInstance]
   def delete(id: FlightInstanceId): IO[DomainError, Unit]
 }

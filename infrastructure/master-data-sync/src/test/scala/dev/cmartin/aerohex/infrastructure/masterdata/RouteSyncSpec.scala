@@ -25,12 +25,12 @@ object RouteSyncSpec extends ZIOSpecDefault:
   private def findAirportStub(airports: List[Airport]): FindAirportUseCase = new FindAirportUseCase:
     def findByIata(iata: String): IO[DomainError, Airport]                         =
       ZIO.fromOption(airports.find(_.iataCode.value == iata)).orElseFail(DomainError.AirportNotFound(iata))
-    def findAll(p: Pagination): IO[DomainError, List[Airport]]                     =
+    def findAll(p: Pagination): UIO[List[Airport]]                     =
       ZIO.die(new NotImplementedError("findAll"))
-    def findAllUnbounded: IO[DomainError, List[Airport]]                           = ZIO.succeed(airports)
-    def findAllUnboundedWithCountry: IO[DomainError, List[(Airport, CountryCode)]] =
+    def findAllUnbounded: UIO[List[Airport]]                           = ZIO.succeed(airports)
+    def findAllUnboundedWithCountry: UIO[List[(Airport, CountryCode)]] =
       ZIO.die(new NotImplementedError("findAllUnboundedWithCountry"))
-    def searchByName(q: String): IO[DomainError, List[Airport]]                    =
+    def searchByName(q: String): UIO[List[Airport]]                    =
       ZIO.die(new NotImplementedError("searchByName"))
 
   private final case class StubUseCases(
@@ -69,9 +69,9 @@ object RouteSyncSpec extends ZIOSpecDefault:
       val find: FindRouteUseCase = new FindRouteUseCase:
         def findBySegment(origin: IataCode, destination: IataCode): IO[DomainError, RouteWithAirportNames]        =
           ZIO.die(new NotImplementedError("findBySegment"))
-        def findAll(p: Pagination): IO[DomainError, List[RouteWithAirportNames]]                                  =
+        def findAll(p: Pagination): UIO[List[RouteWithAirportNames]]                                  =
           ZIO.die(new NotImplementedError("findAll"))
-        def findAllUnbounded: IO[DomainError, List[Route]]                                        = state.get
+        def findAllUnbounded: UIO[List[Route]]                                        = state.get
         def findByOrigin(origin: IataCode, p: Pagination): IO[DomainError, List[RouteWithAirportNames]]           =
           ZIO.die(new NotImplementedError("findByOrigin"))
         def findByDestination(destination: IataCode, p: Pagination): IO[DomainError, List[RouteWithAirportNames]] =

@@ -14,7 +14,7 @@ import sttp.client4.testing.BackendStub
 import sttp.model.StatusCode
 import sttp.tapir.server.stub4.TapirStubInterpreter
 import zio.test.*
-import zio.{IO, Scope, Task, ZIO, ZLayer}
+import zio.{IO, Scope, Task, UIO, ZIO, ZLayer}
 
 object AircraftEndpointsSpec extends ZIOSpecDefault with AuthTestFixtures:
 
@@ -25,13 +25,13 @@ object AircraftEndpointsSpec extends ZIOSpecDefault with AuthTestFixtures:
 
   private val defaultFind: FindAircraftUseCase = new FindAircraftUseCase:
     def findByRegistration(registration: String): IO[DomainError, Aircraft] = ZIO.succeed(ecMig)
-    def findAll(p: Pagination): IO[DomainError, List[Aircraft]]             = ZIO.succeed(List(ecMig, ecAbc))
+    def findAll(p: Pagination): UIO[List[Aircraft]]                         = ZIO.succeed(List(ecMig, ecAbc))
 
   private val notFoundFind: FindAircraftUseCase = new FindAircraftUseCase:
     def findByRegistration(registration: String): IO[DomainError, Aircraft] =
       ZIO.fail(DomainError.AircraftNotFound(registration))
-    def findAll(p: Pagination): IO[DomainError, List[Aircraft]]             =
-      ZIO.fail(DomainError.AircraftNotFound("n/a"))
+    def findAll(p: Pagination): UIO[List[Aircraft]]                         =
+      ZIO.die(new NotImplementedError("findAll"))
 
   private val defaultCreate: CreateAircraftUseCase = (_: CreateAircraftCommand) => ZIO.succeed(ecMig)
 
@@ -101,13 +101,6 @@ object AircraftEndpointsSpec extends ZIOSpecDefault with AuthTestFixtures:
                           .get(uri"https://test.com/api/v1/aircraft?page=2&pageSize=5")
                           .send(makeBackend())
           yield assertTrue(response.code == StatusCode.Ok)
-        },
-        test("propagates the mapped domain error when the use case fails") {
-          for
-            response <- authedRequest
-                          .get(uri"https://test.com/api/v1/aircraft")
-                          .send(makeBackend(find = notFoundFind))
-          yield assertTrue(response.code == StatusCode.NotFound)
         },
         test("returns 400 when pageSize is 0") {
           for

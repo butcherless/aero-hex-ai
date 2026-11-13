@@ -17,7 +17,7 @@ import sttp.client4.testing.BackendStub
 import sttp.model.StatusCode
 import sttp.tapir.server.stub4.TapirStubInterpreter
 import zio.test.*
-import zio.{IO, Scope, Task, ZIO, ZLayer}
+import zio.{IO, Scope, Task, UIO, ZIO, ZLayer}
 
 object FlightEndpointsSpec extends ZIOSpecDefault with AuthTestFixtures:
 
@@ -46,12 +46,12 @@ object FlightEndpointsSpec extends ZIOSpecDefault with AuthTestFixtures:
   // ── Stub use-case implementations ─────────────────────────────────────────
 
   private val defaultFind: FindFlightUseCase = new FindFlightUseCase:
-    def findByCode(code: String): IO[DomainError, Flight]     = ZIO.succeed(flightWithAlias)
-    def findAll(p: Pagination): IO[DomainError, List[Flight]] = ZIO.succeed(List(flightWithAlias, flightNoAlias))
+    def findByCode(code: String): IO[DomainError, Flight] = ZIO.succeed(flightWithAlias)
+    def findAll(p: Pagination): UIO[List[Flight]]         = ZIO.succeed(List(flightWithAlias, flightNoAlias))
 
   private val notFoundFind: FindFlightUseCase = new FindFlightUseCase:
-    def findByCode(code: String): IO[DomainError, Flight]     = ZIO.fail(DomainError.FlightNotFound(code))
-    def findAll(p: Pagination): IO[DomainError, List[Flight]] = ZIO.fail(DomainError.FlightNotFound("n/a"))
+    def findByCode(code: String): IO[DomainError, Flight] = ZIO.fail(DomainError.FlightNotFound(code))
+    def findAll(p: Pagination): UIO[List[Flight]]         = ZIO.die(new NotImplementedError("findAll"))
 
   private val defaultFindByAirline: FindFlightsByAirlineUseCase =
     (_: AirlineIcaoCode, _: Pagination) => ZIO.succeed(List(flightWithAlias))
@@ -131,13 +131,6 @@ object FlightEndpointsSpec extends ZIOSpecDefault with AuthTestFixtures:
                           .get(uri"https://test.com/api/v1/flights?page=2&pageSize=5")
                           .send(makeBackend())
           yield assertTrue(response.code == StatusCode.Ok)
-        },
-        test("propagates the mapped domain error when the use case fails") {
-          for
-            response <- authedRequest
-                          .get(uri"https://test.com/api/v1/flights")
-                          .send(makeBackend(find = notFoundFind))
-          yield assertTrue(response.code == StatusCode.NotFound)
         },
         test("returns 400 when pageSize is 0") {
           for
