@@ -51,7 +51,7 @@ object Dependencies {
 
   // JWT + password hashing (infrastructure/security)
   val jwtCirce = "com.github.jwt-scala" %% "jwt-circe" % Versions.jwtScala
-  val jbcrypt  = "org.mindrot"           % "jbcrypt"   % Versions.jbcrypt
+  val password4j = "com.password4j" % "password4j" % Versions.password4j
 
   // Test — integration tests (real Postgres via Testcontainers)
   val testcontainersCore     = "org.testcontainers" % "testcontainers"            % Versions.testcontainers % Test

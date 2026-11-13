@@ -17,5 +17,5 @@ object Versions {
   val protoQuill     = "4.8.6"
   val testcontainers = "2.0.5"
   val jwtScala       = "12.0.0"
-  val jbcrypt        = "0.4"
+  val password4j     = "1.8.4"
 }

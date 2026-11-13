@@ -201,7 +201,7 @@ lazy val security = instrumented(
     .dependsOn(domain)
     .settings(
       name := "security",
-      libraryDependencies ++= Seq(jwtCirce, jbcrypt)
+      libraryDependencies ++= Seq(jwtCirce, password4j)
     )
 )
 
