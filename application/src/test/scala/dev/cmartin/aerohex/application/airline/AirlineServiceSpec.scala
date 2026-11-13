@@ -33,7 +33,6 @@ object AirlineServiceSpec extends ZIOSpecDefault:
           for
             savedRef <- Ref.make[Option[Airline]](None)
             repo      = stubAirlineRepo(
-                          onFindByIcao = _ => ZIO.none,
                           onSave = (a, _) => savedRef.set(Some(a)).as(a)
                         )
             command   =
@@ -52,8 +51,8 @@ object AirlineServiceSpec extends ZIOSpecDefault:
             saved.contains(iberia)
           )
         },
-        test("fails with AirlineAlreadyExists and never calls save when the airline already exists") {
-          val repo    = stubAirlineRepo(onFindByIcao = _ => ZIO.some(iberia))
+        test("propagates AirlineAlreadyExists from save when the airline already exists") {
+          val repo    = stubAirlineRepo(onSave = (_, _) => ZIO.fail(DomainError.AirlineAlreadyExists("IBE")))
           val command =
             CreateAirlineCommand(AirlineIcaoCode("IBE"), "Other name", None, Some("IBERIA"), CountryCode("ES"))
           for error <- new CreateAirlineService(repo).create(command).flip

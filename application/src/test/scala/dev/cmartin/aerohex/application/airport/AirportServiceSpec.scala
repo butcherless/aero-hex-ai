@@ -44,7 +44,6 @@ object AirportServiceSpec extends ZIOSpecDefault:
           for
             savedRef <- Ref.make[Option[Airport]](None)
             repo      = stubAirportRepo(
-                          onFindByIata = _ => ZIO.none,
                           onSave = (a, _) => savedRef.set(Some(a)).as(a)
                         )
             command   =
@@ -64,8 +63,8 @@ object AirportServiceSpec extends ZIOSpecDefault:
             saved.contains(madrid)
           )
         },
-        test("fails with AirportAlreadyExists and never calls save when the airport already exists") {
-          val repo    = stubAirportRepo(onFindByIata = _ => ZIO.some(madrid))
+        test("propagates AirportAlreadyExists from save when the airport already exists") {
+          val repo    = stubAirportRepo(onSave = (_, _) => ZIO.fail(DomainError.AirportAlreadyExists("MAD")))
           val command =
             CreateAirportCommand(
               IataCode("MAD"),

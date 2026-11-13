@@ -49,17 +49,17 @@ object RouteServiceSpec extends ZIOSpecDefault:
             case "MAD" => ZIO.succeed(mad)
             case "TFN" => ZIO.succeed(tfn)
           }
-          val repo        = stubRouteRepo(onFindBySegment = (_, _) => ZIO.none, onSave = r => ZIO.succeed(r))
+          val repo        = stubRouteRepo(onSave = r => ZIO.succeed(r))
           for result <-
               new CreateRouteService(findAirport, repo).create(CreateRouteCommand("MAD", "TFN", 1740))
           yield assertTrue(result == route)
         },
-        test("fails with RouteAlreadyExists and never calls save when the segment already exists") {
+        test("propagates RouteAlreadyExists from save when the segment already exists") {
           val findAirport = findAirportStub {
             case "MAD" => ZIO.succeed(mad)
             case "TFN" => ZIO.succeed(tfn)
           }
-          val repo        = stubRouteRepo(onFindBySegment = (_, _) => ZIO.some(routeWithNames))
+          val repo        = stubRouteRepo(onSave = _ => ZIO.fail(DomainError.RouteAlreadyExists("MAD", "TFN")))
           for error <-
               new CreateRouteService(findAirport, repo).create(CreateRouteCommand("MAD", "TFN", 1740)).flip
           yield assertTrue(error == DomainError.RouteAlreadyExists("MAD", "TFN"))

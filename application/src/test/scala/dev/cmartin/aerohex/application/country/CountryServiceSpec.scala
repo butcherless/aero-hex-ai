@@ -29,7 +29,6 @@ object CountryServiceSpec extends ZIOSpecDefault:
           for
             savedRef <- Ref.make[Option[Country]](None)
             repo      = stubCountryRepo(
-                          onFindByCode = _ => ZIO.none,
                           onSave = c => savedRef.set(Some(c)).as(c)
                         )
             result   <- new CreateCountryService(repo).create(CreateCountryCommand(CountryCode("ES"), "Spain"))
@@ -39,8 +38,8 @@ object CountryServiceSpec extends ZIOSpecDefault:
             saved.contains(spain)
           )
         },
-        test("fails with CountryAlreadyExists and never calls save when the country already exists") {
-          val repo = stubCountryRepo(onFindByCode = _ => ZIO.some(spain))
+        test("propagates CountryAlreadyExists from save when the country already exists") {
+          val repo = stubCountryRepo(onSave = _ => ZIO.fail(DomainError.CountryAlreadyExists("ES")))
           for error <- new CreateCountryService(repo).create(CreateCountryCommand(CountryCode("ES"), "New Name")).flip
           yield assertTrue(error == DomainError.CountryAlreadyExists("ES"))
         },

@@ -53,7 +53,6 @@ object FlightServiceSpec extends ZIOSpecDefault:
           for
             savedRef <- Ref.make[Option[Flight]](None)
             repo      = stubFlightRepo(
-                          onFindByCode = _ => ZIO.none,
                           onSave = f => savedRef.set(Some(f)).as(f)
                         )
             command   = CreateFlightCommand(
@@ -72,8 +71,8 @@ object FlightServiceSpec extends ZIOSpecDefault:
             saved.contains(ux9117)
           )
         },
-        test("fails with FlightAlreadyExists and never calls save when the flight already exists") {
-          val repo    = stubFlightRepo(onFindByCode = _ => ZIO.some(ux9117))
+        test("propagates FlightAlreadyExists from save when the flight already exists") {
+          val repo    = stubFlightRepo(onSave = _ => ZIO.fail(DomainError.FlightAlreadyExists("UX9117")))
           val command = CreateFlightCommand(
             FlightCode("UX9117"),
             None,

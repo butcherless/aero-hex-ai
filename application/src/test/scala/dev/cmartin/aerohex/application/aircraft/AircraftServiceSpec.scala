@@ -31,7 +31,6 @@ object AircraftServiceSpec extends ZIOSpecDefault:
           for
             savedRef <- Ref.make[Option[Aircraft]](None)
             repo      = stubAircraftRepo(
-                          onFindByRegistration = _ => ZIO.none,
                           onSave = a => savedRef.set(Some(a)).as(a)
                         )
             command   = CreateAircraftCommand(Registration("EC-MIG"), "B788", "Boeing 787-8", AirlineIcaoCode("IBE"))
@@ -42,8 +41,8 @@ object AircraftServiceSpec extends ZIOSpecDefault:
             saved.contains(ecMig)
           )
         },
-        test("fails with AircraftAlreadyExists and never calls save when the aircraft already exists") {
-          val repo    = stubAircraftRepo(onFindByRegistration = _ => ZIO.some(ecMig))
+        test("propagates AircraftAlreadyExists from save when the aircraft already exists") {
+          val repo    = stubAircraftRepo(onSave = _ => ZIO.fail(DomainError.AircraftAlreadyExists("EC-MIG")))
           val command = CreateAircraftCommand(Registration("EC-MIG"), "B788", "Other name", AirlineIcaoCode("IBE"))
           for error <- new CreateAircraftService(repo).create(command).flip
           yield assertTrue(error == DomainError.AircraftAlreadyExists("EC-MIG"))

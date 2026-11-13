@@ -5,18 +5,17 @@ import dev.cmartin.aerohex.domain.airport.Airport
 import dev.cmartin.aerohex.domain.airport.AirportRepository
 import dev.cmartin.aerohex.domain.airport.{CreateAirportCommand, CreateAirportUseCase}
 import dev.cmartin.aerohex.domain.error.DomainError
-import zio.{IO, URLayer, ZIO, ZLayer}
+import zio.{IO, URLayer, ZLayer}
 
 final class CreateAirportService(repo: AirportRepository) extends CreateAirportUseCase:
 
   override def create(command: CreateAirportCommand): IO[DomainError, Airport] =
-    val effect = repo.findByIata(command.iataCode).flatMap:
-      case Some(_) => ZIO.fail(DomainError.AirportAlreadyExists(command.iataCode.value))
-      case None    =>
-        repo.save(
-          Airport(command.iataCode, command.icaoCode, command.name, command.city, command.latitude, command.longitude),
-          command.countryCode
-        )
+    // No lookup before the insert: the repository already reports a duplicate natural key as
+    // AirportAlreadyExists (via the table's UNIQUE constraint), which also covers a concurrent insert.
+    val effect = repo.save(
+      Airport(command.iataCode, command.icaoCode, command.name, command.city, command.latitude, command.longitude),
+      command.countryCode
+    )
     effect @@ ServiceAspect.logged(s"CreateAirportService.create(${command.iataCode.value})")
 
 object CreateAirportService:

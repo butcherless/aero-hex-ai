@@ -6,7 +6,7 @@ import dev.cmartin.aerohex.domain.route.Route
 import dev.cmartin.aerohex.domain.route.RouteRepository
 import dev.cmartin.aerohex.domain.route.RouteValidator
 import dev.cmartin.aerohex.domain.route.{CreateRouteCommand, CreateRouteUseCase}
-import zio.{IO, URLayer, ZIO, ZLayer}
+import zio.{IO, URLayer, ZLayer}
 
 final class CreateRouteService(
     findAirport: FindAirportUseCase,
@@ -18,15 +18,12 @@ final class CreateRouteService(
       origin      <- findAirport.findByIata(command.originIata)
       destination <- findAirport.findByIata(command.destinationIata)
       _           <- RouteValidator.validate(origin.iataCode, destination.iataCode, command.distanceKm)
-      existing    <- routeRepository.findBySegment(origin.iataCode, destination.iataCode)
-      _           <- ZIO
-                       .fail(DomainError.RouteAlreadyExists(origin.iataCode.value, destination.iataCode.value))
-                       .when(existing.isDefined)
       route        = Route(
                        origin = origin.iataCode,
                        destination = destination.iataCode,
                        distanceKm = command.distanceKm
                      )
+      // A duplicate segment is reported by save itself (RouteAlreadyExists, UNIQUE constraint).
       saved       <- routeRepository.save(route)
     } yield saved
 }
