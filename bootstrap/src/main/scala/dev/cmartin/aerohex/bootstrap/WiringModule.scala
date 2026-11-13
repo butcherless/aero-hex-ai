@@ -16,21 +16,11 @@ import dev.cmartin.aerohex.application.auth.{LoginService, LogoutService}
 import dev.cmartin.aerohex.application.country.*
 import dev.cmartin.aerohex.application.flight.*
 import dev.cmartin.aerohex.application.route.*
-import dev.cmartin.aerohex.domain.aircraft.*
-import dev.cmartin.aerohex.domain.airline.*
-import dev.cmartin.aerohex.domain.airport.*
-import dev.cmartin.aerohex.domain.country.*
+import dev.cmartin.aerohex.domain.airline.{Airline, AirlineIcaoCode}
+import dev.cmartin.aerohex.domain.airport.IataCode
 import dev.cmartin.aerohex.domain.error.DomainError
-import dev.cmartin.aerohex.domain.flight.*
-import dev.cmartin.aerohex.domain.route.*
-import dev.cmartin.aerohex.domain.user.{
-  LoginUseCase,
-  LogoutUseCase,
-  PasswordHasher,
-  RevokedTokenRepository,
-  TokenService,
-  UserRepository
-}
+import dev.cmartin.aerohex.domain.flight.{FlightInstance, FlightInstanceId, FlightInstanceRepository}
+import dev.cmartin.aerohex.domain.route.{Route, RouteAirlineRepository}
 import dev.cmartin.aerohex.infrastructure.persistence.quill.aircraft.QuillAircraftRepository
 import dev.cmartin.aerohex.infrastructure.persistence.quill.airline.QuillAirlineRepository
 import dev.cmartin.aerohex.infrastructure.persistence.quill.airport.QuillAirportRepository
@@ -51,33 +41,7 @@ import zio.*
 // RouteAirline/FlightInstance repositories use in-memory stubs.
 object WiringModule {
 
-  private val countryRepoLayer: TaskLayer[CountryRepository] =
-    QuillDataSourceLayer.live >>> QuillCountryRepository.layer
-
-  private val airportRepoLayer: TaskLayer[AirportRepository] =
-    QuillDataSourceLayer.live >>> QuillAirportRepository.layer
-
-  private val airlineRepoLayer: TaskLayer[AirlineRepository] =
-    QuillDataSourceLayer.live >>> QuillAirlineRepository.layer
-
-  private val aircraftRepoLayer: TaskLayer[AircraftRepository] =
-    QuillDataSourceLayer.live >>> QuillAircraftRepository.layer
-
-  private val userRepoLayer: TaskLayer[UserRepository] =
-    QuillDataSourceLayer.live >>> QuillUserRepository.layer
-
-  private val revokedTokenRepoLayer: TaskLayer[RevokedTokenRepository] =
-    QuillDataSourceLayer.live >>> QuillRevokedTokenRepository.layer
-
-  private val jwtServiceLayer: TaskLayer[TokenService] =
-    (ZLayer.fromZIO(JwtConfig.fromEnv()) ++ revokedTokenRepoLayer) >>> JwtService.layer
-
-  private val passwordHasherLayer: ULayer[PasswordHasher] = BcryptPasswordHasher.layer
-
-  private val routeRepoLayer: TaskLayer[RouteRepository] =
-    QuillDataSourceLayer.live >>> QuillRouteRepository.layer
-
-  private val routeAirlineRepoLayer: ULayer[RouteAirlineRepository] = ZLayer.succeed(
+  private val routeAirlineRepoStub: ULayer[RouteAirlineRepository] = ZLayer.succeed(
     new RouteAirlineRepository:
       def associate(o: IataCode, d: IataCode, icao: AirlineIcaoCode): IO[DomainError, Unit]    = ZIO.unit
       def disassociate(o: IataCode, d: IataCode, icao: AirlineIcaoCode): IO[DomainError, Unit] = ZIO.unit
@@ -85,10 +49,7 @@ object WiringModule {
       def findRoutes(icao: AirlineIcaoCode, p: Pagination): IO[DomainError, List[Route]]       = ZIO.succeed(Nil)
   )
 
-  private val flightRepoLayer: TaskLayer[FlightRepository] =
-    QuillDataSourceLayer.live >>> QuillFlightRepository.layer
-
-  private val flightInstanceRepoLayer: ULayer[FlightInstanceRepository] = ZLayer.succeed(
+  private val flightInstanceRepoStub: ULayer[FlightInstanceRepository] = ZLayer.succeed(
     new FlightInstanceRepository:
       def findById(id: FlightInstanceId): IO[DomainError, Option[FlightInstance]] = ZIO.none
       def findAll(p: Pagination): UIO[List[FlightInstance]]                       = ZIO.succeed(Nil)
@@ -96,69 +57,71 @@ object WiringModule {
       def delete(id: FlightInstanceId): IO[DomainError, Unit]                     = ZIO.unit
   )
 
-  private val countryUseCaseLayers = (countryRepoLayer >>> FindCountryService.layer) ++
-    (countryRepoLayer >>> CreateCountryService.layer) ++
-    (countryRepoLayer >>> UpdateCountryService.layer) ++
-    (countryRepoLayer >>> DeleteCountryService.layer)
-
-  private val airportUseCaseLayers =
-    (airportRepoLayer >>> FindAirportService.layer) ++
-      (airportRepoLayer >>> CreateAirportService.layer) ++
-      (airportRepoLayer >>> UpdateAirportService.layer) ++
-      (airportRepoLayer >>> DeleteAirportService.layer) ++
-      ((airportRepoLayer ++ countryRepoLayer) >>> FindAirportsByCountryService.layer) ++
-      (airportRepoLayer >>> FindCountryForAirportService.layer)
-
-  private val airlineUseCaseLayers =
-    (airlineRepoLayer >>> FindAirlineService.layer) ++
-      (airlineRepoLayer >>> CreateAirlineService.layer) ++
-      (airlineRepoLayer >>> UpdateAirlineService.layer) ++
-      (airlineRepoLayer >>> DeleteAirlineService.layer) ++
-      ((airlineRepoLayer ++ countryRepoLayer) >>> FindAirlinesByCountryService.layer) ++
-      (routeAirlineRepoLayer >>> FindAirlinesByRouteService.layer)
-
-  private val aircraftUseCaseLayers = (aircraftRepoLayer >>> FindAircraftService.layer) ++
-    (aircraftRepoLayer >>> CreateAircraftService.layer) ++
-    (aircraftRepoLayer >>> UpdateAircraftService.layer) ++
-    (aircraftRepoLayer >>> DeleteAircraftService.layer) ++
-    (aircraftRepoLayer >>> FindAircraftByAirlineService.layer)
-
-  private val authUseCaseLayers: TaskLayer[LoginUseCase] =
-    (userRepoLayer ++ passwordHasherLayer ++ jwtServiceLayer) >>> LoginService.layer
-
-  private val logoutUseCaseLayer: TaskLayer[LogoutUseCase] =
-    jwtServiceLayer >>> LogoutService.layer
-
-  private val routeUseCaseLayers =
-    (((airportRepoLayer >>> FindAirportService.layer) ++ routeRepoLayer) >>> CreateRouteService.layer) ++
-      (routeAirlineRepoLayer >>> AssociateAirlineService.layer) ++
-      (routeAirlineRepoLayer >>> DisassociateAirlineService.layer) ++
-      (routeAirlineRepoLayer >>> FindRoutesByAirlineService.layer) ++
-      (routeRepoLayer >>> FindRouteService.layer)
-
-  private val flightUseCaseLayers =
-    (flightRepoLayer >>> FindFlightService.layer) ++
-      (flightRepoLayer >>> CreateFlightService.layer) ++
-      (flightRepoLayer >>> UpdateFlightService.layer) ++
-      (flightRepoLayer >>> DeleteFlightService.layer) ++
-      (flightRepoLayer >>> FindFlightsByAirlineService.layer) ++
-      (flightRepoLayer >>> FindAirlineForFlightService.layer)
-
-  // Every business resource's XxxRoutes now also needs TokenService (step 2 of the security
-  // rollout, plans/security/protect-endpoints.md) — merged in here rather than threaded through
-  // each *UseCaseLayers val, since it's an HTTP-layer concern (SecuredEndpoint), not a use-case
-  // dependency. AuthRoutes also needs it directly (login already required it for issuance;
-  // logout's own SecuredEndpoint wrapper needs it too, step 3 — plans/security/logout.md).
-  // Health stays fully unprotected, so jwtServiceLayer isn't merged into HealthRoutes.layer.
+  // ZLayer.make builds the dependency graph at compile time: a missing or duplicate provider is a
+  // compile error, and every layer, including the DataSource pool and the TokenService, is built
+  // exactly once and shared by everything that needs it. List order doesn't matter.
   val appLayer: TaskLayer[HttpServer.AppRoutes] =
-    ((countryUseCaseLayers ++ jwtServiceLayer) >>> CountryRoutes.layer) ++
-      ((airportUseCaseLayers ++ jwtServiceLayer) >>> AirportRoutes.layer) ++
-      ((airlineUseCaseLayers ++ jwtServiceLayer) >>> AirlineRoutes.layer) ++
-      ((routeUseCaseLayers ++ jwtServiceLayer) >>> RouteRoutes.layer) ++
-      ((aircraftUseCaseLayers ++ jwtServiceLayer) >>> AircraftRoutes.layer) ++
-      ((flightUseCaseLayers ++ jwtServiceLayer) >>> FlightRoutes.layer) ++
-      (((flightInstanceRepoLayer >>> FindFlightInstanceService.layer) ++ jwtServiceLayer) >>>
-        FlightInstanceRoutes.layer) ++
-      ((authUseCaseLayers ++ logoutUseCaseLayer ++ jwtServiceLayer) >>> AuthRoutes.layer) ++
-      (QuillDataSourceLayer.live >>> HealthRoutes.layer)
+    ZLayer.make[HttpServer.AppRoutes](
+      // Infrastructure
+      QuillDataSourceLayer.live,
+      QuillCountryRepository.layer,
+      QuillAirportRepository.layer,
+      QuillAirlineRepository.layer,
+      QuillAircraftRepository.layer,
+      QuillRouteRepository.layer,
+      QuillFlightRepository.layer,
+      QuillUserRepository.layer,
+      QuillRevokedTokenRepository.layer,
+      routeAirlineRepoStub,
+      flightInstanceRepoStub,
+      ZLayer.fromZIO(JwtConfig.fromEnv()),
+      JwtService.layer,
+      BcryptPasswordHasher.layer,
+      // Use cases
+      FindCountryService.layer,
+      CreateCountryService.layer,
+      UpdateCountryService.layer,
+      DeleteCountryService.layer,
+      FindAirportService.layer,
+      CreateAirportService.layer,
+      UpdateAirportService.layer,
+      DeleteAirportService.layer,
+      FindAirportsByCountryService.layer,
+      FindCountryForAirportService.layer,
+      FindAirlineService.layer,
+      CreateAirlineService.layer,
+      UpdateAirlineService.layer,
+      DeleteAirlineService.layer,
+      FindAirlinesByCountryService.layer,
+      FindAirlinesByRouteService.layer,
+      FindAircraftService.layer,
+      CreateAircraftService.layer,
+      UpdateAircraftService.layer,
+      DeleteAircraftService.layer,
+      FindAircraftByAirlineService.layer,
+      CreateRouteService.layer,
+      AssociateAirlineService.layer,
+      DisassociateAirlineService.layer,
+      FindRoutesByAirlineService.layer,
+      FindRouteService.layer,
+      FindFlightService.layer,
+      CreateFlightService.layer,
+      UpdateFlightService.layer,
+      DeleteFlightService.layer,
+      FindFlightsByAirlineService.layer,
+      FindAirlineForFlightService.layer,
+      FindFlightInstanceService.layer,
+      LoginService.layer,
+      LogoutService.layer,
+      // HTTP adapters
+      CountryRoutes.layer,
+      AirportRoutes.layer,
+      AirlineRoutes.layer,
+      RouteRoutes.layer,
+      AircraftRoutes.layer,
+      FlightRoutes.layer,
+      FlightInstanceRoutes.layer,
+      AuthRoutes.layer,
+      HealthRoutes.layer
+    )
 }
