@@ -8,7 +8,6 @@ import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.flight.*
 import dev.cmartin.aerohex.domain.user.TokenService
 import dev.cmartin.aerohex.shared.Pagination
-import io.circe.generic.auto.*
 import java.time.LocalTime
 import sttp.client4.*
 import sttp.client4.circe.*

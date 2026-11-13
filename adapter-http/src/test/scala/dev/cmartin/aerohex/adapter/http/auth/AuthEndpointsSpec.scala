@@ -3,7 +3,6 @@ package dev.cmartin.aerohex.adapter.http.auth
 import dev.cmartin.aerohex.adapter.http.support.AuthTestFixtures
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.user.{AccessToken, LoginUseCase, LogoutUseCase, TokenService}
-import io.circe.generic.auto.*
 import java.time.Instant
 import sttp.client4.*
 import sttp.client4.circe.*

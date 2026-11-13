@@ -1,9 +1,7 @@
 package dev.cmartin.aerohex.adapter.http.error
 
-import io.circe.generic.auto.*
 import sttp.model.StatusCode
 import sttp.tapir.*
-import sttp.tapir.generic.auto.*
 import sttp.tapir.json.circe.*
 
 object EndpointErrors:

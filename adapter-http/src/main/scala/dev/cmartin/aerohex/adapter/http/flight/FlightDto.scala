@@ -5,6 +5,7 @@ import dev.cmartin.aerohex.domain.airport.IataCode
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.flight.{CreateFlightCommand, UpdateFlightCommand}
 import dev.cmartin.aerohex.domain.flight.{Flight, FlightCode}
+import io.circe.Codec
 import java.time.LocalTime
 import sttp.tapir.Schema
 import sttp.tapir.Validator
@@ -40,7 +41,7 @@ case class FlightDto(
     originIata: String,
     destinationIata: String,
     airlineIcao: String
-)
+) derives Codec.AsObject
 
 object FlightDto {
   def fromDomain(flight: Flight): FlightDto =
@@ -72,7 +73,7 @@ case class CreateFlightRequest(
     originIata: String,
     destinationIata: String,
     airlineIcao: String
-)
+) derives Codec.AsObject
 
 object CreateFlightRequest {
   def toCommand(req: CreateFlightRequest): IO[DomainError, CreateFlightCommand] =
@@ -116,7 +117,7 @@ case class UpdateFlightRequest(
     originIata: String,
     destinationIata: String,
     airlineIcao: String
-)
+) derives Codec.AsObject
 
 object UpdateFlightRequest {
   def toCommand(code: String, req: UpdateFlightRequest): UpdateFlightCommand =

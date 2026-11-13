@@ -2,14 +2,16 @@ package dev.cmartin.aerohex.adapter.http.error
 
 import dev.cmartin.aerohex.domain.error.DomainError
 import dev.cmartin.aerohex.domain.error.DomainError.*
+import io.circe.Codec
 import sttp.model.StatusCode
+import sttp.tapir.Schema
 
 case class ApiError(statusCode: StatusCode, message: String, errors: List[String])
 
 object ApiError:
   def apply(statusCode: StatusCode, message: String): ApiError = ApiError(statusCode, message, List(message))
 
-case class HttpErrorResponse(message: String, errors: List[String])
+case class HttpErrorResponse(message: String, errors: List[String]) derives Codec.AsObject, Schema
 
 object ErrorMapper {
 

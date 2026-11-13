@@ -3,10 +3,11 @@ package dev.cmartin.aerohex.adapter.http.country
 import dev.cmartin.aerohex.domain.country.{Country, CountryCode}
 import dev.cmartin.aerohex.domain.country.{CreateCountryCommand, UpdateCountryCommand}
 import dev.cmartin.aerohex.domain.error.DomainError
+import io.circe.Codec
 import sttp.tapir.{Schema, Validator}
 import zio.{IO, ZIO}
 
-case class CountryDto(code: String, name: String)
+case class CountryDto(code: String, name: String) derives Codec.AsObject
 
 object CountryDto {
   def fromDomain(country: Country): CountryDto =
@@ -17,7 +18,7 @@ object CountryDto {
     .modify(_.name)(_.description("Full country name.").encodedExample("Spain"))
 }
 
-case class CreateCountryRequest(code: String, name: String)
+case class CreateCountryRequest(code: String, name: String) derives Codec.AsObject
 
 object CreateCountryRequest {
 
@@ -42,7 +43,7 @@ object CreateCountryRequest {
     .modify(_.name)(_.description("Full country name.").validate(Validator.minLength(1)).encodedExample("Spain"))
 }
 
-case class UpdateCountryRequest(name: String)
+case class UpdateCountryRequest(name: String) derives Codec.AsObject
 
 object UpdateCountryRequest {
   def toCommand(code: String, req: UpdateCountryRequest): UpdateCountryCommand =

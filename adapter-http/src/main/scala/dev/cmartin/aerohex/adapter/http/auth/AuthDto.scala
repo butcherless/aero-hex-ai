@@ -1,8 +1,9 @@
 package dev.cmartin.aerohex.adapter.http.auth
 
+import io.circe.Codec
 import sttp.tapir.{Schema, Validator}
 
-case class LoginRequest(username: String, password: String)
+case class LoginRequest(username: String, password: String) derives Codec.AsObject
 
 object LoginRequest {
   given Schema[LoginRequest] = Schema.derived[LoginRequest]
@@ -12,7 +13,7 @@ object LoginRequest {
     .modify(_.password)(_.description("Login password.").validate(Validator.minLength(1)))
 }
 
-case class TokenResponse(token: String, tokenType: String, expiresIn: Int)
+case class TokenResponse(token: String, tokenType: String, expiresIn: Int) derives Codec.AsObject
 
 object TokenResponse {
   given Schema[TokenResponse] = Schema.derived[TokenResponse]

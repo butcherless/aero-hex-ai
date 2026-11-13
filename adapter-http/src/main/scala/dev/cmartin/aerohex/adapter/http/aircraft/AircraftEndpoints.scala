@@ -2,7 +2,6 @@ package dev.cmartin.aerohex.adapter.http.aircraft
 
 import dev.cmartin.aerohex.adapter.http.common.{PaginationParams, PathParams}
 import dev.cmartin.aerohex.adapter.http.error.{EndpointErrors, HttpErrorResponse}
-import io.circe.generic.auto.*
 import sttp.model.StatusCode
 import sttp.tapir.*
 import sttp.tapir.json.circe.*

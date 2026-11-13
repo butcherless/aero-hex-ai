@@ -5,6 +5,7 @@ import dev.cmartin.aerohex.domain.airport.{Airport, AirportIcaoCode, IataCode}
 import dev.cmartin.aerohex.domain.airport.{CreateAirportCommand, UpdateAirportCommand}
 import dev.cmartin.aerohex.domain.country.CountryCode
 import dev.cmartin.aerohex.domain.error.DomainError
+import io.circe.Codec
 import sttp.tapir.Schema
 import sttp.tapir.Validator
 import zio.{IO, ZIO}
@@ -33,6 +34,7 @@ private val longitudeSchema: Schema[Double] => Schema[Double] =
     .encodedExample(-3.5626)
 
 case class AirportDto(iata: String, icaoCode: String, name: String, city: String, latitude: Double, longitude: Double)
+    derives Codec.AsObject
 
 object AirportDto {
   def fromDomain(airport: Airport): AirportDto =
@@ -62,7 +64,7 @@ case class CreateAirportRequest(
     countryCode: String,
     latitude: Double,
     longitude: Double
-)
+) derives Codec.AsObject
 
 object CreateAirportRequest {
   def toCommand(req: CreateAirportRequest): IO[DomainError, CreateAirportCommand] =
@@ -109,7 +111,7 @@ case class UpdateAirportRequest(
     countryCode: String,
     latitude: Double,
     longitude: Double
-)
+) derives Codec.AsObject
 
 object UpdateAirportRequest {
   def toCommand(iata: String, req: UpdateAirportRequest): UpdateAirportCommand =

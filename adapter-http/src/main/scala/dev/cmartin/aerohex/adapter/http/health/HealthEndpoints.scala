@@ -1,6 +1,5 @@
 package dev.cmartin.aerohex.adapter.http.health
 
-import io.circe.generic.auto.*
 import sttp.model.StatusCode
 import sttp.tapir.*
 import sttp.tapir.json.circe.*

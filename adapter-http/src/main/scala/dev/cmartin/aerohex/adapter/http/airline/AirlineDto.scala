@@ -5,6 +5,7 @@ import dev.cmartin.aerohex.domain.airline.{Airline, AirlineIcaoCode}
 import dev.cmartin.aerohex.domain.airline.{CreateAirlineCommand, UpdateAirlineCommand}
 import dev.cmartin.aerohex.domain.country.CountryCode
 import dev.cmartin.aerohex.domain.error.DomainError
+import io.circe.Codec
 import sttp.tapir.Schema
 import sttp.tapir.Validator
 import zio.{IO, ZIO}
@@ -21,7 +22,7 @@ case class AirlineDto(
     alias: Option[String],
     callsign: Option[String],
     iata: Option[String]
-)
+) derives Codec.AsObject
 
 object AirlineDto {
   def fromDomain(airline: Airline): AirlineDto =
@@ -48,7 +49,7 @@ case class CreateAirlineRequest(
     callsign: Option[String],
     countryCode: String,
     iata: Option[String]
-)
+) derives Codec.AsObject
 
 object CreateAirlineRequest {
   def toCommand(req: CreateAirlineRequest): IO[DomainError, CreateAirlineCommand] =
@@ -86,7 +87,7 @@ case class UpdateAirlineRequest(
     callsign: Option[String],
     countryCode: String,
     iata: Option[String]
-)
+) derives Codec.AsObject
 
 object UpdateAirlineRequest {
   def toCommand(icao: String, req: UpdateAirlineRequest): UpdateAirlineCommand =

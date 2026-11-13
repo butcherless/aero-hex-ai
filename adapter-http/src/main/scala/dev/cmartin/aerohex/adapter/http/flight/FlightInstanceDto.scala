@@ -1,6 +1,7 @@
 package dev.cmartin.aerohex.adapter.http.flight
 
 import dev.cmartin.aerohex.domain.flight.FlightInstance
+import io.circe.Codec
 import sttp.tapir.Schema
 
 case class FlightInstanceDto(
@@ -9,7 +10,7 @@ case class FlightInstanceDto(
     arrivalDate: String,
     flightCode: String,
     registration: String
-)
+) derives Codec.AsObject
 
 object FlightInstanceDto {
   def fromDomain(flightInstance: FlightInstance): FlightInstanceDto =

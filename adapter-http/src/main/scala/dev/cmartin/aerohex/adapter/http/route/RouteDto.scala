@@ -1,6 +1,7 @@
 package dev.cmartin.aerohex.adapter.http.route
 
 import dev.cmartin.aerohex.domain.route.{Route, RouteWithAirportNames}
+import io.circe.Codec
 import sttp.tapir.Schema
 import sttp.tapir.Validator
 
@@ -14,13 +15,13 @@ case class RouteDto(
     distanceKm: Int,
     originAirportName: Option[String],
     destinationAirportName: Option[String]
-)
+) derives Codec.AsObject
 
 case class CreateRouteRequest(
     originIata: String,
     destinationIata: String,
     distanceKm: Int
-)
+) derives Codec.AsObject
 
 // Shared verbatim by RouteDto and CreateRouteRequest below.
 private val originIataSchema: Schema[String] => Schema[String] = _.description(
