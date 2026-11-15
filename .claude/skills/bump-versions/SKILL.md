@@ -26,7 +26,7 @@ This project keeps versions in eight places, each needing a different check:
 | SBT itself | `project/build.properties` | `gh api` GitHub releases, filtered to the **1.x** line |
 | scalafmt formatter | `.scalafmt.conf` (`version =`) | `gh api` GitHub `releases/latest` |
 | GitHub Actions | `.github/workflows/*.yml`, `.github/actions/*/action.yml` | `scripts/check_actions_updates.py` (bundled here) |
-| Container image tags | `docker-compose.yml`, `infrastructure/integration-tests/.../PostgresContainerSupport.scala` | `scripts/check_container_images.py` (bundled here) |
+| Container image tags | any `image:` in `*.yml`/`*.yaml` (here `docker-compose.yml`) and Testcontainers `DockerImageName.parse` in `*.scala` (here `PostgresContainerSupport.scala`) | `scripts/check_container_images.py` (bundled here) |
 | Unversioned images (`:latest` / no tag) | any `*.yml`/`*.yaml` | `scripts/check_unversioned_images.py` (bundled here, report only) |
 
 `xdup` only sees the main build's dependencies, not the Scala language version, `plugins.sbt`
@@ -55,7 +55,9 @@ aligned table with a trailing `<-- …` marker on rows needing attention (`updat
 `pre-release exception`, `lookup failed`); and they exit non-zero when the tool couldn't run
 *or any registry lookup failed* (network error, HTTP error, `gh` not logged in) — a failed lookup
 is never shown as "up to date" or "no stable release". `check_container_images.py` also exits 1 on
-a cross-file tag mismatch (a broken state, not a suggestion), and 2 when a lookup failed. Treat a
+a cross-file tag mismatch (a broken state, not a suggestion), and 2 when a lookup failed; a
+project that pins no images at all exits 0 ("nothing to check"), since the whole tree was
+scanned. Treat a
 non-zero exit as "this check didn't complete": report it in Step 6 and don't infer anything from
 the rows it did print.
 
@@ -167,7 +169,12 @@ Scans every `uses: owner/repo@vN` reference across `.github/workflows/*.yml` and
 release per action. Actions here are pinned to a floating major tag (`@v7`, `@v1`), not a
 commit SHA — the action owner re-points `v7` as they ship `v7.x`, so minor/patch moves are
 absorbed silently and `.github/dependabot.yml`'s weekly `github-actions` update only opens a PR
-on a *new major*. This check therefore only flags a new major worth a release-notes read. An
+on a *new major*. This check therefore only flags a new major worth a release-notes read. It
+also understands the SHA-pinned form a sibling project may use for third-party actions
+(`owner/repo@<40-hex sha> # vX.Y.Z`, e.g. `sbt/setup-sbt` in `../aero-ui-ai`): there the
+trailing comment is the version, and *any* newer release is flagged (`update available (pin the
+new release's commit SHA)`), since a new SHA is needed either way. Pass a project root to check
+another repo (`check_actions_updates.py ../aero-ui-ai`). An
 `<-- INCONSISTENT ref across files` marker means the same action is referenced by different tags
 in different files (shouldn't normally happen) — resolve that manually before treating it as a
 clean bump.
@@ -176,14 +183,20 @@ clean bump.
 ```bash
 python3 .claude/skills/bump-versions/scripts/check_container_images.py
 ```
-Reports current vs. latest Docker Hub tag for every image pinned in `docker-compose.yml`
-(`postgres`, `confluentinc/cp-kafka`) and in the integration-tests module's
-`PostgresContainerSupport.scala` (`postgres`, via `DockerImageName.parse(...)`). It understands
+Scans the whole tree (or each directory/file passed as an argument, e.g. `../scala`), skipping
+build/IDE dirs such as `target/`, `node_modules/` and `.bloop/`, for `image:` lines in any
+`*.yml`/`*.yaml` — `docker-compose.yml`, `compose.yml`, a compose file under `src/it/resources/`
+— and Testcontainers `DockerImageName.parse("...")` literals in `*.scala`. Here that's
+`docker-compose.yml` (`postgres`, `confluentinc/cp-kafka`) and the integration-tests module's
+`PostgresContainerSupport.scala` (`postgres`). Refs built from `${...}` variables are skipped,
+and a `:latest`/untagged image is listed as unversioned instead of looked up. It reports
+current vs. latest Docker Hub tag per image. It understands
 the two tag shapes this repo uses — `<major>[-variant]` like `18-alpine`, and full `x.y.z`
 semver like `8.3.1` — and reports the newest tag of the *same* shape, so a `postgres` line
 only flags a new major and a `cp-kafka` line flags any newer release. An
-`<-- INCONSISTENT tag across files` marker (and a non-zero exit) means `docker-compose.yml` and
-`PostgresContainerSupport.scala` pin `postgres` to different tags — the Testcontainers Postgres
+`<-- INCONSISTENT tag across files` marker (and a non-zero exit) means the same image is pinned
+to different tags in different files — here, typically `docker-compose.yml` and
+`PostgresContainerSupport.scala` disagreeing on `postgres`. The Testcontainers Postgres
 must match the compose one; fix that before treating either as a clean bump. `postgres:N-alpine`
 is itself a floating tag (rebuilt for every `18.x` patch), so like the GitHub Actions case only
 a new *major* is ever surfaced here; `cp-kafka` is fully pinned, so its patch/minor moves show

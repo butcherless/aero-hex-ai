@@ -2,11 +2,18 @@
 """Reports the latest available version for each GitHub Action used in this repo's
 workflows and composite actions.
 
-Actions here are pinned to a floating major-version tag (`owner/repo@vN`), matching
-the repo convention — `.github/dependabot.yml`'s weekly `github-actions` update is
-what keeps them current; this script is the on-demand single-pass equivalent. It
-never rewrites files; it only reports current vs. latest so applying a bump is a
-one-line tag edit (in every file that references the action).
+Two pinning styles are understood:
+  - a floating major-version tag (`owner/repo@vN`), this repo's convention. Only a
+    new *major* is flagged, since the owner re-points `vN` as they ship `vN.x`.
+  - a commit SHA with the exact version in a trailing comment
+    (`owner/repo@<40-hex sha> # vX.Y.Z`, as GitHub's security hardening guide
+    recommends; sibling projects such as aero-ui-ai use it for third-party actions).
+    Compared on the full version, because any newer release means a new SHA to pin.
+A SHA pin without a `# vX.Y.Z` comment carries no version and is skipped.
+`.github/dependabot.yml`'s weekly `github-actions` update is what keeps them current;
+this script is the on-demand single-pass equivalent. It never rewrites files; it only
+reports current vs. latest so applying a bump is a one-line edit (in every file that
+references the action).
 
 GitHub is queried via `gh api` (authenticated: 5000 req/hr, and no token handling
 here) — same convention as the bump-versions skill's inline checks. `gh` must be
@@ -27,6 +34,10 @@ from typing import Optional, Tuple
 # (`uses: ./...`), Docker actions (`uses: docker://...`), and branch/SHA refs don't
 # match and are skipped.
 USES_RE = re.compile(r"uses:\s*([\w.-]+/[\w.-]+)(?:/[\w./-]+)?@(v[0-9][\w.-]*)")
+
+# Matches a SHA-pinned `uses: owner/repo[/sub/path]@<40-hex sha> # vX.Y.Z`; the trailing
+# comment carries the version, so it's what gets compared.
+PINNED_RE = re.compile(r"uses:\s*([\w.-]+/[\w.-]+)(?:/[\w./-]+)?@[0-9a-f]{40}\s*#\s*(v?[0-9][\w.-]*)")
 
 
 def version_key(v: str) -> Tuple[int, ...]:
@@ -63,9 +74,10 @@ def latest_tag(repo: str) -> Optional[str]:
     return None
 
 
-def find_refs(root: Path) -> dict:
-    """repo -> {refs: {ref -> [locations]}}"""
+def find_refs(root: Path) -> Tuple[dict, set]:
+    """(repo -> {ref -> [locations]}, set of SHA-pinned repos)"""
     refs: dict = {}
+    pinned: set = set()
     paths = list((root / ".github" / "workflows").glob("*.yml")) + list(
         (root / ".github" / "actions").rglob("action.yml")
     )
@@ -73,13 +85,17 @@ def find_refs(root: Path) -> dict:
         for lineno, line in enumerate(path.read_text().splitlines(), start=1):
             if line.lstrip().startswith("#"):
                 continue  # a commented-out `uses:` isn't a real reference
-            m = USES_RE.search(line)
+            m = PINNED_RE.search(line)
+            if m:
+                pinned.add(m.group(1))
+            else:
+                m = USES_RE.search(line)
             if not m:
                 continue
             repo, ref = m.groups()
             entry = refs.setdefault(repo, {})
             entry.setdefault(ref, []).append(f"{path.relative_to(root)}:{lineno}")
-    return refs
+    return refs, pinned
 
 
 def main() -> None:
@@ -89,7 +105,7 @@ def main() -> None:
         sys.exit(1)
 
     root = Path(sys.argv[1] if len(sys.argv) > 1 else ".")
-    refs = find_refs(root)
+    refs, pinned = find_refs(root)
     if not refs:
         print("No version-tagged GitHub Actions found under .github/.", file=sys.stderr)
         sys.exit(1)
@@ -108,6 +124,10 @@ def main() -> None:
         marker = ""
         if len(current_refs) > 1:
             marker = "  <-- INCONSISTENT ref across files, see locations below"
+        elif repo in pinned:
+            # SHA-pinned to an exact version, so any newer release means a new SHA to pin.
+            if version_key(latest) > version_key(current_refs[0]):
+                marker = "  <-- update available (pin the new release's commit SHA)"
         else:
             # Compare only the major component — the repo pins to a floating `vN`.
             cur_major = version_key(current_refs[0])[:1]

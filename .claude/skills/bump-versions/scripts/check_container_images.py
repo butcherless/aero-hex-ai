@@ -1,22 +1,31 @@
 #!/usr/bin/env python3
-"""Reports the latest available tag for each container image this project pins, and
-checks that the Postgres tag is identical everywhere it appears.
+"""Reports the latest available tag for each container image a project pins, and
+checks that each image is pinned to the same tag everywhere it appears.
 
-Two places pin container images, and only the first is covered by
-.github/dependabot.yml's `docker-compose` ecosystem update:
+Usage: check_container_images.py [ROOT_OR_FILE ...]   (default: the current dir)
 
-  - docker-compose.yml
-        -> postgres, confluentinc/cp-kafka
-  - infrastructure/integration-tests/.../PostgresContainerSupport.scala
-        -> postgres  (a Testcontainers `DockerImageName.parse("...")` string
-           literal — no manifest, so Dependabot never sees it; it must be bumped
-           in lockstep with the compose file's postgres tag)
+Each directory argument is scanned recursively (build output, dependency and IDE
+dirs such as target/, node_modules/, .bloop/ and .git/ are skipped) for:
+
+  - `image:` lines in any *.yml / *.yaml: docker-compose.yml, compose.yml,
+    docker-compose-postgres.yml in a test resources dir, a workflow's
+    `services:` / `container:` image, and so on
+  - Testcontainers `DockerImageName.parse("...")` string literals in *.scala.
+    These have no manifest, so Dependabot never sees them. In aero-hex-ai,
+    infrastructure/integration-tests/.../PostgresContainerSupport.scala pins
+    `postgres` this way and must move in lockstep with docker-compose.yml's
+    `postgres` service, which the cross-file consistency check enforces.
+
+A file argument is scanned on its own. Image refs built from variables (`${...}`)
+are skipped. Untagged or `:latest` images are listed but not looked up; see
+check_unversioned_images.py for why they matter.
 
 Like the plugin/actions checks in this skill, this only reports — it never
 rewrites a file. It queries the Docker Hub registry API for available tags.
-Exit code is 1 if the same image is pinned to different tags across files, and 2
-(taking precedence) if a Docker Hub lookup failed (network error, bad response, or no tags returned), so a
-broken check can't pass as "up to date".
+Exit code is 0 when everything was checked (including a project that pins no
+images at all), 1 if the same image is pinned to different tags across files,
+and 2 (taking precedence) if a Docker Hub lookup failed (network error, bad
+response, or no tags returned), so a broken check can't pass as "up to date".
 """
 import json
 import re
@@ -26,12 +35,40 @@ from pathlib import Path
 from typing import Optional
 
 DOCKERIMAGE_RE = re.compile(r'DockerImageName\.parse\(\s*"([^"]+)"\s*\)')
+YAML_IMAGE_RE = re.compile(r"\s*(?:-\s*)?image:\s*[\"']?([^\"'\s#]+)")
 
-DEFAULT_COMPOSE = "docker-compose.yml"
-DEFAULT_SCALA = (
-    "infrastructure/integration-tests/src/test/scala/dev/cmartin/aerohex/it/"
-    "support/PostgresContainerSupport.scala"
-)
+SKIP_DIRS = {
+    ".git", "target", "node_modules", "dist", ".bloop", ".bsp", ".metals", ".idea",
+    ".vscode", ".coverage-data", "out", ".mill", ".scala-build",
+}
+
+
+def candidate_files(arg: Path):
+    """Yield the YAML and Scala files under `arg` (or `arg` itself if it's a file)."""
+    if arg.is_file():
+        yield arg
+        return
+    for path in sorted(arg.rglob("*")):
+        rel_parts = path.relative_to(arg).parts
+        if any(part in SKIP_DIRS for part in rel_parts[:-1]):
+            continue
+        if path.is_file() and path.suffix in (".yml", ".yaml", ".scala"):
+            yield path
+
+
+def scan(path: Path, found: dict) -> None:
+    """Add every image ref in `path` to `found` (image ref -> ["file:line", ...])."""
+    regex = DOCKERIMAGE_RE if path.suffix == ".scala" else YAML_IMAGE_RE
+    try:
+        lines = path.read_text(errors="replace").splitlines()
+    except OSError:
+        return
+    for lineno, line in enumerate(lines, 1):
+        if line.lstrip().startswith(("#", "//")):
+            continue  # a commented-out image isn't a real reference
+        m = regex.search(line) if regex is DOCKERIMAGE_RE else regex.match(line)
+        if m and "$" not in m.group(1):
+            found.setdefault(m.group(1), []).append(f"{path}:{lineno}")
 
 
 def parse_ref(ref: str):
@@ -94,28 +131,21 @@ def latest_for(tag: str, tags: list) -> Optional[str]:
 
 
 def main() -> None:
-    compose = Path(sys.argv[1] if len(sys.argv) > 1 else DEFAULT_COMPOSE)
-    scala = Path(sys.argv[2] if len(sys.argv) > 2 else DEFAULT_SCALA)
+    args = [Path(a) for a in sys.argv[1:]] or [Path(".")]
 
     found: dict = {}  # image ref -> ["file:line", ...]
-    if compose.exists():
-        for lineno, line in enumerate(compose.read_text().splitlines(), 1):
-            m = re.match(r"\s*image:\s*[\"']?([^\"'\s]+)", line)
-            if m:
-                found.setdefault(m.group(1), []).append(f"{compose}:{lineno}")
-    else:
-        print(f"warning: {compose} not found", file=sys.stderr)
-    if scala.exists():
-        for lineno, line in enumerate(scala.read_text().splitlines(), 1):
-            m = DOCKERIMAGE_RE.search(line)
-            if m:
-                found.setdefault(m.group(1), []).append(f"{scala}:{lineno}")
-    else:
-        print(f"warning: {scala} not found", file=sys.stderr)
+    for arg in args:
+        if not arg.exists():
+            print(f"warning: {arg} not found", file=sys.stderr)
+            continue
+        for path in candidate_files(arg):
+            scan(path, found)
 
     if not found:
-        print("No container image references found.", file=sys.stderr)
-        sys.exit(1)
+        # The whole tree was scanned, so this means the project pins no images, not
+        # that a hardcoded path went stale: nothing to check is a pass, not a failure.
+        print("No container image references found — nothing to check.")
+        sys.exit(0)
 
     # Group by namespace/repo so a tag that disagrees across files is visible.
     by_repo: dict = {}
@@ -130,6 +160,12 @@ def main() -> None:
     for key, info in sorted(by_repo.items()):
         current_tags = sorted(info["tags"])
         current = ", ".join(current_tags)
+        if current_tags == ["latest"]:
+            # Nothing to compare a floating `latest` against; flag it instead of a lookup.
+            print(f"{key:<26} {current:<14} {'-':<14}  <-- unversioned (pin a tag; see check_unversioned_images.py)")
+            for loc in info["tags"]["latest"]:
+                print(f"    latest  {loc}")
+            continue
         tags = hub_tags(info["ns"], info["repo"])
 
         latest: Optional[str] = None
