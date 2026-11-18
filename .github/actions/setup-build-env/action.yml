@@ -14,3 +14,8 @@ runs:
         cache: sbt
     - name: Setup SBT
       uses: sbt/setup-sbt@v1
+      with:
+        # Pin the runner to the 1.x line: setup-sbt v1.5.15+ defaults to the sbt 2 runner, and this
+        # build stays on sbt 1.x (CLAUDE.md versioning policy). Keep in step with
+        # project/build.properties.
+        sbt-runner-version: 1.13.1

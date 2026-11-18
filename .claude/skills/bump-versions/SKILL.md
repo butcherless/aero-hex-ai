@@ -291,6 +291,8 @@ For each approved **Scala/library/plugin/SBT/scalafmt** bump, in turn:
 1. Edit only that dependency's version, in whichever file it lives in — `project/Versions.scala`,
    `project/plugins.sbt`, `project/build.properties`, or `.scalafmt.conf`. A **Scala** bump also
    updates the `// x.y.z LTS` trailing comment on `ThisBuild / scalaVersion` in `build.sbt`.
+   An **SBT** bump also updates `sbt-runner-version` in `.github/actions/setup-build-env/action.yml`
+   (pinned to the same 1.x version so `sbt/setup-sbt` never falls back to its sbt 2 runner).
 2. Verify — prefix with `sbt clean` for a Scala, dependency, plugin, or SBT bump (a warm
    incremental build can mask a binary incompatibility); a bare scalafmt-formatter bump doesn't
    need it:
