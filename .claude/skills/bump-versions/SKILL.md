@@ -114,6 +114,15 @@ multi-project run) `dependencyUpdates` lists `scala3-library` (and `scala3-stagi
 `zio-prelude 1.0.0-RC48 -> 1.0.0-RC50`) — leave those alone; filtering is Step 3's job, not this
 one's.
 
+**On sbt 2, don't trust a bare "No dependency updates found".** sbt 2 can answer
+`dependencyUpdates` from its disk cache (the log shows `cache 92%`–`100%` and it finishes in about
+a second), and that cache survives both `clean` and `sbt shutdown`, so it can report a stale "no
+updates". When the output shows a cache hit, cross-check each declared library's latest stable
+version on Maven Central (`https://repo1.maven.org/maven2/<group path>/<artifact>/maven-metadata.xml`)
+before reporting it as current. The same applies to a dependency that's declared in
+`Versions.scala`/`Dependencies.scala` but not used by any project: `dependencyUpdates` never sees
+it at all. Report those as unused, to be removed, not as bumps.
+
 If this fails with `Not a valid command: xdup`, the sbt server is stuck in the meta-build context
 from an earlier `reload plugins` command. Run `sbt shutdown` and retry.
 
