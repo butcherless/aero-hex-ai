@@ -136,7 +136,9 @@ Reports current vs. latest per plugin in `project/plugins.sbt`. Already applies 
 policy and its own exception list (Step 3) — a plugin with no stable release prints
 `no stable release` rather than guessing. It reads the artifact for *this build's* SBT major
 (`<artifact>_2.12_1.0` on SBT 1.x, `<artifact>_sbt2_3` on 2.x, picked from
-`project/build.properties`), so it never proposes a version only published for the other SBT line.
+`project/build.properties`), so it never proposes a version only published for the other SBT line. Like the other scripts,
+it takes an optional project root (`check_plugin_updates.py ../aero-ui-ai`); a `project/`
+directory or a `plugins.sbt` path also works.
 
 **SBT itself, and the scalafmt formatter** — two GitHub `/releases` checks of the same shape
 (mirrors `dependency-updates.yml`'s single combined step):

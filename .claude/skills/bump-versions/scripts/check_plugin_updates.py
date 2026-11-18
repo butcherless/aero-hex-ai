@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Reports the latest available version for each SBT plugin in project/plugins.sbt.
 
+Usage: check_plugin_updates.py [PATH] — PATH is a project root (default: .), its project/
+directory, or a plugins.sbt file.
+
 Queries the repo1.maven.org directory listing directly rather than Maven Central's
 search API (which doesn't index the SBT-plugin artifact suffixes reliably).
 
@@ -56,9 +59,18 @@ def maven_versions(group: str, artifact: str) -> Optional[List[str]]:
     return VERSION_RE.findall(result.stdout)
 
 
+def resolve_plugins_file(arg: str) -> Path:
+    """Accepts a plugins.sbt path, a project/ directory, or a project root, like the other scripts."""
+    path = Path(arg)
+    if path.is_dir():
+        nested = path / "project" / "plugins.sbt"
+        return nested if nested.exists() else path / "plugins.sbt"
+    return path
+
+
 def main() -> None:
-    plugins_file = Path(sys.argv[1] if len(sys.argv) > 1 else "project/plugins.sbt")
-    if not plugins_file.exists():
+    plugins_file = resolve_plugins_file(sys.argv[1] if len(sys.argv) > 1 else ".")
+    if not plugins_file.is_file():
         print(f"No plugins.sbt found at {plugins_file}", file=sys.stderr)
         sys.exit(1)
     suffix = sbt_suffix(plugins_file.parent / "build.properties")
